@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Checks that both lakefiles and all Lean files use the namespace shape described in AGENTS.md.
-// It compares metadata names with the actual `namespace`, `end`, and proof theorem declarations.
+// Checks that both lakefiles and all Lean files use the namespace shape implied by metadata.
+// The metadata `namespaceSlug` is the source for `ChosenSlug.Surface...` and `ChosenSlug.Proofs...`.
 import { join } from "node:path";
 import {
   loadContext,
@@ -21,8 +21,12 @@ if (!namespaceRoot) {
   errors.push("could not infer namespace root from metadata");
 }
 
-checkLakefile(join(packageRoot, "lakefile.lean"), "proof", `${namespaceRoot}Proofs`);
-checkLakefile(join(packageRoot, "surface-package/lakefile.lean"), "surface", `${namespaceRoot}Surface`);
+if (!meta.namespaceSlug) {
+  errors.push("metadata must define namespaceSlug for namespace checks");
+}
+
+checkLakefile(join(packageRoot, "lakefile.lean"), "proof", `${namespaceRoot}.Proofs`);
+checkLakefile(join(packageRoot, "surface-package/lakefile.lean"), "surface", `${namespaceRoot}.Surface`);
 
 for (const entry of meta.surfaceEntries ?? []) {
   const expectedPrefix = `${namespaceRoot}.Surface.${entry.type}.`;

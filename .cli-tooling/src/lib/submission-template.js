@@ -59,7 +59,7 @@ function proofLakefile(namespace) {
   return `import Lake
 open Lake DSL
 
-package ${namespace}Proofs where
+package ${namespace}.Proofs where
 
 require mathlib from git
   "https://github.com/leanprover-community/mathlib4.git" @ "${mathlibStable.mathlibBranch}"
@@ -74,7 +74,7 @@ function surfaceLakefile(namespace) {
   return `import Lake
 open Lake DSL
 
-package ${namespace}Surface where
+package ${namespace}.Surface where
 
 require mathlib from git
   "https://github.com/leanprover-community/mathlib4.git" @ "${mathlibStable.mathlibBranch}"
@@ -157,7 +157,7 @@ function connectedIffReachableProof(namespace) {
 import ${namespace}.Surface.Definition.ConnectedGraph
 import ${namespace}.Surface.Theorem.ConnectedIffReachable
 
-namespace ${namespace}.Proof.Theorem.ConnectedIffReachable
+namespace ${namespace}.Proofs.Theorem.ConnectedIffReachable
 
 open ${namespace}.Surface.Definition.ConnectedGraph
 
@@ -165,6 +165,6 @@ theorem connected_iff_reachable {V : Type u} (G : SimpleGraph V) :
     IsConnectedGraph G ↔ Nonempty V ∧ ∀ u v : V, G.Reachable u v :=
   ${namespace}.Surface.Theorem.ConnectedIffReachable.connected_iff_reachable G
 
-end ${namespace}.Proof.Theorem.ConnectedIffReachable
+end ${namespace}.Proofs.Theorem.ConnectedIffReachable
 `;
 }

@@ -159,12 +159,12 @@ export function parseScalar(value) {
 }
 
 export function inferNamespaceRoot(meta) {
+  if (meta.namespaceSlug) {
+    return slugToPascal(String(meta.namespaceSlug));
+  }
   const fromEntry = meta.surfaceEntries?.find((entry) => entry.name)?.name?.split(".")?.[0];
   if (fromEntry) {
     return fromEntry;
-  }
-  if (meta.namespaceSlug) {
-    return slugToPascal(String(meta.namespaceSlug));
   }
   return null;
 }
@@ -243,7 +243,7 @@ export function proofNamespaceForTheorem(theoremName) {
   if (theoremIndex === -1 || theoremIndex + 1 >= parts.length) {
     return null;
   }
-  return `${root}.Proof.Theorem.${parts[theoremIndex + 1]}`;
+  return `${root}.Proofs.Theorem.${parts[theoremIndex + 1]}`;
 }
 
 export function proofConstantForTheorem(theoremName) {
