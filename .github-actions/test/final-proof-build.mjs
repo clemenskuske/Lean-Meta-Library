@@ -353,13 +353,17 @@ function declaredAxiomsInSource(source) {
 
 function builtModuleNames() {
   const names = new Set();
-  for (const root of buildLibraryRoots()) {
+  for (const { root, dependency } of buildLibraryRoots()) {
     for (const file of walkFiles(root, { ignoreDirs: new Set() })) {
       if (!file.endsWith(".olean")) {
         continue;
       }
       const moduleName = relativePath(root, file).replace(/\.olean$/i, "").split("/").join(".");
-      if (isLeanName(moduleName) && !isIgnoredModule(moduleName)) {
+      if (
+        isLeanName(moduleName) &&
+        !isIgnoredModule(moduleName) &&
+        !(dependency && isIgnoredDependencyModule(moduleName))
+      ) {
         names.add(moduleName);
       }
     }
@@ -371,7 +375,7 @@ function buildLibraryRoots() {
   const roots = [];
   const rootBuild = join(isolatedPackageRoot, ".lake/build/lib/lean");
   if (existsSync(rootBuild)) {
-    roots.push(rootBuild);
+    roots.push({ root: rootBuild, dependency: false });
   }
 
   const packagesRoot = join(isolatedPackageRoot, ".lake/packages");
@@ -379,7 +383,7 @@ function buildLibraryRoots() {
     for (const packageRoot of walkDirs(packagesRoot)) {
       const buildRoot = join(packageRoot, ".lake/build/lib/lean");
       if (existsSync(buildRoot)) {
-        roots.push(buildRoot);
+        roots.push({ root: buildRoot, dependency: true });
       }
     }
   }
@@ -413,6 +417,10 @@ function isIgnoredModule(moduleName) {
     "Qq",
     "Std"
   ].some((prefix) => moduleName === prefix || moduleName.startsWith(`${prefix}.`));
+}
+
+function isIgnoredDependencyModule(moduleName) {
+  return moduleName === "Cache" || moduleName.startsWith("Cache.");
 }
 
 function finalProofBuildInspector({ modules, proofTargets, declaredAxioms, allowedMathlibAxioms, allowedConjectureAxioms }) {
