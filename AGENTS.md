@@ -11,6 +11,16 @@ Read this file before making changes, then preserve the existing folder roles:
 - `.cli-tooling`: npm CLI tooling.
 - `submissions.jsonl`: root-level JSON Lines submission log.
 
+## Submission checks
+
+The `.github-actions/test/` folder contains first-run submission package checks. Run them with:
+
+```sh
+node .github-actions/test/run-all.mjs path/to/submission-package
+```
+
+Each check accepts an optional `--meta path/to/meta.yaml`. If no metadata path is provided, the check uses `path/to/submission-package/meta.yaml`, falling back to a root-level `meta.yaml` in the current working directory.
+
 ## Submission package structure
 
 The CLI `create-paper` command creates one submission package folder. Preserve this structure:
