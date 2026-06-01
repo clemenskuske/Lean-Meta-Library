@@ -46,8 +46,14 @@ for (const entry of meta.surfaceEntries ?? []) {
   checkSurfaceEntryFolder(entry.folder, `surface entry folder ${entry.folder}`);
   for (const used of entry.usedSurfaceFiles ?? []) {
     checkRelativePath(used.surfaceFile, `used surface file ${used.surfaceFile}`);
-    if (!used.githubRepo || !used.slug || !used.definition) {
-      warnings.push(`usedSurfaceFiles item in ${entry.name} is missing githubRepo, slug, or definition`);
+    for (const key of ["githubRepo", "slug", "surfaceFile", "definition"]) {
+      if (!used[key]) {
+        errors.push(`usedSurfaceFiles item in ${entry.name} is missing ${key}`);
+      }
+    }
+    const definitionNamespace = namespaceOfDeclaration(used.definition);
+    if (definitionNamespace && definitionNamespace === entry.name) {
+      errors.push(`usedSurfaceFiles item in ${entry.name} must point to a different namespace: ${used.definition}`);
     }
   }
 }
@@ -130,6 +136,14 @@ function collectStrings(value) {
     return Object.values(value).flatMap(collectStrings);
   }
   return [];
+}
+
+function namespaceOfDeclaration(name) {
+  if (!name || typeof name !== "string") {
+    return null;
+  }
+  const index = name.lastIndexOf(".");
+  return index === -1 ? name : name.slice(0, index);
 }
 
 report("metadata check", errors, warnings);
