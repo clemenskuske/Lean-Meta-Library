@@ -8,6 +8,7 @@ import { join, relative } from "node:path";
 import {
   listImports,
   loadContext,
+  maxBuildOutputBytes,
   readIfExists,
   relativePath,
   report,
@@ -47,7 +48,7 @@ function checkSurfaceEntry(entry) {
 
   const build = spawnSync("lake", ["--dir", surfaceRoot, "build", moduleName], {
     encoding: "utf8",
-    maxBuffer: 1024 * 1024 * 20
+    maxBuffer: maxBuildOutputBytes
   });
   if (build.error) {
     errors.push(`could not run lake build for ${label}: ${build.error.message}`);
@@ -114,7 +115,7 @@ function introducedDeclarations({ moduleName, imports, label }) {
     writeFileSync(inspector, inspectorSource({ moduleName, imports }));
     const result = spawnSync("lake", ["--dir", surfaceRoot, "env", "lean", inspector], {
       encoding: "utf8",
-      maxBuffer: 1024 * 1024 * 20
+      maxBuffer: maxBuildOutputBytes
     });
 
     if (result.error) {

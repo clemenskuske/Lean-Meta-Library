@@ -1,19 +1,29 @@
 #!/usr/bin/env node
 // Checks that every theorem surface axiom has a matching proof metadata entry.
-// It also verifies that the proof imports and references the surface axiom it is meant to discharge.
+// It also asks Lean to verify that the proof theorem has the same type as the surface axiom.
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   declarationNames,
+  isConjectureProofEntry,
   loadContext,
+  maxBuildOutputBytes,
   proofConstantForTheorem,
+  proofModuleForFile,
+  proofNamespaceForTheorem,
   readIfExists,
   report,
+  surfaceModuleForEntry,
   surfaceNamespaceForEntry
 } from "./common.mjs";
 
-const { packageRoot, meta, namespaceRoot } = loadContext();
+const { packageRoot, meta } = loadContext();
 const errors = [];
-const proofByTheorem = new Map((meta.proofs ?? []).map((proof) => [proof.theorem, proof]));
+const proofByTheorem = new Map(
+  (meta.proofs ?? []).filter((proof) => !isConjectureProofEntry(proof)).map((proof) => [proof.theorem, proof])
+);
 
 for (const entry of (meta.surfaceEntries ?? []).filter((item) => item.type === "Theorem")) {
   const source = readIfExists(join(packageRoot, entry.folder ?? "", "Surface.lean"));
@@ -35,17 +45,62 @@ for (const entry of (meta.surfaceEntries ?? []).filter((item) => item.type === "
     if (!proofSource) {
       continue;
     }
-    const surfacePackageModule = `${namespaceRoot}.Surface`;
-    if (namespaceRoot && !proofSource.includes(`import ${surfacePackageModule}`)) {
-      errors.push(`proof file ${proof.proofFile} should import ${surfacePackageModule}`);
-    }
-    if (!proofSource.includes(fullName)) {
-      errors.push(`proof file ${proof.proofFile} should reference surface axiom ${fullName}`);
+    const surfaceModule = surfaceModuleForEntry(entry);
+    if (surfaceModule && !proofSource.includes(`import ${surfaceModule}`)) {
+      errors.push(`proof file ${proof.proofFile} should import ${surfaceModule}`);
     }
     if (!new RegExp(`\\btheorem\\s+${proofConstantForTheorem(fullName)}\\b`).test(proofSource)) {
       errors.push(`proof file ${proof.proofFile} should prove theorem ${proofConstantForTheorem(fullName)}`);
     }
+    checkProofType({ surfaceName: fullName, proof, surfaceModule });
   }
+}
+
+function checkProofType({ surfaceName, proof, surfaceModule }) {
+  const proofModule = proofModuleForFile(proof.proofFile);
+  const proofNamespace = proofNamespaceForTheorem(surfaceName);
+  const proofConstant = proofConstantForTheorem(surfaceName);
+  if (!surfaceModule || !proofModule || !proofNamespace || !proofConstant) {
+    errors.push(`could not infer proof check target for ${surfaceName}`);
+    return;
+  }
+
+  const proofName = `${proofNamespace}.${proofConstant}`;
+  const tmp = mkdtempSync(join(tmpdir(), "lml-proof-type-"));
+  const inspector = join(tmp, "ProofTypeCheck.lean");
+
+  try {
+    writeFileSync(inspector, proofTypeInspector({ surfaceModule, proofModule, surfaceName, proofName }));
+    const result = spawnSync("lake", ["--dir", packageRoot, "env", "lean", inspector], {
+      encoding: "utf8",
+      maxBuffer: maxBuildOutputBytes
+    });
+
+    if (result.error) {
+      errors.push(`could not run Lean proof type check for ${proof.proofFile}: ${result.error.message}`);
+      return;
+    }
+    if (result.status !== 0) {
+      errors.push(`proof theorem type does not match surface axiom for ${surfaceName}\n${result.stdout}${result.stderr}`.trim());
+    }
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
+function proofTypeInspector({ surfaceModule, proofModule, surfaceName, proofName }) {
+  return `import Lean
+import ${surfaceModule}
+import ${proofModule}
+
+open Lean Meta
+
+#eval show MetaM Unit from do
+  let surfaceInfo <- getConstInfo \`${surfaceName}
+  let proofInfo <- getConstInfo \`${proofName}
+  unless <- isDefEq surfaceInfo.type proofInfo.type do
+    throwError "proof theorem type does not match surface axiom type"
+`;
 }
 
 report("connect axioms to proofs", errors);

@@ -3,20 +3,13 @@
 // It loads package metadata, walks files, parses the small metadata subset we need, and formats pass/fail output.
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import lmlEnv from "../../lml-env.json" with { type: "json" };
+
+export const defaultMetadataPath = String(lmlEnv.submission?.defaultMetadataPath ?? "meta.yaml");
+export const maxBuildOutputBytes = Number(lmlEnv.checks?.maxBuildOutputBytes ?? 1024 * 1024 * 20);
 
 export function loadContext(argv = process.argv.slice(2)) {
-  const args = [...argv];
-  if (args.includes("--meta")) {
-    throw new Error("Use a single metadata file argument, for example: path/to/meta.yaml.");
-  }
-  if (args.length > 1) {
-    throw new Error("Use one metadata file argument, for example: path/to/meta.yaml.");
-  }
-  if (args[0] && !isMetadataFile(args[0])) {
-    throw new Error("Use a metadata .yaml or .yml file path.");
-  }
-
-  const metaPath = resolveMetaPath(args[0] ?? "meta.yaml");
+  const metaPath = resolveMetaPath(parseMetaArg(argv));
   if (existsSync(metaPath) && !statSync(metaPath).isFile()) {
     throw new Error(`Metadata path must be a file: ${metaPath}`);
   }
@@ -27,6 +20,51 @@ export function loadContext(argv = process.argv.slice(2)) {
   const namespaceRoot = inferNamespaceRoot(meta);
 
   return { packageRoot, metaPath, metaText, meta, namespaceRoot };
+}
+
+function parseMetaArg(argv) {
+  const args = [...argv];
+  const positional = [];
+  let metaPath = null;
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "--meta") {
+      if (metaPath) {
+        throw new Error("Use one metadata file argument, for example: --meta=path/to/meta.yaml.");
+      }
+      metaPath = args[index + 1];
+      index += 1;
+      if (!metaPath) {
+        throw new Error("Missing metadata path after --meta.");
+      }
+      continue;
+    }
+    if (arg.startsWith("--meta=")) {
+      if (metaPath) {
+        throw new Error("Use one metadata file argument, for example: --meta=path/to/meta.yaml.");
+      }
+      metaPath = arg.slice("--meta=".length);
+      if (!metaPath) {
+        throw new Error("Missing metadata path after --meta=.");
+      }
+      continue;
+    }
+    if (arg.startsWith("-")) {
+      throw new Error(`Unknown checker option: ${arg}`);
+    }
+    positional.push(arg);
+  }
+
+  if (positional.length > 1 || (metaPath && positional.length > 0)) {
+    throw new Error("Use one metadata file argument, for example: --meta=path/to/meta.yaml.");
+  }
+
+  const selected = metaPath ?? positional[0] ?? defaultMetadataPath;
+  if (!isMetadataFile(selected)) {
+    throw new Error("Use a metadata .yaml or .yml file path.");
+  }
+  return selected;
 }
 
 export function resolveMetaPath(metaPath) {
@@ -135,6 +173,12 @@ export function parseScalar(value) {
   if (trimmed === "[]") {
     return [];
   }
+  if (/^true$/i.test(trimmed)) {
+    return true;
+  }
+  if (/^false$/i.test(trimmed)) {
+    return false;
+  }
   if (trimmed === "\"\"" || trimmed === "''") {
     return "";
   }
@@ -242,6 +286,23 @@ export function proofNamespaceForTheorem(theoremName) {
 
 export function proofConstantForTheorem(theoremName) {
   return theoremName.split(".").at(-1);
+}
+
+export function proofModuleForFile(proofFile) {
+  const parts = String(proofFile ?? "").split(/[\\/]/).filter(Boolean);
+  if (parts[0] === "proofs") {
+    parts.shift();
+  }
+  if (parts.length === 0 || !parts.at(-1).endsWith(".lean")) {
+    return null;
+  }
+
+  parts[parts.length - 1] = parts.at(-1).replace(/\.lean$/i, "");
+  return parts.join(".");
+}
+
+export function isConjectureProofEntry(proof) {
+  return proof?.conjecture === true || String(proof?.conjecture ?? "").toLowerCase() === "true";
 }
 
 export function theoremFolderName(theoremName) {

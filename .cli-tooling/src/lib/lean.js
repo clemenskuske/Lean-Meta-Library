@@ -25,14 +25,14 @@ function checkLeanToolchain({ cwd }) {
   const toolchainPath = join(cwd, "lean-toolchain");
 
   if (!existsSync(toolchainPath)) {
-    console.log(`No lean-toolchain found. Expected ${lmlEnv.lean.toolchain} for current stable mathlib.`);
+    console.log(`No lean-toolchain found. Expected ${lmlEnv.lean.toolchain} for current mathlib pin.`);
     return;
   }
 
   const actual = readFileSync(toolchainPath, "utf8").trim();
   if (actual !== lmlEnv.lean.toolchain) {
     throw new Error(
-      `lean-toolchain is ${actual}, expected ${lmlEnv.lean.toolchain} for current stable mathlib.`
+      `lean-toolchain is ${actual}, expected ${lmlEnv.lean.toolchain} for current mathlib pin.`
     );
   }
 

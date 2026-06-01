@@ -12,19 +12,36 @@ Read this file before making changes, then preserve the existing folder roles:
 - `submissions.jsonl`: root-level JSON Lines submission log.
 - `lml-env.json`: repository-level values that may change later but are fixed for all Lean Meta Library projects right now.
 
+`lml-env.json` is the central policy file for the current Lean toolchain, pinned mathlib repository and revision,
+default submission metadata path, allowed submission file types, allowed direct import prefixes, first-run size
+limits, and checker output limits. The Lean toolchain value carries the Lean version; Lake ships with that
+toolchain, so separate `lean.version` and `lake.version` fields are not kept.
+
 ## Submission dependency policy
 
 Each `submissions.jsonl` row may authorize one imported surface package. The row must include `Repo Url`, `Source Branch`, `Source Commit`, and `Surface Folder`; Lake dependencies must use that repository, the source commit, and the surface folder as the dependency subdirectory, and downstream Lean files may import only the required `.Surface` package.
+
+Submission Lean files may directly import Mathlib modules, Std modules, local surface modules, and authorized imported `.Surface` packages only.
 
 ## Submission checks
 
 The `.github-actions/test/` folder contains first-run submission package checks. The metadata file is the source of submission information. Run checks with:
 
 ```sh
-node .github-actions/test/run-all.mjs path/to/meta.yaml
+node .github-actions/test/run-all.mjs --meta=path/to/meta.yaml
 ```
 
-Pass only a metadata file path. If no metadata path is provided, each check falls back to `meta.yaml` in the current working directory; directories are not accepted.
+Pass only one metadata file path, preferably with `--meta=path/to/meta.yaml`. The older positional form is accepted for compatibility. If no metadata path is provided, each check falls back to `meta.yaml` in the current working directory; directories are not accepted.
+
+The CLI test command uses the same metadata convention:
+
+```sh
+lml test --meta=path/to/meta.yaml
+```
+
+If no metadata path is provided, `lml test` checks `meta.yaml` in the current working directory and returns an error when that file is missing.
+
+The proof checker generates `ProofCheck.lean` at the submission package root. For each surface theorem declaration such as `axiom Surface.statement : SomeStatement`, the proof theorem must have the same Lean type, such as `theorem Proofs.statement : SomeStatement := by ...`; the generated check asks Lean to accept `example : Surface.statement := Proofs.statement`. This checks type matching, not textual dependency on the surface axiom. The proof-file checker separately rejects local `axiom`, `sorry`, `admit`, and `unsafe` in proof files, builds the submitted proof theorem code, and asks Lean for each proof theorem's compiled axiom dependencies. A submitted proof theorem must not depend on `sorryAx`, same-submission proof axioms, or same-submission surface axioms.
 
 ## Submit workflow
 
@@ -33,6 +50,10 @@ The `.github/workflows/submit.yml` workflow creates or updates a GitHub issue fo
 ## Submission status command
 
 The CLI `submission-status` command reports whether a metadata file has a submission issue, whether it has been imported, the related upload/test/finalizing workflow state when available, the distance from the recorded source commit to the current commit, and whether metadata surface files were added, changed, or removed since that source commit.
+
+## Agent introduction command
+
+The CLI `agent-introduction` command prints a placeholder lorem ipsum agent introduction.
 
 ## Import submission workflow
 
@@ -50,9 +71,14 @@ The CLI `create-paper` command creates one submission package folder. Preserve t
 - `your-submission-package/surface-package/lakefile.lean`: surface package Lake file.
 - `your-submission-package/surface-package/<EntryName>/`: one direct child folder per theorem, conjecture, or definition.
 - Each surface entry folder contains `latex-file.tex` and `Surface.lean`.
+- Do not create an extra slug-named aggregate folder under `surface-package/`; surface modules live only in the entry folders.
 - Surface namespaces use `Slug.Surface.Definition.Name`, `Slug.Surface.Theorem.Name`, or `Slug.Surface.Conjecture.Name`.
+- Surface and proof files should use `import` to include modules from other files, then prefer fully qualified names for imported surface declarations instead of relying on `open`.
 - Each metadata surface entry's `Surface.lean` introduces exactly one direct declaration under its surface namespace; helper declarations, private declarations, generated declarations, instances, structures, classes, inductives, and extra axioms are rejected.
 - Lake packages use the dotted metadata slug form: `Slug.Surface` for the surface package and `Slug.Proofs` for the proof package.
-- `your-submission-package/proofs/`: proofs for theorem surface files.
+- Generated Lake packages must pin mathlib to `lml-env.json`'s exact `mathlib.revision`, not to the floating `stable` branch.
+- `your-submission-package/proofs/`: proof files for theorem surface files, kept directly under `proofs/` unless a submission has a reason to organize them further.
 - Proof namespaces use `Slug.Proofs.Theorem.Name`.
+- The `create-paper` starter proof for `ConnectedIffReachable` must contain a direct Lean proof, not a delegation back to the surface axiom.
 - Every surface theorem needs one matching proof file under `proofs/`, using only allowed axioms.
+- Every surface conjecture must also be listed in `meta.yaml` under `proofs:`, but without a `proofFile`; mark it with `conjecture: True` so it is recorded as metadata rather than checked as a proof target.

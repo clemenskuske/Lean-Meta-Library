@@ -3,7 +3,7 @@
 // It also applies a small character/token whitelist to catch suspicious metadata early.
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { isInside, loadContext, report, requireMeta } from "./common.mjs";
+import { isConjectureProofEntry, isInside, loadContext, report, requireMeta } from "./common.mjs";
 
 const context = loadContext();
 const { packageRoot, meta } = context;
@@ -53,10 +53,27 @@ for (const entry of meta.surfaceEntries ?? []) {
 }
 
 for (const proof of meta.proofs ?? []) {
-  for (const key of ["theorem", "proofFile"]) {
-    if (!proof[key]) {
-      errors.push(`proof entry is missing ${key}`);
+  if (!proof.theorem) {
+    errors.push("proof entry is missing theorem");
+    continue;
+  }
+
+  if (isConjectureProofEntry(proof)) {
+    if (!proof.theorem.includes(".Surface.Conjecture.")) {
+      errors.push(`conjecture metadata entry must target a Surface.Conjecture declaration: ${proof.theorem}`);
     }
+    if (proof.proofFile) {
+      errors.push(`conjecture metadata entry should not include proofFile: ${proof.theorem}`);
+    }
+    continue;
+  }
+
+  if (proof.theorem.includes(".Surface.Conjecture.")) {
+    errors.push(`conjecture metadata entry must set conjecture: True: ${proof.theorem}`);
+  }
+  if (!proof.proofFile) {
+    errors.push(`proof entry is missing proofFile: ${proof.theorem}`);
+    continue;
   }
   checkRelativePath(proof.proofFile, `proof file ${proof.proofFile}`);
 }

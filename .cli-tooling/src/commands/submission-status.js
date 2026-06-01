@@ -3,8 +3,11 @@ import { spawnSync } from "node:child_process";
 import { dirname, isAbsolute, join, posix, relative, resolve, sep } from "node:path";
 import { ensureAuthenticated } from "../lib/github-auth.js";
 import { ensureGitHubCli } from "../lib/github-cli.js";
+import { lmlEnv } from "../lib/project-env.js";
 import { run } from "../lib/process.js";
 import { parseMetaYaml } from "../../../.github-actions/test/common.mjs";
+
+const defaultMetadataPath = String(lmlEnv.submission?.defaultMetadataPath ?? "meta.yaml");
 
 export async function submissionStatus({ args, cwd }) {
   const metaPath = parseArgs(args, cwd);
@@ -76,7 +79,7 @@ function parseArgs(args, cwd) {
   if (positional.length > 1) {
     throw new Error("Use one metadata file argument: lml submission-status path/to/meta.yaml");
   }
-  return resolveMetaArgument(cwd, positional[0] ?? "meta.yaml");
+  return resolveMetaArgument(cwd, positional[0] ?? defaultMetadataPath);
 }
 
 function resolveMetaArgument(cwd, metaPath) {

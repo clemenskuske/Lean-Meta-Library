@@ -45,7 +45,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_SERVER_URL: ${{ github.server_url }}
-          META_PATH: ${{ inputs.meta_path || 'meta.yaml' }}
+          META_PATH: ${{ inputs.meta_path }}
           SOURCE_BRANCH: ${{ github.ref_name }}
           SOURCE_COMMIT: ${{ github.sha }}
         run: |
@@ -56,7 +56,9 @@ jobs:
           const token = process.env.GITHUB_TOKEN;
           const repository = process.env.GITHUB_REPOSITORY;
           const serverUrl = process.env.GITHUB_SERVER_URL;
-          const metaPath = process.env.META_PATH;
+          const lmlEnv = JSON.parse(readFileSync("lml-env.json", "utf8"));
+          const defaultMetadataPath = lmlEnv.submission?.defaultMetadataPath ?? "meta.yaml";
+          const metaPath = process.env.META_PATH || defaultMetadataPath;
           const sourceBranch = process.env.SOURCE_BRANCH;
           const sourceCommit = process.env.SOURCE_COMMIT;
           const repoUrl = `${serverUrl}/${repository}`;
@@ -241,9 +243,10 @@ jobs:
 
       - name: Commit metadata issue identifier
         env:
-          META_PATH: ${{ inputs.meta_path || 'meta.yaml' }}
+          META_PATH_INPUT: ${{ inputs.meta_path }}
           SOURCE_BRANCH: ${{ github.ref_name }}
         run: |
+          META_PATH="${META_PATH_INPUT:-$(node -e 'console.log(require("./lml-env.json").submission?.defaultMetadataPath || "meta.yaml")')}"
           if git diff --quiet -- "$META_PATH"; then
             echo "Metadata already contains the current submission issue identifier."
             exit 0

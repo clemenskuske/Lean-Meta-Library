@@ -3,6 +3,7 @@
 // The metadata `namespaceSlug` is the source for `ChosenSlug.Surface...` and `ChosenSlug.Proofs...`.
 import { join } from "node:path";
 import {
+  isConjectureProofEntry,
   loadContext,
   proofConstantForTheorem,
   proofNamespaceForTheorem,
@@ -47,6 +48,12 @@ for (const entry of meta.surfaceEntries ?? []) {
 }
 
 for (const proof of meta.proofs ?? []) {
+  if (isConjectureProofEntry(proof)) {
+    continue;
+  }
+  if (!proof.proofFile) {
+    continue;
+  }
   const expectedNamespace = proofNamespaceForTheorem(proof.theorem ?? "");
   const expectedConstant = proofConstantForTheorem(proof.theorem ?? "");
   const source = readIfExists(join(packageRoot, proof.proofFile ?? ""));
@@ -85,9 +92,6 @@ function checkProofLakefile(path) {
   if (!source.includes(`srcDir := "proofs"`)) {
     errors.push(`proof lakefile should set srcDir := "proofs"`);
   }
-  if (!source.includes(`globs := #[\`${namespaceRoot}.Proofs.+]`)) {
-    errors.push(`proof lakefile should set globs := #[\`${namespaceRoot}.Proofs.+]`);
-  }
 }
 
 function checkSurfaceLakefile(path) {
@@ -97,12 +101,6 @@ function checkSurfaceLakefile(path) {
   }
   if (!source.includes(`package ${namespaceRoot}.Surface where`)) {
     errors.push(`surface lakefile should declare package ${namespaceRoot}.Surface`);
-  }
-  if (!source.includes(`lean_lib ${namespaceRoot}.Surface where`)) {
-    errors.push(`surface lakefile should declare lean_lib ${namespaceRoot}.Surface`);
-  }
-  if (!source.includes(`roots := #[\`${namespaceRoot}.Surface]`)) {
-    errors.push(`surface lakefile should set roots := #[\`${namespaceRoot}.Surface]`);
   }
   for (const entry of meta.surfaceEntries ?? []) {
     const moduleRoot = entry.folder?.split("/")?.at(-1);

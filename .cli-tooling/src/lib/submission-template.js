@@ -35,9 +35,8 @@ export function createSubmissionPackage({ cwd, slug }) {
     "A graph is connected exactly when it has a vertex type and every pair of vertices is joined by a path.\n"
   );
   write(surfaceRoot, "ConnectedIffReachable/Surface.lean", connectedIffReachableSurface(namespace));
-  write(surfaceRoot, `${namespace}/Surface.lean`, surfaceAggregate());
 
-  write(root, `proofs/${namespace}/Proofs/Theorem/ConnectedIffReachable.lean`, connectedIffReachableProof(namespace));
+  write(root, "proofs/ConnectedIffReachableProof.lean", connectedIffReachableProof(namespace));
 
   return root;
 }
@@ -63,14 +62,14 @@ open Lake DSL
 package ${namespace}.Proofs where
 
 require mathlib from git
-  "https://github.com/${lmlEnv.mathlib.repository}.git" @ "${lmlEnv.mathlib.branch}"
+  "https://github.com/${lmlEnv.mathlib.repository}.git" @ "${lmlEnv.mathlib.revision}"
 
 require ${namespace}.Surface from "./surface-package"
 
 @[default_target]
 lean_lib ${namespace}.Proofs where
   srcDir := "proofs"
-  globs := #[\`${namespace}.Proofs.+]
+  roots := #[\`ConnectedIffReachableProof]
 `;
 }
 
@@ -81,7 +80,7 @@ open Lake DSL
 package ${namespace}.Surface where
 
 require mathlib from git
-  "https://github.com/${lmlEnv.mathlib.repository}.git" @ "${lmlEnv.mathlib.branch}"
+  "https://github.com/${lmlEnv.mathlib.repository}.git" @ "${lmlEnv.mathlib.revision}"
 
 @[default_target]
 lean_lib ConnectedGraph where
@@ -90,10 +89,6 @@ lean_lib ConnectedGraph where
 @[default_target]
 lean_lib ConnectedIffReachable where
   globs := #[\`ConnectedIffReachable.+]
-
-@[default_target]
-lean_lib ${namespace}.Surface where
-  roots := #[\`${namespace}.Surface]
 `;
 }
 
@@ -119,7 +114,7 @@ surfaceEntries:
         definition: ${namespace}.Surface.Definition.ConnectedGraph.IsConnectedGraph
 proofs:
   - theorem: ${namespace}.Surface.Theorem.ConnectedIffReachable.connected_iff_reachable
-    proofFile: proofs/${namespace}/Proofs/Theorem/ConnectedIffReachable.lean
+    proofFile: proofs/ConnectedIffReachableProof.lean
 bibtex: ""
 paper:
   paperTitle: Your Submission Paper
@@ -155,10 +150,9 @@ import ConnectedGraph.Surface
 
 namespace ${namespace}.Surface.Theorem.ConnectedIffReachable
 
-open ${namespace}.Surface.Definition.ConnectedGraph
-
 axiom connected_iff_reachable {V : Type u} (G : SimpleGraph V) :
-    IsConnectedGraph G ↔ Nonempty V ∧ ∀ u v : V, G.Reachable u v
+    ${namespace}.Surface.Definition.ConnectedGraph.IsConnectedGraph G ↔
+      Nonempty V ∧ ∀ u v : V, G.Reachable u v
 
 end ${namespace}.Surface.Theorem.ConnectedIffReachable
 `;
@@ -166,22 +160,23 @@ end ${namespace}.Surface.Theorem.ConnectedIffReachable
 
 function connectedIffReachableProof(namespace) {
   return `import Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected
-import ${namespace}.Surface
+import ConnectedIffReachable.Surface
 
 namespace ${namespace}.Proofs.Theorem.ConnectedIffReachable
 
-open ${namespace}.Surface.Definition.ConnectedGraph
-
+-- The proof theorem must have exactly the same type as the matching surface declaration.
+-- \`lml test\` generates ProofCheck.lean to ask Lean to verify that type match.
 theorem connected_iff_reachable {V : Type u} (G : SimpleGraph V) :
-    IsConnectedGraph G ↔ Nonempty V ∧ ∀ u v : V, G.Reachable u v :=
-  ${namespace}.Surface.Theorem.ConnectedIffReachable.connected_iff_reachable G
+    ${namespace}.Surface.Definition.ConnectedGraph.IsConnectedGraph G ↔
+      Nonempty V ∧ ∀ u v : V, G.Reachable u v :=
+  by
+    unfold ${namespace}.Surface.Definition.ConnectedGraph.IsConnectedGraph
+    constructor
+    · intro h
+      exact ⟨h.nonempty, h.preconnected⟩
+    · rintro ⟨hV, hreachable⟩
+      exact { preconnected := hreachable, nonempty := hV }
 
 end ${namespace}.Proofs.Theorem.ConnectedIffReachable
-`;
-}
-
-function surfaceAggregate() {
-  return `import ConnectedGraph.Surface
-import ConnectedIffReachable.Surface
 `;
 }

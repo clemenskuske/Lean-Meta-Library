@@ -2,12 +2,13 @@
 // Checks that a submission package only contains the first approved file types.
 // It also rejects stray macOS metadata files and unknown extensionless files.
 import { basename, extname } from "node:path";
+import lmlEnv from "../../lml-env.json" with { type: "json" };
 import { loadContext, relativePath, report, walkFiles } from "./common.mjs";
 
 const { packageRoot } = loadContext();
 const errors = [];
-const allowedExtensions = new Set([".lean", ".tex", ".yaml", ".yml", ".json", ".bib", ".md", ".txt"]);
-const allowedExtensionless = new Set(["lean-toolchain", "LICENSE", "README"]);
+const allowedExtensions = new Set(lmlEnv.submission?.allowedFileExtensions ?? []);
+const allowedExtensionless = new Set(lmlEnv.submission?.allowedExtensionlessFiles ?? []);
 
 for (const file of walkFiles(packageRoot)) {
   const name = basename(file);

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { agentIntroduction } from "./commands/agent-introduction.js";
 import { createPaper } from "./commands/create-paper.js";
 import { init } from "./commands/init.js";
 import { login } from "./commands/login.js";
@@ -9,6 +10,7 @@ import { test } from "./commands/test.js";
 import { update } from "./commands/update.js";
 
 const commands = new Map([
+  ["agent-introduction", agentIntroduction],
   ["login", login],
   ["logout", logout],
   ["init", init],
@@ -26,12 +28,15 @@ Usage:
   lean-meta-library <command> [options]
 
 Commands:
+  agent-introduction    Print a placeholder agent introduction.
   login                 Login to GitHub with the GitHub CLI.
   logout                Logout from GitHub with the GitHub CLI.
   init                  Check local tooling and sync repository metadata.
   update                Run the same checks and sync as init.
-  test [meta.yaml]      Run submission checks from .github-actions/test.
-  submit [meta.yaml]    Run checks and dispatch the submit GitHub workflow.
+  test --meta=meta.yaml
+                         Run submission checks from .github-actions/test.
+  submit --meta=meta.yaml
+                         Run checks and dispatch the submit GitHub workflow.
                          Use --no-prior-test to skip checks.
   submission-status
                          Show submission issue, workflow, commit, and surface status.

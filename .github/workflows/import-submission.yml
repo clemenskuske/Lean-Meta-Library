@@ -48,14 +48,16 @@ jobs:
           ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
           node <<'NODE'
-          const { writeFileSync } = require("node:fs");
+          const { readFileSync, writeFileSync } = require("node:fs");
 
           const body = process.env.ISSUE_BODY ?? "";
+          const lmlEnv = JSON.parse(readFileSync("lml-env.json", "utf8"));
+          const defaultMetadataPath = lmlEnv.submission?.defaultMetadataPath ?? "meta.yaml";
           const fields = readFields(body);
           const repoUrl = fields["Repo Url"] ?? fields["Git Repo"];
           const sourceBranch = fields["Source Branch"];
           const sourceCommit = fields["Source Commit"];
-          const metaPath = fields["Metadata File"] ?? "meta.yaml";
+          const metaPath = fields["Metadata File"] ?? defaultMetadataPath;
 
           requireValue("Repo Url", repoUrl);
           requireValue("Source Branch", sourceBranch);

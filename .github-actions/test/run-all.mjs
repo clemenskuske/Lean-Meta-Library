@@ -9,6 +9,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const checks = [
   "files-present.mjs",
   "metadata-check.mjs",
+  "mathlib-version.mjs",
   "namespaces-correct.mjs",
   "proofs-axioms-sorrys.mjs",
   "conjectures.mjs",
@@ -17,6 +18,7 @@ const checks = [
   "filetypes.mjs",
   "surface-file-context.mjs",
   "surface-declarations.mjs",
+  "proof-check.mjs",
   "dependency-check.mjs",
   "build-packages.mjs"
 ];

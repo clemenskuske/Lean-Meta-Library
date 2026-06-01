@@ -3,7 +3,7 @@
 // This is the expensive check that confirms Lean accepts both packages.
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
-import { loadContext, report } from "./common.mjs";
+import { loadContext, maxBuildOutputBytes, report } from "./common.mjs";
 
 const { packageRoot } = loadContext();
 const errors = [];
@@ -19,7 +19,7 @@ function runLakeBuild(cwd, label) {
   const result = spawnSync("lake", ["build"], {
     cwd,
     encoding: "utf8",
-    maxBuffer: 1024 * 1024 * 20
+    maxBuffer: maxBuildOutputBytes
   });
 
   if (result.status !== 0) {

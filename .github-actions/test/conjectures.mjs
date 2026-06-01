@@ -1,12 +1,23 @@
 #!/usr/bin/env node
 // Checks that conjecture surface entries use the expected direct child folder and namespace shape.
-// This first pass also keeps conjectures out of the proof-target list.
+// Conjectures are listed in metadata as unproved proof entries with `conjecture: True`.
 import { join } from "node:path";
-import { declarationNames, loadContext, readIfExists, report } from "./common.mjs";
+import {
+  declarationNames,
+  isConjectureProofEntry,
+  loadContext,
+  readIfExists,
+  report,
+  surfaceNamespaceForEntry
+} from "./common.mjs";
 
 const { packageRoot, meta, namespaceRoot } = loadContext();
 const errors = [];
 const conjectures = (meta.surfaceEntries ?? []).filter((entry) => entry.type === "Conjecture");
+const conjectureMetadata = new Map(
+  (meta.proofs ?? []).filter(isConjectureProofEntry).map((proof) => [proof.theorem, proof])
+);
+const surfaceConjectureNames = new Set();
 
 for (const entry of conjectures) {
   if (!/^surface-package\/[^/]+$/.test(entry.folder ?? "")) {
@@ -22,14 +33,31 @@ for (const entry of conjectures) {
   }
   const axioms = declarationNames(source, "axiom");
   const theorems = declarationNames(source, "theorem");
-  if (axioms.length + theorems.length === 0) {
+  const declarations = [...axioms, ...theorems];
+  if (declarations.length === 0) {
     errors.push(`conjecture surface file declares no axiom or theorem: ${entry.folder}/Surface.lean`);
+    continue;
+  }
+
+  const namespace = surfaceNamespaceForEntry(entry);
+  for (const declaration of declarations) {
+    const fullName = `${namespace}.${declaration}`;
+    surfaceConjectureNames.add(fullName);
+    const proof = conjectureMetadata.get(fullName);
+    if (!proof) {
+      errors.push(`conjecture should be listed in metadata with conjecture: True: ${fullName}`);
+    } else if (proof.proofFile) {
+      errors.push(`conjecture metadata entry should not include proofFile: ${fullName}`);
+    }
   }
 }
 
 for (const proof of meta.proofs ?? []) {
-  if (proof.theorem?.includes(".Surface.Conjecture.")) {
-    errors.push(`conjecture should not be listed as a proof target yet: ${proof.theorem}`);
+  if (proof.theorem?.includes(".Surface.Conjecture.") && !isConjectureProofEntry(proof)) {
+    errors.push(`conjecture metadata entry must set conjecture: True: ${proof.theorem}`);
+  }
+  if (isConjectureProofEntry(proof) && !surfaceConjectureNames.has(proof.theorem)) {
+    errors.push(`conjecture metadata entry does not match a surface conjecture declaration: ${proof.theorem}`);
   }
 }
 

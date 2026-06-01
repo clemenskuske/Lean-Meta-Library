@@ -3,10 +3,10 @@
 // It follows the metadata entries to check every surface file, LaTeX file, and proof file.
 import { existsSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
-import { loadContext, proofConstantForTheorem, report, requireMeta } from "./common.mjs";
+import { isConjectureProofEntry, loadContext, proofConstantForTheorem, report, requireMeta } from "./common.mjs";
 
 const context = loadContext();
-const { packageRoot, meta } = context;
+const { packageRoot, meta, namespaceRoot } = context;
 const errors = [];
 
 requireMeta(context, errors);
@@ -43,7 +43,14 @@ for (const entry of meta.surfaceEntries ?? []) {
   }
 }
 
+if (namespaceRoot && existsSync(join(packageRoot, "surface-package", namespaceRoot))) {
+  errors.push(`surface package should not contain slug-named aggregate folder: surface-package/${namespaceRoot}`);
+}
+
 for (const proof of meta.proofs ?? []) {
+  if (isConjectureProofEntry(proof)) {
+    continue;
+  }
   if (!proof.proofFile) {
     errors.push(`proof for ${proof.theorem ?? "(unknown theorem)"} has no proofFile`);
     continue;

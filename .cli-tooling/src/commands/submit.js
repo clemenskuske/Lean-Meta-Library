@@ -2,8 +2,11 @@ import { existsSync, statSync } from "node:fs";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import { ensureAuthenticated } from "../lib/github-auth.js";
 import { ensureGitHubCli } from "../lib/github-cli.js";
+import { lmlEnv } from "../lib/project-env.js";
 import { run } from "../lib/process.js";
 import { test } from "./test.js";
+
+const defaultMetadataPath = String(lmlEnv.submission?.defaultMetadataPath ?? "meta.yaml");
 
 export async function submit({ args, cwd }) {
   const { metaPath, shouldRunTests } = parseArgs(args, cwd);
@@ -20,7 +23,7 @@ export async function submit({ args, cwd }) {
     throw new Error(`Metadata path must be a file: ${metaPath}.`);
   }
   if (!isMetadataFile(metaPath)) {
-    throw new Error("Use a metadata .yaml or .yml file argument: lml submit [--no-prior-test] path/to/meta.yaml");
+    throw new Error("Use a metadata .yaml or .yml file argument: lml submit [--no-prior-test] --meta=path/to/meta.yaml");
   }
 
   const branch = currentBranch(repoRoot);
@@ -58,10 +61,33 @@ export async function submit({ args, cwd }) {
 function parseArgs(args, cwd) {
   let shouldRunTests = true;
   const positional = [];
+  let metaPath = null;
 
-  for (const arg of args) {
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
     if (arg === "--no-prior-test") {
       shouldRunTests = false;
+      continue;
+    }
+    if (arg === "--meta") {
+      if (metaPath) {
+        throw new Error("Use one metadata file argument: lml submit --meta=path/to/meta.yaml");
+      }
+      metaPath = args[index + 1];
+      index += 1;
+      if (!metaPath) {
+        throw new Error("Missing metadata path after --meta.");
+      }
+      continue;
+    }
+    if (arg.startsWith("--meta=")) {
+      if (metaPath) {
+        throw new Error("Use one metadata file argument: lml submit --meta=path/to/meta.yaml");
+      }
+      metaPath = arg.slice("--meta=".length);
+      if (!metaPath) {
+        throw new Error("Missing metadata path after --meta=.");
+      }
       continue;
     }
     if (arg.startsWith("-")) {
@@ -70,12 +96,12 @@ function parseArgs(args, cwd) {
     positional.push(arg);
   }
 
-  if (positional.length > 1) {
-    throw new Error("Use one metadata file argument: lml submit [--no-prior-test] path/to/meta.yaml");
+  if (positional.length > 1 || (metaPath && positional.length > 0)) {
+    throw new Error("Use one metadata file argument: lml submit [--no-prior-test] --meta=path/to/meta.yaml");
   }
 
   return {
-    metaPath: resolveMetaArgument(cwd, positional[0] ?? "meta.yaml"),
+    metaPath: resolveMetaArgument(cwd, metaPath ?? positional[0] ?? defaultMetadataPath),
     shouldRunTests
   };
 }

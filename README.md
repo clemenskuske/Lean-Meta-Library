@@ -5,7 +5,31 @@ Lean Meta Library workspace.
 ## Project Environment
 
 Repository-level values that may change later but are fixed for all projects right now live in `lml-env.json`.
-CLI tooling and submission checks import this file for Lean/Lake/mathlib versions and first-run size limits.
+CLI tooling and submission checks import this file for the Lean toolchain, mathlib revision, default metadata path,
+allowed submission file/import policy, first-run size limits, and checker output limits.
+
+## Proof Checking Contract
+
+Surface theorem files state public declarations, usually as axioms:
+
+```lean
+axiom Surface.statement : SomeStatement
+```
+
+Proof files must provide a theorem with the same statement without relying on the surface axiom:
+
+```lean
+theorem Proofs.statement : SomeStatement := by
+  ...
+```
+
+When `lml test` runs, the checker generates `ProofCheck.lean` at the submission package root. For each surface theorem, it asks Lean to verify that the proof theorem has the same type as the surface declaration, using lines shaped like:
+
+```lean
+example : Surface.statement := Proofs.statement
+```
+
+This checks matching by Lean type, not by textual dependency on the surface axiom. Separately, the proof-file checker rejects local `axiom`, `sorry`, `admit`, and `unsafe` in proof files, builds the submitted proof theorem code, and asks Lean for each proof theorem's compiled axiom dependencies. A submitted proof theorem must not depend on `sorryAx`, same-submission proof axioms, or same-submission surface axioms.
 
 ## CLI Tooling
 
@@ -29,6 +53,7 @@ lean-meta-library --help
 Common commands:
 
 ```sh
+lml agent-introduction
 lml login
 lml logout
 lml init
@@ -43,6 +68,14 @@ The `test` command runs `.github-actions/test/run-all.mjs` using the metadata fi
 
 ```sh
 lml test path/to/meta.yaml
+```
+
+Conjecture surface declarations are recorded in the metadata `proofs:` list, but they do not have proof files yet. Mark them with `conjecture: True` and omit `proofFile`:
+
+```yaml
+proofs:
+  - theorem: MySlug.Surface.Conjecture.SomeEntry.some_conjecture
+    conjecture: True
 ```
 
 The `submit` command runs the submission checks first, then dispatches `.github/workflows/submit.yml` for the current repository, branch, commit, and metadata file:

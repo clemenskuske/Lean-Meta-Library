@@ -4,16 +4,33 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import lmlEnv from "../../lml-env.json" with { type: "json" };
-import { leanFiles, listImports, loadContext, readIfExists, relativePath, report, surfaceModuleForEntry } from "./common.mjs";
+import {
+  isConjectureProofEntry,
+  leanFiles,
+  listImports,
+  loadContext,
+  proofModuleForFile,
+  readIfExists,
+  relativePath,
+  report,
+  surfaceModuleForEntry
+} from "./common.mjs";
 
 const { packageRoot, meta, namespaceRoot } = loadContext();
 const errors = [];
 const submissionDependencies = loadSubmissionDependencies();
+const allowedImportPrefixes = lmlEnv.submission?.allowedImportPrefixes ?? [];
 const allowedImportsByLakefile = {
   root: new Set(),
   surface: new Set()
 };
 const localSurfaceModules = new Set((meta.surfaceEntries ?? []).map(surfaceModuleForEntry).filter(Boolean));
+const localProofModules = new Set(
+  (meta.proofs ?? [])
+    .filter((proof) => !isConjectureProofEntry(proof))
+    .map((proof) => proofModuleForFile(proof.proofFile))
+    .filter(Boolean)
+);
 
 checkLakefile(join(packageRoot, "lakefile.lean"), "root lakefile", allowedImportsByLakefile.root);
 checkLakefile(
@@ -75,8 +92,8 @@ function checkMathlibDependency(dependency, label) {
   if (normalizeGitUrl(dependency.url) !== normalizeGitUrl(`https://github.com/${lmlEnv.mathlib.repository}.git`)) {
     errors.push(`${label} dependency URL is not allowed for mathlib: ${dependency.url}`);
   }
-  if (!dependency.ref || !/^(stable|master|v?\d|nightly-|release-)/.test(dependency.ref)) {
-    errors.push(`${label} dependency ref looks suspicious for mathlib: ${dependency.ref ?? "(missing)"}`);
+  if (dependency.ref !== lmlEnv.mathlib.revision) {
+    errors.push(`${label} dependency ref must match lml-env.json mathlib.revision: ${dependency.ref ?? "(missing)"}`);
   }
   if (dependency.subDir) {
     errors.push(`${label} mathlib dependency should not specify a subdirectory`);
@@ -120,18 +137,32 @@ function isAllowedImport(imported, file, allowedExternalImports) {
   if ((rel === "lakefile.lean" || rel === "surface-package/lakefile.lean") && imported === "Lake") {
     return true;
   }
-
   const isSurfacePackageFile = rel.startsWith("surface-package/");
   const isOwnSurfaceImport =
     namespaceRoot && (imported === `${namespaceRoot}.Surface` || imported.startsWith(`${namespaceRoot}.Surface.`));
+  const isOwnSurfaceEntryImport = localSurfaceModules.has(imported);
+  const isOwnProofModuleImport = !isSurfacePackageFile && localProofModules.has(imported);
 
   return (
-    imported.startsWith("Mathlib.") ||
-    imported.startsWith("Std.") ||
-    (isSurfacePackageFile && localSurfaceModules.has(imported)) ||
+    hasAllowedImportPrefix(imported) ||
+    (isSurfacePackageFile && isOwnSurfaceEntryImport) ||
+    (!isSurfacePackageFile && isOwnSurfaceEntryImport) ||
+    isOwnProofModuleImport ||
     isOwnSurfaceImport ||
     [...allowedExternalImports].some((prefix) => imported === prefix || imported.startsWith(`${prefix}.`))
   );
+}
+
+function hasAllowedImportPrefix(imported) {
+  return allowedImportPrefixes.some((prefix) => {
+    const normalized = String(prefix ?? "").trim();
+    if (!normalized) {
+      return false;
+    }
+    return normalized.endsWith(".")
+      ? imported.startsWith(normalized)
+      : imported === normalized || imported.startsWith(`${normalized}.`);
+  });
 }
 
 function loadSubmissionDependencies() {
