@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Shared helper library for the first-run submission checks.
+// It loads package metadata, walks files, parses the small metadata subset we need, and formats pass/fail output.
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 

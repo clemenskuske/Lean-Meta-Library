@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Checks that both lakefiles and all Lean files use the namespace shape described in AGENTS.md.
+// It compares metadata names with the actual `namespace`, `end`, and proof theorem declarations.
 import { join } from "node:path";
 import {
   loadContext,

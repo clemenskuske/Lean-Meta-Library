@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Applies a conservative first-run policy to surface Lean files.
+// It rejects macros, custom syntax, unsafe features, and other constructs outside the intended secure subset.
 import { join } from "node:path";
 import { loadContext, readIfExists, report, stripLeanCommentsAndStrings } from "./common.mjs";
 

@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Validates the required metadata keys and the basic shape of surface and proof entries.
+// It also applies a small character/token whitelist to catch suspicious metadata early.
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { isInside, loadContext, report, requireMeta } from "./common.mjs";

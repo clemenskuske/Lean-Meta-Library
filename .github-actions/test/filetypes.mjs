@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Checks that a submission package only contains the first approved file types.
+// It also rejects stray macOS metadata files and unknown extensionless files.
 import { basename, extname } from "node:path";
 import { loadContext, relativePath, report, walkFiles } from "./common.mjs";
 

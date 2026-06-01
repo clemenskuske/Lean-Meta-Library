@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Checks the two lakefiles and Lean imports for the first allowed dependency policy.
+// Currently it allows only the mathlib git dependency plus Mathlib, Std, and local surface imports.
 import { join } from "node:path";
 import { leanFiles, listImports, loadContext, readIfExists, relativePath, report } from "./common.mjs";
 

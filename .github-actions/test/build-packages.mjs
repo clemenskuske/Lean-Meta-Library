@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Runs `lake build` for both the root proof package and the nested surface package.
+// This is the expensive check that confirms Lean accepts both packages.
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 import { loadContext, report } from "./common.mjs";

@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Scans proof files for forbidden placeholders and new axiom declarations.
+// Proof files should discharge surface axioms without introducing `sorry`, `admit`, `unsafe`, or fresh axioms.
 import { join } from "node:path";
 import { declarationNames, loadContext, readIfExists, report, stripLeanCommentsAndStrings, walkFiles } from "./common.mjs";
 

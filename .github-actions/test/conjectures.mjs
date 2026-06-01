@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Checks that conjecture surface entries use the expected folder and namespace shape.
+// This first pass also keeps conjectures out of the proof-target list.
 import { join } from "node:path";
 import { declarationNames, loadContext, readIfExists, report } from "./common.mjs";
 

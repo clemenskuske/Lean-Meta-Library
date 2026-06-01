@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Runs the full first-run submission checker suite in a fixed order.
+// It keeps going after individual failures so one run can show all currently failing checks.
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";

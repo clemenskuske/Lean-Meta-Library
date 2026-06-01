@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Checks package, folder, and file sizes against conservative first-run limits.
+// The limits can be overridden with LML_MAX_PACKAGE_BYTES, LML_MAX_FOLDER_BYTES, and LML_MAX_FILE_BYTES.
 import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileSize, loadContext, report, relativePath, walkFiles } from "./common.mjs";

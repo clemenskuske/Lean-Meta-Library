@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Verifies that the required submission package files and folders exist.
+// It follows the metadata entries to check every surface file, LaTeX file, and proof file.
 import { existsSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
 import { loadContext, proofConstantForTheorem, report, requireMeta } from "./common.mjs";

@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+// Checks that every theorem surface axiom has a matching proof metadata entry.
+// It also verifies that the proof imports and references the surface axiom it is meant to discharge.
 import { join } from "node:path";
 import {
   declarationNames,
