@@ -43,6 +43,10 @@ The `test` command runs `.github-actions/test/run-all.mjs` using the metadata fi
 lml test path/to/meta.yaml
 ```
 
+## Submission Workflow
+
+The `Submit` GitHub Actions workflow can be run manually with a metadata path. It creates a submission issue when `submissionIssueNumber` is missing, or updates that issue when the field is present. The workflow labels the issue `submission`, records the repository URL, source branch, and source commit in the issue body, then writes `submissionIssueNumber` and `submissionIssueUrl` back to the metadata file.
+
 For a one-off run without linking:
 
 ```sh

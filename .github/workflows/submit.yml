@@ -1,0 +1,252 @@
+name: Submit
+
+on:
+  workflow_dispatch:
+    inputs:
+      meta_path:
+        description: Path to the submission metadata file.
+        required: false
+        default: meta.yaml
+        type: string
+  workflow_call:
+    inputs:
+      meta_path:
+        description: Path to the submission metadata file.
+        required: false
+        default: meta.yaml
+        type: string
+    outputs:
+      issue-number:
+        description: Created or updated submission issue number.
+        value: ${{ jobs.submit.outputs.issue-number }}
+      issue-url:
+        description: Created or updated submission issue URL.
+        value: ${{ jobs.submit.outputs.issue-url }}
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  submit:
+    name: Create or update submission issue
+    runs-on: ubuntu-latest
+    outputs:
+      issue-number: ${{ steps.submit.outputs.issue-number }}
+      issue-url: ${{ steps.submit.outputs.issue-url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create or update issue
+        id: submit
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          META_PATH: ${{ inputs.meta_path || 'meta.yaml' }}
+          SOURCE_BRANCH: ${{ github.ref_name }}
+          SOURCE_COMMIT: ${{ github.sha }}
+        run: |
+          node <<'NODE'
+          const { existsSync, readFileSync, writeFileSync } = require("node:fs");
+          const { resolve } = require("node:path");
+
+          const token = process.env.GITHUB_TOKEN;
+          const repository = process.env.GITHUB_REPOSITORY;
+          const serverUrl = process.env.GITHUB_SERVER_URL;
+          const metaPath = process.env.META_PATH;
+          const sourceBranch = process.env.SOURCE_BRANCH;
+          const sourceCommit = process.env.SOURCE_COMMIT;
+          const repoUrl = `${serverUrl}/${repository}`;
+          const label = "submission";
+          const [owner, repo] = repository.split("/");
+          const apiBase = "https://api.github.com";
+          const issueNumberField = "submissionIssueNumber";
+          const issueUrlField = "submissionIssueUrl";
+
+          main().catch((error) => {
+            console.error(error.message);
+            process.exit(1);
+          });
+
+          async function main() {
+            if (!token) {
+              throw new Error("GITHUB_TOKEN is required.");
+            }
+            if (!existsSync(metaPath)) {
+              throw new Error(`Metadata file not found: ${resolve(metaPath)}`);
+            }
+
+            let metaText = readFileSync(metaPath, "utf8");
+            const issueNumberValue = readTopLevelScalar(metaText, issueNumberField);
+            const issueNumber = issueNumberValue ? Number.parseInt(issueNumberValue, 10) : null;
+            const paperTitle = readTopLevelScalar(metaText, "paperTitle");
+            const namespaceSlug = readTopLevelScalar(metaText, "namespaceSlug");
+            const title = `Submission: ${paperTitle || namespaceSlug || metaPath}`;
+            const body = [
+              "<!-- lean-meta-library:submission -->",
+              "",
+              "## Submission",
+              "",
+              `- Repo Url: ${repoUrl}`,
+              `- Source Branch: ${sourceBranch}`,
+              `- Source Commit: ${sourceCommit}`,
+              `- Metadata File: ${metaPath}`
+            ].join("\n");
+
+            await ensureLabel();
+
+            let issue;
+            if (issueNumber) {
+              issue = await updateIssue(issueNumber, { title, body });
+            } else {
+              issue = await createIssue({ title, body, labels: [label] });
+            }
+
+            await addLabel(issue.number);
+
+            metaText = setTopLevelScalar(metaText, issueNumberField, String(issue.number));
+            metaText = setTopLevelScalar(metaText, issueUrlField, issue.html_url);
+            writeFileSync(metaPath, metaText);
+
+            appendOutput("issue-number", String(issue.number));
+            appendOutput("issue-url", issue.html_url);
+
+            if (process.env.GITHUB_STEP_SUMMARY) {
+              writeFileSync(
+                process.env.GITHUB_STEP_SUMMARY,
+                `Created or updated submission issue: ${issue.html_url}\n`,
+                { flag: "a" }
+              );
+            }
+          }
+
+          function readTopLevelScalar(text, key) {
+            const match = text.match(new RegExp(`^${escapeRegExp(key)}:\\s*(.*?)\\s*$`, "m"));
+            if (!match) {
+              return null;
+            }
+            return unquoteYamlScalar(match[1].trim());
+          }
+
+          function setTopLevelScalar(text, key, value) {
+            const line = `${key}: ${quoteYamlScalar(value)}`;
+            const pattern = new RegExp(`^${escapeRegExp(key)}:\\s*.*$`, "m");
+            if (pattern.test(text)) {
+              return text.replace(pattern, line);
+            }
+
+            const insertionPoint = text.search(/^surfaceEntries:/m);
+            if (insertionPoint >= 0) {
+              const prefix = text.slice(0, insertionPoint);
+              const suffix = text.slice(insertionPoint);
+              return `${ensureTrailingNewline(prefix)}${line}\n${suffix}`;
+            }
+
+            return `${ensureTrailingNewline(text)}${line}\n`;
+          }
+
+          function quoteYamlScalar(value) {
+            return JSON.stringify(String(value));
+          }
+
+          function unquoteYamlScalar(value) {
+            if (
+              (value.startsWith("\"") && value.endsWith("\"")) ||
+              (value.startsWith("'") && value.endsWith("'"))
+            ) {
+              return value.slice(1, -1);
+            }
+            return value;
+          }
+
+          function ensureTrailingNewline(text) {
+            return text.endsWith("\n") ? text : `${text}\n`;
+          }
+
+          function escapeRegExp(value) {
+            return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          }
+
+          function appendOutput(name, value) {
+            if (process.env.GITHUB_OUTPUT) {
+              writeFileSync(process.env.GITHUB_OUTPUT, `${name}=${value}\n`, { flag: "a" });
+            }
+          }
+
+          async function ensureLabel() {
+            const existing = await github("GET", `/repos/${owner}/${repo}/labels/${encodeURIComponent(label)}`, null, {
+              allowNotFound: true
+            });
+            if (existing) {
+              return;
+            }
+            await github("POST", `/repos/${owner}/${repo}/labels`, {
+              name: label,
+              color: "0E8A16",
+              description: "Lean Meta Library submission"
+            });
+          }
+
+          async function createIssue(payload) {
+            return github("POST", `/repos/${owner}/${repo}/issues`, payload);
+          }
+
+          async function updateIssue(number, payload) {
+            const updated = await github("PATCH", `/repos/${owner}/${repo}/issues/${number}`, payload, {
+              allowNotFound: true
+            });
+            if (!updated) {
+              return createIssue({ ...payload, labels: [label] });
+            }
+            return updated;
+          }
+
+          async function addLabel(number) {
+            await github("POST", `/repos/${owner}/${repo}/issues/${number}/labels`, {
+              labels: [label]
+            });
+          }
+
+          async function github(method, path, body, options = {}) {
+            const response = await fetch(`${apiBase}${path}`, {
+              method,
+              headers: {
+                Accept: "application/vnd.github+json",
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+                "X-GitHub-Api-Version": "2022-11-28"
+              },
+              body: body ? JSON.stringify(body) : undefined
+            });
+
+            if (options.allowNotFound && response.status === 404) {
+              return null;
+            }
+
+            if (!response.ok) {
+              const text = await response.text();
+              throw new Error(`${method} ${path} failed with ${response.status}: ${text}`);
+            }
+
+            return response.json();
+          }
+          NODE
+
+      - name: Commit metadata issue identifier
+        env:
+          META_PATH: ${{ inputs.meta_path || 'meta.yaml' }}
+          SOURCE_BRANCH: ${{ github.ref_name }}
+        run: |
+          if git diff --quiet -- "$META_PATH"; then
+            echo "Metadata already contains the current submission issue identifier."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$META_PATH"
+          git commit -m "Record submission issue"
+          git push origin HEAD:"$SOURCE_BRANCH"
