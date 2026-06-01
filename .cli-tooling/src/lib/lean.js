@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import mathlibStable from "../../config/mathlib-stable.json" with { type: "json" };
+import { lmlEnv } from "./project-env.js";
 import { commandExists, run } from "./process.js";
 
 export function checkLeanAndLake({ cwd }) {
@@ -25,18 +25,18 @@ function checkLeanToolchain({ cwd }) {
   const toolchainPath = join(cwd, "lean-toolchain");
 
   if (!existsSync(toolchainPath)) {
-    console.log(`No lean-toolchain found. Expected ${mathlibStable.leanToolchain} for current stable mathlib.`);
+    console.log(`No lean-toolchain found. Expected ${lmlEnv.lean.toolchain} for current stable mathlib.`);
     return;
   }
 
   const actual = readFileSync(toolchainPath, "utf8").trim();
-  if (actual !== mathlibStable.leanToolchain) {
+  if (actual !== lmlEnv.lean.toolchain) {
     throw new Error(
-      `lean-toolchain is ${actual}, expected ${mathlibStable.leanToolchain} for current stable mathlib.`
+      `lean-toolchain is ${actual}, expected ${lmlEnv.lean.toolchain} for current stable mathlib.`
     );
   }
 
-  console.log(`lean-toolchain matches ${mathlibStable.leanToolchain}.`);
+  console.log(`lean-toolchain matches ${lmlEnv.lean.toolchain}.`);
 }
 
 function checkMathlibInstallation({ cwd }) {

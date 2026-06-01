@@ -1,15 +1,17 @@
 #!/usr/bin/env node
 // Checks package, folder, and file sizes against conservative first-run limits.
-// The limits can be overridden with LML_MAX_PACKAGE_BYTES, LML_MAX_FOLDER_BYTES, and LML_MAX_FILE_BYTES.
+// Defaults come from lml-env.json; local runs may override them with LML_MAX_PACKAGE_BYTES,
+// LML_MAX_FOLDER_BYTES, and LML_MAX_FILE_BYTES.
 import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
+import lmlEnv from "../../lml-env.json" with { type: "json" };
 import { fileSize, loadContext, report, relativePath, walkFiles } from "./common.mjs";
 
 const { packageRoot, meta } = loadContext();
 const errors = [];
-const maxPackageBytes = Number(process.env.LML_MAX_PACKAGE_BYTES ?? 5 * 1024 * 1024);
-const maxFolderBytes = Number(process.env.LML_MAX_FOLDER_BYTES ?? 512 * 1024);
-const maxFileBytes = Number(process.env.LML_MAX_FILE_BYTES ?? 256 * 1024);
+const maxPackageBytes = Number(process.env.LML_MAX_PACKAGE_BYTES ?? lmlEnv.submissionLimits.maxPackageBytes);
+const maxFolderBytes = Number(process.env.LML_MAX_FOLDER_BYTES ?? lmlEnv.submissionLimits.maxFolderBytes);
+const maxFileBytes = Number(process.env.LML_MAX_FILE_BYTES ?? lmlEnv.submissionLimits.maxFileBytes);
 
 const packageFiles = walkFiles(packageRoot);
 const packageBytes = packageFiles.reduce((sum, file) => sum + fileSize(file), 0);

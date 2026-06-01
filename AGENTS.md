@@ -10,6 +10,7 @@ Read this file before making changes, then preserve the existing folder roles:
 - `.github-actions`: import policy and automation workflows.
 - `.cli-tooling`: npm CLI tooling.
 - `submissions.jsonl`: root-level JSON Lines submission log.
+- `lml-env.json`: repository-level values that may change later but are fixed for all Lean Meta Library projects right now.
 
 ## Submission checks
 

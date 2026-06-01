@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import mathlibStable from "../../config/mathlib-stable.json" with { type: "json" };
+import { lmlEnv } from "./project-env.js";
 
 export function createSubmissionPackage({ cwd, slug }) {
   const packageName = `${slug.replace(/-paper$/, "")}-package`;
@@ -12,14 +12,14 @@ export function createSubmissionPackage({ cwd, slug }) {
   }
 
   mkdirSync(root, { recursive: true });
-  write(root, "lean-toolchain", `${mathlibStable.leanToolchain}\n`);
+  write(root, "lean-toolchain", `${lmlEnv.lean.toolchain}\n`);
   write(root, "lakefile.lean", proofLakefile(namespace));
   write(root, "meta.yaml", metaYaml({ slug, namespace }));
   write(root, "abstract.tex", abstractTex());
 
   const surfaceRoot = join(root, "surface-package");
   mkdirSync(surfaceRoot, { recursive: true });
-  write(surfaceRoot, "lean-toolchain", `${mathlibStable.leanToolchain}\n`);
+  write(surfaceRoot, "lean-toolchain", `${lmlEnv.lean.toolchain}\n`);
   write(surfaceRoot, "lakefile.lean", surfaceLakefile(namespace));
 
   write(
@@ -62,7 +62,7 @@ open Lake DSL
 package ${namespace}.Proofs where
 
 require mathlib from git
-  "https://github.com/leanprover-community/mathlib4.git" @ "${mathlibStable.mathlibBranch}"
+  "https://github.com/${lmlEnv.mathlib.repository}.git" @ "${lmlEnv.mathlib.branch}"
 
 @[default_target]
 lean_lib ${namespace} where
@@ -77,7 +77,7 @@ open Lake DSL
 package ${namespace}.Surface where
 
 require mathlib from git
-  "https://github.com/leanprover-community/mathlib4.git" @ "${mathlibStable.mathlibBranch}"
+  "https://github.com/${lmlEnv.mathlib.repository}.git" @ "${lmlEnv.mathlib.branch}"
 
 @[default_target]
 lean_lib ${namespace} where
@@ -86,7 +86,7 @@ lean_lib ${namespace} where
 }
 
 function metaYaml({ slug, namespace }) {
-  return `pinnedLeanToolchain: ${mathlibStable.leanToolchain}
+  return `pinnedLeanToolchain: ${lmlEnv.lean.toolchain}
 proofLakefileUrl: .
 paperTitle: Your Submission Paper
 namespaceSlug: ${slug}

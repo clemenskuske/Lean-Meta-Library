@@ -2,6 +2,11 @@
 
 Lean Meta Library workspace.
 
+## Project Environment
+
+Repository-level values that may change later but are fixed for all projects right now live in `lml-env.json`.
+CLI tooling and submission checks import this file for Lean/Lake/mathlib versions and first-run size limits.
+
 ## CLI Tooling
 
 The command line tool lives in `.cli-tooling`.

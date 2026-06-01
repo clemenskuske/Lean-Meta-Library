@@ -1,0 +1,22 @@
+{
+  "role": "Repository-level values that may change later but are fixed for all Lean Meta Library projects right now.",
+  "mathlib": {
+    "repository": "leanprover-community/mathlib4",
+    "branch": "stable",
+    "revision": "c5ea00351c28e24afc9f0f84379aa41082b1188f",
+    "cacheCommand": "lake exe cache get"
+  },
+  "lean": {
+    "toolchain": "leanprover/lean4:v4.30.0",
+    "version": "v4.30.0"
+  },
+  "lake": {
+    "version": "v4.30.0"
+  },
+  "submissionLimits": {
+    "maxPackageBytes": 5242880,
+    "maxFolderBytes": 524288,
+    "maxFileBytes": 262144
+  },
+  "verifiedAt": "2026-06-01"
+}
