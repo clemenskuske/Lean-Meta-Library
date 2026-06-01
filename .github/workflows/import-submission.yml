@@ -119,6 +119,14 @@ jobs:
           git checkout --detach "$SOURCE_COMMIT"
           test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
 
+      - name: Fetch Lean build cache
+        env:
+          META_PATH: ${{ steps.issue.outputs.meta-path }}
+        run: |
+          PACKAGE_DIR="submission/$(dirname "$META_PATH")"
+          lake --dir "$PACKAGE_DIR" exe cache get || echo "::warning::Could not fetch proof package cache; checks will build from source."
+          lake --dir "$PACKAGE_DIR/surface-package" exe cache get || echo "::warning::Could not fetch surface package cache; checks will build from source."
+
       - name: Run submission checks
         env:
           META_PATH: ${{ steps.issue.outputs.meta-path }}

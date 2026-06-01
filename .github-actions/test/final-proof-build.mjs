@@ -50,6 +50,7 @@ try {
     removeSurfaceTheoremDeclarations();
     rewriteProofTheoremReferences();
     runLake(["clean"], "lake clean");
+    fetchBuildCache();
     const build = runLake(["build"], "lake build");
     checkBuildOutputForSorry(build);
     checkRewrittenSources();
@@ -94,6 +95,22 @@ function runLake(args, label) {
   }
 
   return result;
+}
+
+function fetchBuildCache() {
+  const result = spawnSync("lake", ["exe", "cache", "get"], {
+    cwd: isolatedPackageRoot,
+    encoding: "utf8",
+    maxBuffer: maxBuildOutputBytes
+  });
+
+  if (result.error) {
+    warnings.push(`lake exe cache get failed to start; final proof build will build from source: ${result.error.message}`);
+    return;
+  }
+  if (result.status !== 0) {
+    warnings.push("lake exe cache get failed; final proof build will build from source");
+  }
 }
 
 function removeSurfaceTheoremDeclarations() {
