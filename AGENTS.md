@@ -36,9 +36,7 @@ The CLI `create-paper` command creates one submission package folder. Preserve t
 - `your-submission-package/abstract.tex`: short LaTeX abstract.
 - `your-submission-package/surface-package/`: separate Lake package for surface statements.
 - `your-submission-package/surface-package/lakefile.lean`: surface package Lake file.
-- `your-submission-package/surface-package/definition/<name>/`: one folder per definition.
-- `your-submission-package/surface-package/theorem/<name>/`: one folder per theorem.
-- `your-submission-package/surface-package/conjecture/<name>/`: one folder per conjecture.
+- `your-submission-package/surface-package/<EntryName>/`: one direct child folder per theorem, conjecture, or definition.
 - Each surface entry folder contains `latex-file.tex` and `surface-file.lean`.
 - Surface namespaces use `Slug.Surface.Definition.Name`, `Slug.Surface.Theorem.Name`, or `Slug.Surface.Conjecture.Name`.
 - Lake packages use the dotted metadata slug form: `Slug.Surface` for the surface package and `Slug.Proofs` for the proof package.

@@ -24,17 +24,17 @@ export function createSubmissionPackage({ cwd, slug }) {
 
   write(
     surfaceRoot,
-    "definition/connected-graph/latex-file.tex",
+    "ConnectedGraph/latex-file.tex",
     "A connected graph is a simple graph that is connected in the sense of mathlib.\n"
   );
-  write(surfaceRoot, "definition/connected-graph/surface-file.lean", connectedGraphSurface(namespace));
+  write(surfaceRoot, "ConnectedGraph/surface-file.lean", connectedGraphSurface(namespace));
 
   write(
     surfaceRoot,
-    "theorem/connected-iff-reachable/latex-file.tex",
+    "ConnectedIffReachable/latex-file.tex",
     "A graph is connected exactly when it has a vertex type and every pair of vertices is joined by a path.\n"
   );
-  write(surfaceRoot, "theorem/connected-iff-reachable/surface-file.lean", connectedIffReachableSurface(namespace));
+  write(surfaceRoot, "ConnectedIffReachable/surface-file.lean", connectedIffReachableSurface(namespace));
 
   write(root, "proofs/theorem/connected-iff-reachable/proof-file.lean", connectedIffReachableProof(namespace));
 
@@ -95,15 +95,15 @@ abstractUrl: abstract.tex
 surfaceEntries:
   - type: Definition
     name: ${namespace}.Surface.Definition.ConnectedGraph
-    folder: surface-package/definition/connected-graph
+    folder: surface-package/ConnectedGraph
     usedSurfaceFiles: []
   - type: Theorem
     name: ${namespace}.Surface.Theorem.ConnectedIffReachable
-    folder: surface-package/theorem/connected-iff-reachable
+    folder: surface-package/ConnectedIffReachable
     usedSurfaceFiles:
       - githubRepo: clemenskuske/lean-meta-library
         slug: ${slug}
-        surfaceFile: surface-package/definition/connected-graph/surface-file.lean
+        surfaceFile: surface-package/ConnectedGraph/surface-file.lean
         definition: ${namespace}.Surface.Definition.ConnectedGraph.IsConnectedGraph
 proofs:
   - theorem: ${namespace}.Surface.Theorem.ConnectedIffReachable.connected_iff_reachable

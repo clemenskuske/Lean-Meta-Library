@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Checks that conjecture surface entries use the expected folder and namespace shape.
+// Checks that conjecture surface entries use the expected direct child folder and namespace shape.
 // This first pass also keeps conjectures out of the proof-target list.
 import { join } from "node:path";
 import { declarationNames, loadContext, readIfExists, report } from "./common.mjs";
@@ -9,8 +9,8 @@ const errors = [];
 const conjectures = (meta.surfaceEntries ?? []).filter((entry) => entry.type === "Conjecture");
 
 for (const entry of conjectures) {
-  if (!entry.folder?.startsWith("surface-package/conjecture/")) {
-    errors.push(`conjecture ${entry.name} must live under surface-package/conjecture/`);
+  if (!/^surface-package\/[^/]+$/.test(entry.folder ?? "")) {
+    errors.push(`conjecture ${entry.name} must live in a direct child folder of surface-package`);
   }
   if (!entry.name?.startsWith(`${namespaceRoot}.Surface.Conjecture.`)) {
     errors.push(`conjecture namespace is incorrect: ${entry.name}`);

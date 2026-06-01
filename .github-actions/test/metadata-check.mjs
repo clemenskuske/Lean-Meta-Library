@@ -43,6 +43,7 @@ for (const entry of meta.surfaceEntries ?? []) {
     }
   }
   checkRelativePath(entry.folder, `surface entry folder ${entry.folder}`);
+  checkSurfaceEntryFolder(entry.folder, `surface entry folder ${entry.folder}`);
   for (const used of entry.usedSurfaceFiles ?? []) {
     checkRelativePath(used.surfaceFile, `used surface file ${used.surfaceFile}`);
     if (!used.githubRepo || !used.slug || !used.definition) {
@@ -89,6 +90,15 @@ function checkRelativePath(value, label) {
   const absolute = resolve(packageRoot, value);
   if (!isInside(packageRoot, absolute)) {
     errors.push(`${label} escapes package root`);
+  }
+}
+
+function checkSurfaceEntryFolder(value, label) {
+  if (!value) {
+    return;
+  }
+  if (!/^surface-package\/[^/]+$/.test(value)) {
+    errors.push(`${label} must be a direct child of surface-package`);
   }
 }
 
