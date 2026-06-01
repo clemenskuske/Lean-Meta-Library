@@ -85,24 +85,14 @@ jobs:
             const paperTitle = readTopLevelScalar(metaText, "paperTitle");
             const namespaceSlug = readTopLevelScalar(metaText, "namespaceSlug");
             const title = `Submission: ${paperTitle || namespaceSlug || metaPath}`;
-            const body = [
-              "<!-- lean-meta-library:submission -->",
-              "",
-              "## Submission",
-              "",
-              `- Repo Url: ${repoUrl}`,
-              `- Source Branch: ${sourceBranch}`,
-              `- Source Commit: ${sourceCommit}`,
-              `- Metadata File: ${metaPath}`
-            ].join("\n");
 
             await ensureLabel();
 
             let issue;
             if (issueNumber) {
-              issue = await updateIssue(issueNumber, { title, body });
+              issue = await updateIssue(issueNumber, { title, body: issueBody(metaText) });
             } else {
-              issue = await createIssue({ title, body, labels: [label] });
+              issue = await createIssue({ title, body: issueBody(metaText), labels: [label] });
             }
 
             await addLabel(issue.number);
@@ -110,6 +100,7 @@ jobs:
             metaText = setTopLevelScalar(metaText, issueNumberField, String(issue.number));
             metaText = setTopLevelScalar(metaText, issueUrlField, issue.html_url);
             writeFileSync(metaPath, metaText);
+            issue = await updateIssue(issue.number, { title, body: issueBody(metaText) });
 
             appendOutput("issue-number", String(issue.number));
             appendOutput("issue-url", issue.html_url);
@@ -121,6 +112,25 @@ jobs:
                 { flag: "a" }
               );
             }
+          }
+
+          function issueBody(metaText) {
+            return [
+              "<!-- lean-meta-library:submission -->",
+              "",
+              "## Submission",
+              "",
+              `- Repo Url: ${repoUrl}`,
+              `- Source Branch: ${sourceBranch}`,
+              `- Source Commit: ${sourceCommit}`,
+              `- Metadata File: ${metaPath}`,
+              "",
+              "## Metadata",
+              "",
+              "```yaml",
+              metaText.trimEnd(),
+              "```"
+            ].join("\n");
           }
 
           function readTopLevelScalar(text, key) {
