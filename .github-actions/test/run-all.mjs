@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Runs the full first-run submission checker suite in a fixed order.
+// Runs the full first-run submission checker suite, with fast checks first and the build check last.
 // It keeps going after individual failures so one run can show all currently failing checks.
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
@@ -10,14 +10,14 @@ const checks = [
   "files-present.mjs",
   "metadata-check.mjs",
   "namespaces-correct.mjs",
-  "build-packages.mjs",
   "proofs-axioms-sorrys.mjs",
   "conjectures.mjs",
   "axioms-to-proofs.mjs",
   "folder-size.mjs",
   "filetypes.mjs",
   "surface-file-context.mjs",
-  "dependency-check.mjs"
+  "dependency-check.mjs",
+  "build-packages.mjs"
 ];
 
 let failed = false;
