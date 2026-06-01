@@ -20,7 +20,7 @@
   },
   "checks": {
     "maxBuildOutputBytes": 20971520,
-    "allowedBaseAxioms": ["propext", "Quot.sound", "Classical.choice"]
+    "allowedMathlibAxioms": ["propext", "Quot.sound", "Classical.choice"]
   },
   "verifiedAt": "2026-06-01"
 }

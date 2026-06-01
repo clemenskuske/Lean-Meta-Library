@@ -31,19 +31,19 @@ const warnings = [];
 const tmpRoot = mkdtempSync(join(tmpdir(), "lml-final-proof-build-"));
 const isolatedPackageRoot = join(tmpRoot, "package");
 const keepTemp = process.env.LML_KEEP_FINAL_PROOF_BUILD_TMP === "1";
-const configuredAllowedBaseAxioms = (lmlEnv.checks?.allowedBaseAxioms ?? []).map(String);
-const allowedBaseAxioms = configuredAllowedBaseAxioms.filter(isLeanName);
-const invalidAllowedBaseAxioms = configuredAllowedBaseAxioms.filter((name) => !isLeanName(name));
+const configuredAllowedMathlibAxioms = (lmlEnv.checks?.allowedMathlibAxioms ?? []).map(String);
+const allowedMathlibAxioms = configuredAllowedMathlibAxioms.filter(isLeanName);
+const invalidAllowedMathlibAxioms = configuredAllowedMathlibAxioms.filter((name) => !isLeanName(name));
 
 try {
   copyPackage(context.packageRoot, isolatedPackageRoot);
 
   if (spawnSync("lake", ["--version"], { encoding: "utf8" }).error) {
     errors.push("lake executable not found on PATH");
-  } else if (invalidAllowedBaseAxioms.length > 0) {
-    errors.push(`lml-env.json checks.allowedBaseAxioms contains invalid Lean names: ${invalidAllowedBaseAxioms.join(", ")}`);
-  } else if (allowedBaseAxioms.length === 0) {
-    errors.push("lml-env.json checks.allowedBaseAxioms must list at least one Lean axiom name");
+  } else if (invalidAllowedMathlibAxioms.length > 0) {
+    errors.push(`lml-env.json checks.allowedMathlibAxioms contains invalid Lean names: ${invalidAllowedMathlibAxioms.join(", ")}`);
+  } else if (allowedMathlibAxioms.length === 0) {
+    errors.push("lml-env.json checks.allowedMathlibAxioms must list at least one Lean axiom name");
   } else {
     runLake(["update"], "lake update");
     rewriteSurfaceReferences();
@@ -190,7 +190,7 @@ function checkCompiledAxioms() {
 
   const modules = builtModuleNames();
   const inspector = join(isolatedPackageRoot, "FinalProofBuildInspect.lean");
-  writeFileSync(inspector, finalProofBuildInspector({ modules, proofTargets, declaredAxioms, allowedBaseAxioms }), "utf8");
+  writeFileSync(inspector, finalProofBuildInspector({ modules, proofTargets, declaredAxioms, allowedMathlibAxioms }), "utf8");
 
   const result = spawnSync("lake", ["lean", inspector], {
     cwd: isolatedPackageRoot,
@@ -322,7 +322,7 @@ function isIgnoredModule(moduleName) {
   ].some((prefix) => moduleName === prefix || moduleName.startsWith(`${prefix}.`));
 }
 
-function finalProofBuildInspector({ modules, proofTargets, declaredAxioms, allowedBaseAxioms }) {
+function finalProofBuildInspector({ modules, proofTargets, declaredAxioms, allowedMathlibAxioms }) {
   const imports = modules.map((moduleName) => `import ${moduleName}`).join("\n");
   return `import Lean
 import Lean.Util.CollectAxioms
@@ -330,7 +330,7 @@ ${imports}
 
 open Lean
 
-def allowedBaseAxioms : Array Name := ${leanNameArray(allowedBaseAxioms)}
+def allowedBaseAxioms : Array Name := ${leanNameArray(allowedMathlibAxioms)}
 def checkedProofTargets : Array Name := ${leanNameArray(proofTargets)}
 def checkedDeclaredAxioms : Array Name := ${leanNameArray(declaredAxioms)}
 
