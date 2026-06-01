@@ -36,7 +36,7 @@ for (const entry of meta.surfaceEntries ?? []) {
     continue;
   }
 
-  for (const file of ["latex-file.tex", "surface-file.lean"]) {
+  for (const file of ["latex-file.tex", "Surface.lean"]) {
     if (!existsSync(join(folder, file))) {
       errors.push(`surface entry ${entry.name ?? basename(entry.folder)} missing ${file}`);
     }

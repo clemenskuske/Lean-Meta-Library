@@ -16,14 +16,14 @@ for (const entry of conjectures) {
     errors.push(`conjecture namespace is incorrect: ${entry.name}`);
   }
 
-  const source = readIfExists(join(packageRoot, entry.folder ?? "", "surface-file.lean"));
+  const source = readIfExists(join(packageRoot, entry.folder ?? "", "Surface.lean"));
   if (!source) {
     continue;
   }
   const axioms = declarationNames(source, "axiom");
   const theorems = declarationNames(source, "theorem");
   if (axioms.length + theorems.length === 0) {
-    errors.push(`conjecture surface file declares no axiom or theorem: ${entry.folder}/surface-file.lean`);
+    errors.push(`conjecture surface file declares no axiom or theorem: ${entry.folder}/Surface.lean`);
   }
 }
 

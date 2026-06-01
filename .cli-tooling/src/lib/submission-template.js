@@ -27,16 +27,17 @@ export function createSubmissionPackage({ cwd, slug }) {
     "ConnectedGraph/latex-file.tex",
     "A connected graph is a simple graph that is connected in the sense of mathlib.\n"
   );
-  write(surfaceRoot, "ConnectedGraph/surface-file.lean", connectedGraphSurface(namespace));
+  write(surfaceRoot, "ConnectedGraph/Surface.lean", connectedGraphSurface(namespace));
 
   write(
     surfaceRoot,
     "ConnectedIffReachable/latex-file.tex",
     "A graph is connected exactly when it has a vertex type and every pair of vertices is joined by a path.\n"
   );
-  write(surfaceRoot, "ConnectedIffReachable/surface-file.lean", connectedIffReachableSurface(namespace));
+  write(surfaceRoot, "ConnectedIffReachable/Surface.lean", connectedIffReachableSurface(namespace));
+  write(surfaceRoot, `${namespace}/Surface.lean`, surfaceAggregate());
 
-  write(root, "proofs/theorem/connected-iff-reachable/proof-file.lean", connectedIffReachableProof(namespace));
+  write(root, `proofs/${namespace}/Proofs/Theorem/ConnectedIffReachable.lean`, connectedIffReachableProof(namespace));
 
   return root;
 }
@@ -64,9 +65,12 @@ package ${namespace}.Proofs where
 require mathlib from git
   "https://github.com/${lmlEnv.mathlib.repository}.git" @ "${lmlEnv.mathlib.branch}"
 
+require ${namespace}.Surface from "./surface-package"
+
 @[default_target]
-lean_lib ${namespace} where
-  roots := #[\`${namespace}]
+lean_lib ${namespace}.Proofs where
+  srcDir := "proofs"
+  globs := #[\`${namespace}.Proofs.+]
 `;
 }
 
@@ -80,8 +84,16 @@ require mathlib from git
   "https://github.com/${lmlEnv.mathlib.repository}.git" @ "${lmlEnv.mathlib.branch}"
 
 @[default_target]
-lean_lib ${namespace} where
-  roots := #[\`${namespace}]
+lean_lib ConnectedGraph where
+  globs := #[\`ConnectedGraph.+]
+
+@[default_target]
+lean_lib ConnectedIffReachable where
+  globs := #[\`ConnectedIffReachable.+]
+
+@[default_target]
+lean_lib ${namespace}.Surface where
+  roots := #[\`${namespace}.Surface]
 `;
 }
 
@@ -103,11 +115,11 @@ surfaceEntries:
     usedSurfaceFiles:
       - githubRepo: clemenskuske/lean-meta-library
         slug: ${slug}
-        surfaceFile: surface-package/ConnectedGraph/surface-file.lean
+        surfaceFile: surface-package/ConnectedGraph/Surface.lean
         definition: ${namespace}.Surface.Definition.ConnectedGraph.IsConnectedGraph
 proofs:
   - theorem: ${namespace}.Surface.Theorem.ConnectedIffReachable.connected_iff_reachable
-    proofFile: proofs/theorem/connected-iff-reachable/proof-file.lean
+    proofFile: proofs/${namespace}/Proofs/Theorem/ConnectedIffReachable.lean
 bibtex: ""
 paper:
   paperTitle: Your Submission Paper
@@ -139,7 +151,7 @@ end ${namespace}.Surface.Definition.ConnectedGraph
 
 function connectedIffReachableSurface(namespace) {
   return `import Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected
-import ${namespace}.Surface.Definition.ConnectedGraph
+import ConnectedGraph.Surface
 
 namespace ${namespace}.Surface.Theorem.ConnectedIffReachable
 
@@ -154,8 +166,7 @@ end ${namespace}.Surface.Theorem.ConnectedIffReachable
 
 function connectedIffReachableProof(namespace) {
   return `import Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected
-import ${namespace}.Surface.Definition.ConnectedGraph
-import ${namespace}.Surface.Theorem.ConnectedIffReachable
+import ${namespace}.Surface
 
 namespace ${namespace}.Proofs.Theorem.ConnectedIffReachable
 
@@ -166,5 +177,11 @@ theorem connected_iff_reachable {V : Type u} (G : SimpleGraph V) :
   ${namespace}.Surface.Theorem.ConnectedIffReachable.connected_iff_reachable G
 
 end ${namespace}.Proofs.Theorem.ConnectedIffReachable
+`;
+}
+
+function surfaceAggregate() {
+  return `import ConnectedGraph.Surface
+import ConnectedIffReachable.Surface
 `;
 }

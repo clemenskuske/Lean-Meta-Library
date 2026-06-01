@@ -24,7 +24,7 @@ The `.github-actions/test/` folder contains first-run submission package checks.
 node .github-actions/test/run-all.mjs path/to/meta.yaml
 ```
 
-Do not pass both a submission package path and a metadata path. If no metadata path is provided, each check falls back to a root-level `meta.yaml` in the current working directory.
+Pass only a metadata file path. If no metadata path is provided, each check falls back to `meta.yaml` in the current working directory; directories are not accepted.
 
 ## Submit workflow
 
@@ -45,7 +45,7 @@ The CLI `create-paper` command creates one submission package folder. Preserve t
 - `your-submission-package/surface-package/`: separate Lake package for surface statements.
 - `your-submission-package/surface-package/lakefile.lean`: surface package Lake file.
 - `your-submission-package/surface-package/<EntryName>/`: one direct child folder per theorem, conjecture, or definition.
-- Each surface entry folder contains `latex-file.tex` and `surface-file.lean`.
+- Each surface entry folder contains `latex-file.tex` and `Surface.lean`.
 - Surface namespaces use `Slug.Surface.Definition.Name`, `Slug.Surface.Theorem.Name`, or `Slug.Surface.Conjecture.Name`.
 - Lake packages use the dotted metadata slug form: `Slug.Surface` for the surface package and `Slug.Proofs` for the proof package.
 - `your-submission-package/proofs/`: proofs for theorem surface files.

@@ -42,7 +42,7 @@ const allowedFirstTokens = new Set([
 ]);
 
 for (const entry of meta.surfaceEntries ?? []) {
-  const path = join(packageRoot, entry.folder ?? "", "surface-file.lean");
+  const path = join(packageRoot, entry.folder ?? "", "Surface.lean");
   const source = readIfExists(path);
   if (!source) {
     continue;
@@ -51,7 +51,7 @@ for (const entry of meta.surfaceEntries ?? []) {
 
   for (const [label, pattern] of forbiddenPatterns) {
     if (pattern.test(stripped)) {
-      errors.push(`surface file uses forbidden ${label}: ${entry.folder}/surface-file.lean`);
+      errors.push(`surface file uses forbidden ${label}: ${entry.folder}/Surface.lean`);
     }
   }
 
@@ -65,7 +65,7 @@ for (const entry of meta.surfaceEntries ?? []) {
     }
     const token = trimmed.match(/^[@#]?\[?[A-Za-z_][A-Za-z0-9_']*/)?.[0]?.replace(/^@?\[?/, "");
     if (token && /^[a-zA-Z_]/.test(token) && !allowedFirstTokens.has(token)) {
-      warnings.push(`surface file line starts outside first-run whitelist: ${entry.folder}/surface-file.lean:${index + 1}: ${token}`);
+      warnings.push(`surface file line starts outside first-run whitelist: ${entry.folder}/Surface.lean:${index + 1}: ${token}`);
     }
   }
 }

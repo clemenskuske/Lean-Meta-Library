@@ -11,12 +11,12 @@ import {
   surfaceNamespaceForEntry
 } from "./common.mjs";
 
-const { packageRoot, meta } = loadContext();
+const { packageRoot, meta, namespaceRoot } = loadContext();
 const errors = [];
 const proofByTheorem = new Map((meta.proofs ?? []).map((proof) => [proof.theorem, proof]));
 
 for (const entry of (meta.surfaceEntries ?? []).filter((item) => item.type === "Theorem")) {
-  const source = readIfExists(join(packageRoot, entry.folder ?? "", "surface-file.lean"));
+  const source = readIfExists(join(packageRoot, entry.folder ?? "", "Surface.lean"));
   if (!source) {
     continue;
   }
@@ -35,8 +35,9 @@ for (const entry of (meta.surfaceEntries ?? []).filter((item) => item.type === "
     if (!proofSource) {
       continue;
     }
-    if (!proofSource.includes(`import ${namespace}`)) {
-      errors.push(`proof file ${proof.proofFile} should import ${namespace}`);
+    const surfacePackageModule = `${namespaceRoot}.Surface`;
+    if (namespaceRoot && !proofSource.includes(`import ${surfacePackageModule}`)) {
+      errors.push(`proof file ${proof.proofFile} should import ${surfacePackageModule}`);
     }
     if (!proofSource.includes(fullName)) {
       errors.push(`proof file ${proof.proofFile} should reference surface axiom ${fullName}`);

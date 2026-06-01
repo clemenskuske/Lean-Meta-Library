@@ -3,15 +3,17 @@
 // It allows mathlib plus surface-package dependencies recorded in submissions.jsonl.
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { leanFiles, listImports, loadContext, readIfExists, relativePath, report } from "./common.mjs";
+import lmlEnv from "../../lml-env.json" with { type: "json" };
+import { leanFiles, listImports, loadContext, readIfExists, relativePath, report, surfaceModuleForEntry } from "./common.mjs";
 
-const { packageRoot, namespaceRoot } = loadContext();
+const { packageRoot, meta, namespaceRoot } = loadContext();
 const errors = [];
 const submissionDependencies = loadSubmissionDependencies();
 const allowedImportsByLakefile = {
   root: new Set(),
   surface: new Set()
 };
+const localSurfaceModules = new Set((meta.surfaceEntries ?? []).map(surfaceModuleForEntry).filter(Boolean));
 
 checkLakefile(join(packageRoot, "lakefile.lean"), "root lakefile", allowedImportsByLakefile.root);
 checkLakefile(
@@ -40,7 +42,7 @@ function checkLakefile(path, label, allowedExternalImports) {
   }
 
   const requires = parseLakeRequires(source);
-  const mathlibRequires = requires.filter((dependency) => dependency.name === "mathlib");
+  const mathlibRequires = requires.filter((dependency) => dependency.kind === "git" && dependency.name === "mathlib");
   if (mathlibRequires.length !== 1) {
     errors.push(`${label} should have exactly one mathlib git dependency`);
     return;
@@ -49,6 +51,11 @@ function checkLakefile(path, label, allowedExternalImports) {
   checkMathlibDependency(mathlibRequires[0], label);
 
   for (const dependency of requires.filter((item) => item.name !== "mathlib")) {
+    if (dependency.kind === "local") {
+      checkLocalDependency(dependency, label);
+      continue;
+    }
+
     const submission = findMatchingSubmissionDependency(dependency);
     if (!submission) {
       errors.push(`${label} dependency is not allowed by submissions.jsonl: ${formatDependency(dependency)}`);
@@ -65,7 +72,7 @@ function checkLakefile(path, label, allowedExternalImports) {
 }
 
 function checkMathlibDependency(dependency, label) {
-  if (normalizeGitUrl(dependency.url) !== normalizeGitUrl("https://github.com/leanprover-community/mathlib4.git")) {
+  if (normalizeGitUrl(dependency.url) !== normalizeGitUrl(`https://github.com/${lmlEnv.mathlib.repository}.git`)) {
     errors.push(`${label} dependency URL is not allowed for mathlib: ${dependency.url}`);
   }
   if (!dependency.ref || !/^(stable|master|v?\d|nightly-|release-)/.test(dependency.ref)) {
@@ -76,10 +83,20 @@ function checkMathlibDependency(dependency, label) {
   }
 }
 
+function checkLocalDependency(dependency, label) {
+  if (label !== "root lakefile" || dependency.name !== `${namespaceRoot}.Surface` || normalizePath(dependency.path) !== "surface-package") {
+    errors.push(`${label} local dependency is not allowed: ${formatDependency(dependency)}`);
+  }
+}
+
 function parseLakeRequires(source) {
-  return [...source.matchAll(/\brequire\s+([A-Za-z0-9_.-]+)\s+from\s+git\s+"([^"]+)"(?:\s+@\s+"([^"]+)")?(?:\s+\/\s+"([^"]+)")?/g)].map(
-    ([, name, url, ref, subDir]) => ({ name, url, ref, subDir })
+  const gitRequires = [...source.matchAll(/\brequire\s+([A-Za-z0-9_.-]+)\s+from\s+git\s+"([^"]+)"(?:\s+@\s+"([^"]+)")?(?:\s+\/\s+"([^"]+)")?/g)].map(
+    ([, name, url, ref, subDir]) => ({ kind: "git", name, url, ref, subDir })
   );
+  const localRequires = [...source.matchAll(/\brequire\s+([A-Za-z0-9_.-]+)\s+from\s+"([^"]+)"/g)].map(
+    ([, name, path]) => ({ kind: "local", name, path })
+  );
+  return [...gitRequires, ...localRequires];
 }
 
 function findMatchingSubmissionDependency(dependency) {
@@ -104,10 +121,15 @@ function isAllowedImport(imported, file, allowedExternalImports) {
     return true;
   }
 
+  const isSurfacePackageFile = rel.startsWith("surface-package/");
+  const isOwnSurfaceImport =
+    namespaceRoot && (imported === `${namespaceRoot}.Surface` || imported.startsWith(`${namespaceRoot}.Surface.`));
+
   return (
     imported.startsWith("Mathlib.") ||
     imported.startsWith("Std.") ||
-    (namespaceRoot && imported.startsWith(`${namespaceRoot}.Surface.`)) ||
+    (isSurfacePackageFile && localSurfaceModules.has(imported)) ||
+    isOwnSurfaceImport ||
     [...allowedExternalImports].some((prefix) => imported === prefix || imported.startsWith(`${prefix}.`))
   );
 }
@@ -189,6 +211,9 @@ function normalizePath(path) {
 }
 
 function formatDependency(dependency) {
+  if (dependency.kind === "local") {
+    return `${dependency.name} from ${dependency.path}`;
+  }
   const subDir = dependency.subDir ? ` / "${dependency.subDir}"` : "";
   const ref = dependency.ref ? ` @ "${dependency.ref}"` : "";
   return `${dependency.name} from ${dependency.url}${ref}${subDir}`;

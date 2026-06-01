@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { run } from "../lib/process.js";
@@ -22,11 +22,23 @@ export async function test({ args, cwd }) {
   }
 
   const runnerArgs = args.length === 1 ? [resolveMetaArgument(cwd, args[0])] : [];
+  if (runnerArgs[0]) {
+    validateMetaPath(runnerArgs[0]);
+  }
   run(process.execPath, [runner, ...runnerArgs], { cwd: workspaceRoot, stdio: "inherit" });
 }
 
 function resolveMetaArgument(cwd, metaPath) {
   return isAbsolute(metaPath) ? metaPath : resolve(cwd, metaPath);
+}
+
+function validateMetaPath(metaPath) {
+  if (!/\.ya?ml$/i.test(metaPath)) {
+    throw new Error("Use a metadata .yaml or .yml file argument: lml test path/to/meta.yaml");
+  }
+  if (existsSync(metaPath) && !statSync(metaPath).isFile()) {
+    throw new Error(`Metadata path must be a file: ${metaPath}`);
+  }
 }
 
 function findWorkspaceRoot(start) {

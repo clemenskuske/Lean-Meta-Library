@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import { ensureAuthenticated } from "../lib/github-auth.js";
 import { ensureGitHubCli } from "../lib/github-cli.js";
@@ -15,6 +15,12 @@ export async function submit({ args, cwd }) {
   }
   if (!existsSync(metaPath)) {
     throw new Error(`Metadata file not found: ${metaPath}.`);
+  }
+  if (!statSync(metaPath).isFile()) {
+    throw new Error(`Metadata path must be a file: ${metaPath}.`);
+  }
+  if (!isMetadataFile(metaPath)) {
+    throw new Error("Use a metadata .yaml or .yml file argument: lml submit [--no-prior-test] path/to/meta.yaml");
   }
 
   const branch = currentBranch(repoRoot);
@@ -76,6 +82,10 @@ function parseArgs(args, cwd) {
 
 function resolveMetaArgument(cwd, metaPath) {
   return isAbsolute(metaPath) ? metaPath : resolve(cwd, metaPath);
+}
+
+function isMetadataFile(path) {
+  return /\.ya?ml$/i.test(path);
 }
 
 function currentBranch(repoRoot) {

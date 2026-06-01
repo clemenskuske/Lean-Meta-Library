@@ -6,28 +6,22 @@ import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } 
 
 export function loadContext(argv = process.argv.slice(2)) {
   const args = [...argv];
-  let explicitMeta = null;
-  const positional = [];
-
-  for (let i = 0; i < args.length; i += 1) {
-    if (args[i] === "--meta") {
-      explicitMeta = args[i + 1] ?? null;
-      i += 1;
-      continue;
-    }
-    positional.push(args[i]);
+  if (args.includes("--meta")) {
+    throw new Error("Use a single metadata file argument, for example: path/to/meta.yaml.");
+  }
+  if (args.length > 1) {
+    throw new Error("Use one metadata file argument, for example: path/to/meta.yaml.");
+  }
+  if (args[0] && !isMetadataFile(args[0])) {
+    throw new Error("Use a metadata .yaml or .yml file path.");
   }
 
-  if (explicitMeta && positional.length > 0) {
-    throw new Error("Pass either a metadata file or --meta metadata file, not both a package path and metadata.");
+  const metaPath = resolveMetaPath(args[0] ?? "meta.yaml");
+  if (existsSync(metaPath) && !statSync(metaPath).isFile()) {
+    throw new Error(`Metadata path must be a file: ${metaPath}`);
   }
 
-  const positionalMeta = positional[0]?.match(/\.ya?ml$/i) ? positional[0] : null;
-  const metaInput = explicitMeta ?? positionalMeta;
-  const packageRoot = metaInput
-    ? dirname(resolveMetaPath({ packageRoot: process.cwd(), explicitMeta: metaInput }))
-    : resolve(positional[0] ?? process.cwd());
-  const metaPath = resolveMetaPath({ packageRoot, explicitMeta: metaInput });
+  const packageRoot = dirname(metaPath);
   const metaText = existsSync(metaPath) ? readFileSync(metaPath, "utf8") : "";
   const meta = parseMetaYaml(metaText);
   const namespaceRoot = inferNamespaceRoot(meta);
@@ -35,17 +29,12 @@ export function loadContext(argv = process.argv.slice(2)) {
   return { packageRoot, metaPath, metaText, meta, namespaceRoot };
 }
 
-export function resolveMetaPath({ packageRoot, explicitMeta }) {
-  if (explicitMeta) {
-    return isAbsolute(explicitMeta) ? explicitMeta : resolve(process.cwd(), explicitMeta);
-  }
+export function resolveMetaPath(metaPath) {
+  return isAbsolute(metaPath) ? metaPath : resolve(process.cwd(), metaPath);
+}
 
-  const packageMeta = join(packageRoot, "meta.yaml");
-  if (existsSync(packageMeta)) {
-    return packageMeta;
-  }
-
-  return resolve(process.cwd(), "meta.yaml");
+function isMetadataFile(path) {
+  return /\.ya?ml$/i.test(path);
 }
 
 export function parseMetaYaml(text) {
@@ -234,6 +223,11 @@ export function declarationNames(source, keyword) {
 
 export function surfaceNamespaceForEntry(entry) {
   return entry.name;
+}
+
+export function surfaceModuleForEntry(entry) {
+  const folder = String(entry.folder ?? "").split("/").filter(Boolean).at(-1);
+  return folder ? `${folder}.Surface` : null;
 }
 
 export function proofNamespaceForTheorem(theoremName) {
