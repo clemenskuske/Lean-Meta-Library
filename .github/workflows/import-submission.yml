@@ -121,6 +121,12 @@ jobs:
         run: |
           node "$GITHUB_WORKSPACE/.github-actions/test/run-all.mjs" "$GITHUB_WORKSPACE/submission/$META_PATH"
 
+      - name: Run final rewritten proof build
+        env:
+          META_PATH: ${{ steps.issue.outputs.meta-path }}
+        run: |
+          node "$GITHUB_WORKSPACE/.github-actions/test/final-proof-build.mjs" "$GITHUB_WORKSPACE/submission/$META_PATH"
+
       - name: Stage checked metadata
         env:
           META_PATH: ${{ steps.issue.outputs.meta-path }}
