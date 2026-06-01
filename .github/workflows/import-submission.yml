@@ -112,7 +112,7 @@ jobs:
         run: |
           AUTH_HEADER="$(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0)"
           git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $AUTH_HEADER" \
-            clone --filter=blob:none --single-branch --branch "$SOURCE_BRANCH" "$REPO_URL" submission
+            clone --single-branch --branch "$SOURCE_BRANCH" "$REPO_URL" submission
           cd submission
           git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $AUTH_HEADER" \
             fetch --depth=1 origin "$SOURCE_COMMIT"
