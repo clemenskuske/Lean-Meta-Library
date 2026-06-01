@@ -90,9 +90,9 @@ jobs:
 
             let issue;
             if (issueNumber) {
-              issue = await updateIssue(issueNumber, { title, body: issueBody(metaText) });
+              issue = await updateIssue(issueNumber, { title, body: issueBody() });
             } else {
-              issue = await createIssue({ title, body: issueBody(metaText), labels: [label] });
+              issue = await createIssue({ title, body: issueBody(), labels: [label] });
             }
 
             await addLabel(issue.number);
@@ -100,7 +100,7 @@ jobs:
             metaText = setTopLevelScalar(metaText, issueNumberField, String(issue.number));
             metaText = setTopLevelScalar(metaText, issueUrlField, issue.html_url);
             writeFileSync(metaPath, metaText);
-            issue = await updateIssue(issue.number, { title, body: issueBody(metaText) });
+            issue = await updateIssue(issue.number, { title, body: issueBody() });
 
             appendOutput("issue-number", String(issue.number));
             appendOutput("issue-url", issue.html_url);
@@ -114,7 +114,7 @@ jobs:
             }
           }
 
-          function issueBody(metaText) {
+          function issueBody() {
             return [
               "<!-- lean-meta-library:submission -->",
               "",
@@ -123,13 +123,7 @@ jobs:
               `- Repo Url: ${repoUrl}`,
               `- Source Branch: ${sourceBranch}`,
               `- Source Commit: ${sourceCommit}`,
-              `- Metadata File: ${metaPath}`,
-              "",
-              "## Metadata",
-              "",
-              "```yaml",
-              metaText.trimEnd(),
-              "```"
+              `- Metadata File: ${metaPath}`
             ].join("\n");
           }
 

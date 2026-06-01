@@ -48,7 +48,7 @@ jobs:
           ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
           node <<'NODE'
-          const { mkdirSync, writeFileSync } = require("node:fs");
+          const { writeFileSync } = require("node:fs");
 
           const body = process.env.ISSUE_BODY ?? "";
           const fields = readFields(body);
@@ -56,12 +56,10 @@ jobs:
           const sourceBranch = fields["Source Branch"];
           const sourceCommit = fields["Source Commit"];
           const metaPath = fields["Metadata File"] ?? "meta.yaml";
-          const metaText = readMetadataBlock(body);
 
           requireValue("Repo Url", repoUrl);
           requireValue("Source Branch", sourceBranch);
           requireValue("Source Commit", sourceCommit);
-          requireValue("embedded metadata block", metaText);
 
           if (!/^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(?:\.git)?$/.test(repoUrl)) {
             throw new Error(`Unsupported repository URL: ${repoUrl}`);
@@ -80,8 +78,6 @@ jobs:
           appendOutput("source-branch", sourceBranch);
           appendOutput("source-commit", sourceCommit);
           appendOutput("meta-path", metaPath);
-          mkdirSync("issue-metadata", { recursive: true });
-          writeFileSync("issue-metadata/meta.yaml", `${metaText.trimEnd()}\n`);
 
           function readFields(text) {
             const values = {};
@@ -92,11 +88,6 @@ jobs:
               }
             }
             return values;
-          }
-
-          function readMetadataBlock(text) {
-            const match = text.match(/## Metadata\s+```(?:yaml|yml)\s*\r?\n([\s\S]*?)\r?\n```/i);
-            return match?.[1] ?? "";
           }
 
           function requireValue(name, value) {
@@ -121,13 +112,6 @@ jobs:
           git fetch --depth=1 origin "$SOURCE_COMMIT"
           git checkout --detach "$SOURCE_COMMIT"
           test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
-
-      - name: Use issue metadata
-        env:
-          META_PATH: ${{ steps.issue.outputs.meta-path }}
-        run: |
-          mkdir -p "$(dirname "submission/$META_PATH")"
-          cp issue-metadata/meta.yaml "submission/$META_PATH"
 
       - name: Run submission checks
         env:
