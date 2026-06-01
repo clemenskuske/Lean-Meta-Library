@@ -16,6 +16,7 @@ const checks = [
   "folder-size.mjs",
   "filetypes.mjs",
   "surface-file-context.mjs",
+  "surface-declarations.mjs",
   "dependency-check.mjs",
   "build-packages.mjs"
 ];
