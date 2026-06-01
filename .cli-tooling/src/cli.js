@@ -4,6 +4,7 @@ import { init } from "./commands/init.js";
 import { login } from "./commands/login.js";
 import { logout } from "./commands/logout.js";
 import { submit } from "./commands/submit.js";
+import { submissionStatus } from "./commands/submission-status.js";
 import { test } from "./commands/test.js";
 import { update } from "./commands/update.js";
 
@@ -14,6 +15,7 @@ const commands = new Map([
   ["update", update],
   ["test", test],
   ["submit", submit],
+  ["submission-status", submissionStatus],
   ["create-paper", createPaper]
 ]);
 
@@ -31,6 +33,8 @@ Commands:
   test [meta.yaml]      Run submission checks from .github-actions/test.
   submit [meta.yaml]    Run checks and dispatch the submit GitHub workflow.
                          Use --no-prior-test to skip checks.
+  submission-status
+                         Show submission issue, workflow, commit, and surface status.
   create-paper [slug]   Create a starter submission package.
 
 Options:

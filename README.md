@@ -35,6 +35,7 @@ lml init
 lml update
 lml test path/to/meta.yaml
 lml submit path/to/meta.yaml
+lml submission-status path/to/meta.yaml
 lml create-paper
 ```
 
@@ -49,6 +50,12 @@ The `submit` command runs the submission checks first, then dispatches `.github/
 ```sh
 lml submit path/to/meta.yaml
 lml submit --no-prior-test path/to/meta.yaml
+```
+
+The `submission-status` command reports whether the metadata file has been submitted or imported, whether a related workflow is currently uploading, testing, or finalizing the submission, and how the recorded source commit compares with the current commit and surface files:
+
+```sh
+lml submission-status path/to/meta.yaml
 ```
 
 ## Submission Workflow
