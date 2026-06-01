@@ -107,11 +107,7 @@ surfaceEntries:
   - type: Theorem
     name: ${namespace}.Surface.Theorem.ConnectedIffReachable
     folder: surface-package/ConnectedIffReachable
-    usedSurfaceFiles:
-      - githubRepo: clemenskuske/lean-meta-library
-        slug: ${slug}
-        surfaceFile: surface-package/ConnectedGraph/Surface.lean
-        definition: ${namespace}.Surface.Definition.ConnectedGraph.IsConnectedGraph
+    usedSurfaceFiles: []
 proofs:
   - theorem: ${namespace}.Surface.Theorem.ConnectedIffReachable.connected_iff_reachable
     proofFile: proofs/ConnectedIffReachableProof.lean

@@ -214,6 +214,9 @@ function surfaceFileImportVerdict({ imported, rel, isOwnSurfaceEntryImport, isOw
   if (!isOwnSurfaceEntryImport && !isOwnSurfaceImport && !isAllowedExternalImport) {
     return { allowed: false };
   }
+  if (isOwnSurfaceEntryImport || isOwnSurfaceImport) {
+    return { allowed: true };
+  }
 
   const entry = surfaceEntryByFile.get(rel);
   const authorized = authorizedSurfaceImportsByFile.get(rel);

@@ -31,7 +31,7 @@ example : Surface.statement := Proofs.statement
 
 This checks matching by Lean type, not by textual dependency on the surface axiom. Separately, the proof-file checker rejects local `axiom`, `sorry`, `admit`, and `unsafe` in proof files, builds the submitted proof theorem code, and asks Lean for each proof theorem's compiled axiom dependencies. A submitted proof theorem must not depend on `sorryAx`, same-submission proof axioms, or same-submission surface axioms.
 
-Surface files may import another surface module only when that import is justified by the current surface entry's `usedSurfaceFiles` metadata. The referenced declaration must live in a different namespace from the current surface entry. Proof files may import accepted proof or surface dependencies, but those imports are reported as warnings.
+Surface files may always import other surface modules from the same submission package. Surface imports from other packages or namespaces must be justified by the current surface entry's `usedSurfaceFiles` metadata, and the referenced declaration must live in a different namespace from the current surface entry. Proof files may import accepted proof or surface dependencies, but those imports are reported as warnings.
 
 ## CLI Tooling
 

@@ -43,7 +43,7 @@ If no metadata path is provided, `lml test` checks `meta.yaml` in the current wo
 
 The proof checker generates `ProofCheck.lean` at the submission package root. For each surface theorem declaration such as `axiom Surface.statement : SomeStatement`, the proof theorem must have the same Lean type, such as `theorem Proofs.statement : SomeStatement := by ...`; the generated check asks Lean to accept `example : Surface.statement := Proofs.statement`. This checks type matching, not textual dependency on the surface axiom. The proof-file checker separately rejects local `axiom`, `sorry`, `admit`, and `unsafe` in proof files, builds the submitted proof theorem code, and asks Lean for each proof theorem's compiled axiom dependencies. A submitted proof theorem must not depend on `sorryAx`, same-submission proof axioms, or same-submission surface axioms.
 
-Surface files may import another surface module only when that import is justified by the current surface entry's `usedSurfaceFiles` metadata. The referenced declaration must live in a different namespace from the current surface entry. Proof files may import accepted proof or surface dependencies, but those imports are reported as warnings.
+Surface files may always import other surface modules from the same submission package. Surface imports from other packages or namespaces must be justified by the current surface entry's `usedSurfaceFiles` metadata, and the referenced declaration must live in a different namespace from the current surface entry. Proof files may import accepted proof or surface dependencies, but those imports are reported as warnings.
 
 ## Submit workflow
 
