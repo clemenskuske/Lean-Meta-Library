@@ -13,13 +13,13 @@ Read this file before making changes, then preserve the existing folder roles:
 
 ## Submission checks
 
-The `.github-actions/test/` folder contains first-run submission package checks. Run them with:
+The `.github-actions/test/` folder contains first-run submission package checks. The metadata file is the source of submission information. Run checks with:
 
 ```sh
-node .github-actions/test/run-all.mjs path/to/submission-package
+node .github-actions/test/run-all.mjs path/to/meta.yaml
 ```
 
-Each check accepts an optional `--meta path/to/meta.yaml`. If no metadata path is provided, the check uses `path/to/submission-package/meta.yaml`, falling back to a root-level `meta.yaml` in the current working directory.
+Do not pass both a submission package path and a metadata path. If no metadata path is provided, each check falls back to a root-level `meta.yaml` in the current working directory.
 
 ## Submission package structure
 

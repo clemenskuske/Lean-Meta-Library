@@ -28,14 +28,14 @@ lml login
 lml logout
 lml init
 lml update
-lml test path/to/submission-package
+lml test path/to/meta.yaml
 lml create-paper
 ```
 
-The `test` command runs `.github-actions/test/run-all.mjs` and forwards extra arguments:
+The `test` command runs `.github-actions/test/run-all.mjs` using the metadata file as the source of submission information:
 
 ```sh
-lml test path/to/submission-package --meta path/to/meta.yaml
+lml test path/to/meta.yaml
 ```
 
 For a one-off run without linking:

@@ -18,8 +18,16 @@ export function loadContext(argv = process.argv.slice(2)) {
     positional.push(args[i]);
   }
 
-  const packageRoot = resolve(positional[0] ?? process.cwd());
-  const metaPath = resolveMetaPath({ packageRoot, explicitMeta });
+  if (explicitMeta && positional.length > 0) {
+    throw new Error("Pass either a metadata file or --meta metadata file, not both a package path and metadata.");
+  }
+
+  const positionalMeta = positional[0]?.match(/\.ya?ml$/i) ? positional[0] : null;
+  const metaInput = explicitMeta ?? positionalMeta;
+  const packageRoot = metaInput
+    ? dirname(resolveMetaPath({ packageRoot: process.cwd(), explicitMeta: metaInput }))
+    : resolve(positional[0] ?? process.cwd());
+  const metaPath = resolveMetaPath({ packageRoot, explicitMeta: metaInput });
   const metaText = existsSync(metaPath) ? readFileSync(metaPath, "utf8") : "";
   const meta = parseMetaYaml(metaText);
   const namespaceRoot = inferNamespaceRoot(meta);

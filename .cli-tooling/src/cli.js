@@ -26,7 +26,7 @@ Commands:
   logout                Logout from GitHub with the GitHub CLI.
   init                  Check local tooling and sync repository metadata.
   update                Run the same checks and sync as init.
-  test [path]           Run submission checks from .github-actions/test.
+  test [meta.yaml]      Run submission checks from .github-actions/test.
   create-paper [slug]   Create a starter submission package.
 
 Options:
