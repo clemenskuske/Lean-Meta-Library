@@ -4,6 +4,8 @@ paperTitle: Your Submission Paper
 namespaceSlug: TestPaper
 surfaceLakefilePath: surface-package/lakefile.lean
 abstractUrl: abstract.tex
+submissionIssueNumber: "1"
+submissionIssueUrl: "https://github.com/clemenskuske/Lean-Meta-Library/issues/1"
 surfaceEntries:
   - type: Definition
     name: TestPaper.Surface.Definition.ConnectedGraph
