@@ -161,7 +161,7 @@ import ConnectedIffReachable.Surface
 namespace ${namespace}.Proofs.Theorem.ConnectedIffReachable
 
 -- The proof theorem must have exactly the same type as the matching surface declaration.
--- \`lml test\` generates ProofCheck.lean to ask Lean to verify that type match.
+-- \`lml test\` asks Lean to compare the compiled types of both constants.
 theorem connected_iff_reachable {V : Type u} (G : SimpleGraph V) :
     ${namespace}.Surface.Definition.ConnectedGraph.IsConnectedGraph G ↔
       Nonempty V ∧ ∀ u v : V, G.Reachable u v :=

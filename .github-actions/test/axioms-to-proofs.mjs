@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Checks that every theorem surface axiom has a matching proof metadata entry.
-// It also asks Lean to verify that the proof theorem has the same type as the surface axiom.
+// Checks that every theorem surface declaration has a matching proof metadata entry.
+// It also asks Lean to verify that the proof theorem has the same type as the surface declaration.
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -32,12 +32,15 @@ for (const entry of (meta.surfaceEntries ?? []).filter((item) => item.type === "
   }
 
   const namespace = surfaceNamespaceForEntry(entry);
-  const axioms = declarationNames(source, "axiom");
-  for (const axiomName of axioms) {
-    const fullName = `${namespace}.${axiomName}`;
+  const declarations = [
+    ...declarationNames(source, "axiom"),
+    ...declarationNames(source, "theorem")
+  ];
+  for (const declarationName of declarations) {
+    const fullName = `${namespace}.${declarationName}`;
     const proof = proofByTheorem.get(fullName);
     if (!proof) {
-      errors.push(`surface axiom has no matching proof metadata entry: ${fullName}`);
+      errors.push(`surface theorem declaration has no matching proof metadata entry: ${fullName}`);
       continue;
     }
 
@@ -81,7 +84,7 @@ function checkProofType({ surfaceName, proof, surfaceModule }) {
       return;
     }
     if (result.status !== 0) {
-      errors.push(`proof theorem type does not match surface axiom for ${surfaceName}\n${result.stdout}${result.stderr}`.trim());
+      errors.push(`proof theorem type does not match surface declaration for ${surfaceName}\n${result.stdout}${result.stderr}`.trim());
     }
   } finally {
     rmSync(tmp, { recursive: true, force: true });
@@ -99,7 +102,7 @@ open Lean Meta
   let surfaceInfo <- getConstInfo \`${surfaceName}
   let proofInfo <- getConstInfo \`${proofName}
   unless <- isDefEq surfaceInfo.type proofInfo.type do
-    throwError "proof theorem type does not match surface axiom type"
+    throwError "proof theorem type does not match surface declaration type"
 `;
 }
 

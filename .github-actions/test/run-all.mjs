@@ -18,7 +18,6 @@ const checks = [
   "filetypes.mjs",
   "surface-file-context.mjs",
   "surface-declarations.mjs",
-  "proof-check.mjs",
   "dependency-check.mjs",
   "build-packages.mjs"
 ];

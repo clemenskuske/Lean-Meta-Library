@@ -165,7 +165,7 @@ function importVerdict(imported, file, allowedExternalImports) {
     return { allowed: true };
   }
   const isSurfacePackageFile = rel.startsWith("surface-package/");
-  const isProofPackageFile = rel.startsWith("proofs/") || rel === "ProofCheck.lean";
+  const isProofPackageFile = rel.startsWith("proofs/");
   const isOwnSurfaceImport =
     namespaceRoot && (imported === `${namespaceRoot}.Surface` || imported.startsWith(`${namespaceRoot}.Surface.`));
   const isOwnSurfaceEntryImport = localSurfaceModules.has(imported);

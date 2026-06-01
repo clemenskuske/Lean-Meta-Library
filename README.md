@@ -23,13 +23,7 @@ theorem Proofs.statement : SomeStatement := by
   ...
 ```
 
-When `lml test` runs, the checker generates `ProofCheck.lean` at the submission package root. For each surface theorem, it asks Lean to verify that the proof theorem has the same type as the surface declaration, using lines shaped like:
-
-```lean
-example : Surface.statement := Proofs.statement
-```
-
-This checks matching by Lean type, not by textual dependency on the surface axiom. Separately, the proof-file checker rejects local `axiom`, `sorry`, `admit`, and `unsafe` in proof files, builds the submitted proof theorem code, and asks Lean for each proof theorem's compiled axiom dependencies. A submitted proof theorem must not depend on `sorryAx`, same-submission proof axioms, or same-submission surface axioms.
+When `lml test` runs, the checker asks Lean to compare the compiled types of each surface theorem declaration and its matching proof theorem. This checks matching by Lean type, not by textual dependency on the surface axiom. Separately, the proof-file checker rejects local `axiom`, `sorry`, `admit`, and `unsafe` in proof files, builds the submitted proof theorem code, and asks Lean for each proof theorem's compiled axiom dependencies. A submitted proof theorem must not depend on `sorryAx`, same-submission proof axioms, or same-submission surface axioms.
 
 At the end of the import workflow, a final-only rewritten proof build runs in an isolated temporary copy. It runs `lake update`, rewrites literal `.Surface.` references to `.Proofs.` references in the copied package and downloaded Lake packages, runs `lake clean`, then runs `lake build`. The check rejects `sorry`/`admit` in the rewritten build and asks Lean to verify that declared axioms and proof-target axiom dependencies have only the same types as the constants listed in `lml-env.json` at `checks.allowedMathlibAxioms`, currently `propext`, `Quot.sound`, and `Classical.choice`.
 
