@@ -30,7 +30,11 @@ const localSurfaceModules = new Set((meta.surfaceEntries ?? []).map(surfaceModul
 const surfaceEntryByFile = new Map(
   (meta.surfaceEntries ?? []).map((entry) => [normalizePath(`${entry.folder ?? ""}/Surface.lean`), entry])
 );
+const surfaceEntryByName = new Map(
+  (meta.surfaceEntries ?? []).map((entry) => [stringValue(entry.name), entry]).filter(([name]) => name)
+);
 const authorizedSurfaceImportsByFile = authorizedSurfaceImportsBySurfaceFile();
+const proofSurfacePolicyByFile = proofSurfacePolicyByProofFile();
 const authorizedSurfaceDependencyNamespaces = authorizedSurfaceNamespaces();
 const localProofModules = new Set(
   (meta.proofs ?? [])
@@ -188,10 +192,7 @@ function importVerdict(imported, file, allowedExternalImports) {
   }
 
   if (isProofPackageFile && (isOwnSurfaceEntryImport || isOwnSurfaceImport || isAllowedExternalImport)) {
-    return {
-      allowed: true,
-      warning: proofSurfaceImportWarning({ imported, rel })
-    };
+    return proofFileSurfaceImportVerdict({ imported, rel });
   }
 
   if (!isSurfacePackageFile && isOwnSurfaceEntryImport) {
@@ -249,6 +250,35 @@ function proofSurfaceImportWarning({ imported, rel }) {
   return `${rel} imports surface module ${imported}; proof surface dependencies are accepted with a warning`;
 }
 
+function proofFileSurfaceImportVerdict({ imported, rel }) {
+  const policy = proofSurfacePolicyByFile.get(rel);
+  if (!policy) {
+    return {
+      allowed: false,
+      error: `${rel} imports surface module ${imported}, but this proof file is not linked to theorem metadata`
+    };
+  }
+
+  if (policy.ownModule === imported) {
+    return {
+      allowed: true,
+      warning: proofSurfaceImportWarning({ imported, rel })
+    };
+  }
+
+  if (policy.authorized.modules.has(imported) || [...policy.authorized.prefixes].some((prefix) => imported === prefix || imported.startsWith(`${prefix}.`))) {
+    return {
+      allowed: true,
+      warning: proofSurfaceImportWarning({ imported, rel })
+    };
+  }
+
+  return {
+    allowed: false,
+    error: `${rel} imports surface module ${imported}, but theorem ${policy.theorem} only allows its own surface theorem module and modules listed in that entry's usedSurfaceFiles metadata`
+  };
+}
+
 function hasAllowedImportPrefix(imported) {
   return allowedImportPrefixes.some((prefix) => {
     const normalized = String(prefix ?? "").trim();
@@ -294,6 +324,52 @@ function authorizedSurfaceImportsBySurfaceFile() {
     byFile.set(rel, authorized);
   }
   return byFile;
+}
+
+function proofSurfacePolicyByProofFile() {
+  const byFile = new Map();
+  for (const proof of meta.proofs ?? []) {
+    if (isConjectureProofEntry(proof) || !proof.proofFile || !proof.theorem) {
+      continue;
+    }
+
+    const theoremNamespace = namespaceOfDeclaration(proof.theorem);
+    const entry = surfaceEntryByName.get(theoremNamespace);
+    const ownModule = entry ? surfaceModuleForEntry(entry) : null;
+    byFile.set(normalizePath(proof.proofFile), {
+      theorem: proof.theorem,
+      entry,
+      ownModule,
+      authorized: authorizedSurfaceImportsForEntry(entry)
+    });
+  }
+  return byFile;
+}
+
+function authorizedSurfaceImportsForEntry(entry) {
+  const authorized = {
+    modules: new Set(),
+    prefixes: new Set(),
+    definitions: new Set()
+  };
+
+  for (const used of entry?.usedSurfaceFiles ?? []) {
+    const moduleName = moduleFromSurfaceFile(used.surfaceFile);
+    if (moduleName) {
+      authorized.modules.add(moduleName);
+    }
+
+    const definition = stringValue(used.definition);
+    if (definition) {
+      authorized.definitions.add(definition);
+      const namespace = namespaceRootForDefinition(definition) ?? namespaceRootForSlug(used.slug);
+      if (namespace) {
+        authorized.prefixes.add(`${namespace}.Surface`);
+      }
+    }
+  }
+
+  return authorized;
 }
 
 function authorizedSurfaceNamespaces() {

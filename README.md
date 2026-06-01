@@ -27,7 +27,7 @@ When `lml test` runs, the checker asks Lean to compare the compiled types of eac
 
 At the end of the import workflow, a final-only rewritten proof build runs in an isolated temporary copy. It runs `lake update`, rewrites literal `.Surface.` references to `.Proofs.` references in the copied package and downloaded Lake packages, runs `lake clean`, then runs `lake build`. The check rejects `sorry`/`admit` in the rewritten build and asks Lean to verify that declared axioms and proof-target axiom dependencies have only the same types as the constants listed in `lml-env.json` at `checks.allowedMathlibAxioms`, currently `propext`, `Quot.sound`, and `Classical.choice`.
 
-Surface files may always import other surface modules from the same submission package. Surface imports from other packages or namespaces must be justified by the current surface entry's `usedSurfaceFiles` metadata, and the referenced declaration must live in a different namespace from the current surface entry. Proof files may import accepted proof or surface dependencies, but those imports are reported as warnings.
+Surface files may always import other surface modules from the same submission package. Surface imports from other packages or namespaces must be justified by the current surface entry's `usedSurfaceFiles` metadata, and the referenced declaration must live in a different namespace from the current surface entry. A theorem proof file may import its own surface theorem module, but any other surface imports must be justified by that theorem surface entry's `usedSurfaceFiles` metadata. Accepted proof package dependencies are still reported as warnings.
 
 ## CLI Tooling
 
