@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Final import-stage check: build the proof package in an isolated copy after
-// rewriting Surface namespace references to Proofs references.
+// removing theorem surface declarations and rewriting theorem references to proofs.
 import { spawnSync } from "node:child_process";
 import {
   cpSync,
@@ -12,12 +12,13 @@ import {
   writeFileSync
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, extname, join, relative, sep } from "node:path";
+import { basename, dirname, extname, join, relative, sep } from "node:path";
 import lmlEnv from "../../lml-env.json" with { type: "json" };
 import {
   isConjectureProofEntry,
   loadContext,
   maxBuildOutputBytes,
+  parseMetaYaml,
   proofConstantForTheorem,
   proofNamespaceForTheorem,
   report,
@@ -46,7 +47,8 @@ try {
     errors.push("lml-env.json checks.allowedMathlibAxioms must list at least one Lean axiom name");
   } else {
     runLake(["update"], "lake update");
-    rewriteSurfaceReferences();
+    removeSurfaceTheoremDeclarations();
+    rewriteProofTheoremReferences();
     runLake(["clean"], "lake clean");
     const build = runLake(["build"], "lake build");
     checkBuildOutputForSorry(build);
@@ -94,15 +96,42 @@ function runLake(args, label) {
   return result;
 }
 
-function rewriteSurfaceReferences() {
+function removeSurfaceTheoremDeclarations() {
+  let changed = 0;
+  for (const { root, meta } of metadataContexts()) {
+    for (const entry of meta.surfaceEntries ?? []) {
+      if (entry.type !== "Theorem" || !entry.folder) {
+        continue;
+      }
+
+      const surfaceFile = join(root, entry.folder, "Surface.lean");
+      if (!existsSync(surfaceFile)) {
+        continue;
+      }
+
+      const before = readFileSync(surfaceFile, "utf8");
+      const after = stripTheoremDeclarations(before);
+      if (after !== before) {
+        writeFileSync(surfaceFile, after, "utf8");
+        changed += 1;
+      }
+    }
+  }
+
+  if (changed === 0) {
+    warnings.push("no Surface.Theorem declarations were removed before the final proof build");
+  }
+}
+
+function rewriteProofTheoremReferences() {
   let changed = 0;
   for (const file of walkFilesIncludingLake(isolatedPackageRoot)) {
-    if (!isRewritableTextFile(file)) {
+    if (!isProofSideLeanFile(file)) {
       continue;
     }
 
     const before = readFileSync(file, "utf8");
-    const after = before.replace(/\.Surface\./g, ".Proofs.");
+    const after = before.replace(/\.Surface\.Theorem\./g, ".Proofs.Theorem.");
     if (after !== before) {
       writeFileSync(file, after, "utf8");
       changed += 1;
@@ -110,8 +139,36 @@ function rewriteSurfaceReferences() {
   }
 
   if (changed === 0) {
-    warnings.push("no literal .Surface. references were rewritten before the final proof build");
+    warnings.push("no proof-side .Surface.Theorem. references were rewritten before the final proof build");
   }
+}
+
+function stripTheoremDeclarations(source) {
+  const lines = source.split(/\r?\n/);
+  const kept = [];
+  let skipping = false;
+
+  for (const line of lines) {
+    if (!skipping && /^(?:\s*)(?:protected\s+|private\s+)?(?:axiom|theorem)\s+[A-Za-z_][A-Za-z0-9_']*\b/.test(line)) {
+      while (kept.at(-1)?.trim().startsWith("@[")) {
+        kept.pop();
+      }
+      skipping = true;
+      continue;
+    }
+
+    if (skipping) {
+      if (/^\s*end(?:\s+.+)?\s*$/.test(line)) {
+        skipping = false;
+        kept.push(line);
+      }
+      continue;
+    }
+
+    kept.push(line);
+  }
+
+  return kept.join("\n");
 }
 
 function walkFilesIncludingLake(root) {
@@ -121,13 +178,27 @@ function walkFilesIncludingLake(root) {
   });
 }
 
-function isRewritableTextFile(file) {
-  const extension = extname(file);
-  return (
-    [".lean", ".json", ".toml", ".yaml", ".yml", ".md", ".txt"].includes(extension) ||
-    basename(file) === "lakefile.lean" ||
-    basename(file) === "lean-toolchain"
-  );
+function isProofSideLeanFile(file) {
+  if (extname(file) !== ".lean") {
+    return false;
+  }
+  const rel = relativePath(isolatedPackageRoot, file);
+  return !rel.split("/").includes("surface-package") && !isIgnoredLakePackage(rel.split("/")[2] ?? "");
+}
+
+function metadataContexts() {
+  const contexts = [{ root: isolatedPackageRoot, meta: context.meta }];
+  for (const file of walkFilesIncludingLake(isolatedPackageRoot)) {
+    if (basename(file) !== "meta.yaml") {
+      continue;
+    }
+    const root = dirname(file);
+    if (root === isolatedPackageRoot) {
+      continue;
+    }
+    contexts.push({ root, meta: parseMetaYaml(readFileSync(file, "utf8")) });
+  }
+  return contexts;
 }
 
 function checkBuildOutputForSorry(result) {
@@ -183,6 +254,7 @@ function isIgnoredLakePackage(packageName) {
 function checkCompiledAxioms() {
   const proofTargets = proofTargetNames();
   const declaredAxioms = declaredAxiomNames();
+  const allowedConjectureAxioms = declaredAxioms.filter((name) => name.includes(".Surface.Conjecture."));
   if (proofTargets.length === 0 && declaredAxioms.length === 0) {
     warnings.push("no proof targets or declared axioms were found for final axiom inspection");
     return;
@@ -190,7 +262,11 @@ function checkCompiledAxioms() {
 
   const modules = builtModuleNames();
   const inspector = join(isolatedPackageRoot, "FinalProofBuildInspect.lean");
-  writeFileSync(inspector, finalProofBuildInspector({ modules, proofTargets, declaredAxioms, allowedMathlibAxioms }), "utf8");
+  writeFileSync(
+    inspector,
+    finalProofBuildInspector({ modules, proofTargets, declaredAxioms, allowedMathlibAxioms, allowedConjectureAxioms }),
+    "utf8"
+  );
 
   const result = spawnSync("lake", ["lean", inspector], {
     cwd: isolatedPackageRoot,
@@ -322,7 +398,7 @@ function isIgnoredModule(moduleName) {
   ].some((prefix) => moduleName === prefix || moduleName.startsWith(`${prefix}.`));
 }
 
-function finalProofBuildInspector({ modules, proofTargets, declaredAxioms, allowedMathlibAxioms }) {
+function finalProofBuildInspector({ modules, proofTargets, declaredAxioms, allowedMathlibAxioms, allowedConjectureAxioms }) {
   const imports = modules.map((moduleName) => `import ${moduleName}`).join("\n");
   return `import Lean
 import Lean.Util.CollectAxioms
@@ -331,6 +407,7 @@ ${imports}
 open Lean
 
 def allowedBaseAxioms : Array Name := ${leanNameArray(allowedMathlibAxioms)}
+def allowedConjectureAxioms : Array Name := ${leanNameArray(allowedConjectureAxioms)}
 def checkedProofTargets : Array Name := ${leanNameArray(proofTargets)}
 def checkedDeclaredAxioms : Array Name := ${leanNameArray(declaredAxioms)}
 
@@ -355,6 +432,8 @@ def isAllowedBaseAxiomByType (name : Name) : CoreM Bool := do
   | _ => return false
 
 def checkAxiom (label : String) (owner : Name) (axiomName : Name) : CoreM Bool := do
+  if allowedConjectureAxioms.contains axiomName then
+    return false
   if (← isAllowedBaseAxiomByType axiomName) then
     return false
   let axiomInfo <- getConstInfo axiomName
