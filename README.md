@@ -34,6 +34,7 @@ lml logout
 lml init
 lml update
 lml test path/to/meta.yaml
+lml submit path/to/meta.yaml
 lml create-paper
 ```
 
@@ -41,6 +42,13 @@ The `test` command runs `.github-actions/test/run-all.mjs` using the metadata fi
 
 ```sh
 lml test path/to/meta.yaml
+```
+
+The `submit` command runs the submission checks first, then dispatches `.github/workflows/submit.yml` for the current repository, branch, commit, and metadata file:
+
+```sh
+lml submit path/to/meta.yaml
+lml submit --no-prior-test path/to/meta.yaml
 ```
 
 ## Submission Workflow

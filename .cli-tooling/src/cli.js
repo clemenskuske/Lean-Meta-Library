@@ -3,6 +3,7 @@ import { createPaper } from "./commands/create-paper.js";
 import { init } from "./commands/init.js";
 import { login } from "./commands/login.js";
 import { logout } from "./commands/logout.js";
+import { submit } from "./commands/submit.js";
 import { test } from "./commands/test.js";
 import { update } from "./commands/update.js";
 
@@ -12,6 +13,7 @@ const commands = new Map([
   ["init", init],
   ["update", update],
   ["test", test],
+  ["submit", submit],
   ["create-paper", createPaper]
 ]);
 
@@ -27,6 +29,8 @@ Commands:
   init                  Check local tooling and sync repository metadata.
   update                Run the same checks and sync as init.
   test [meta.yaml]      Run submission checks from .github-actions/test.
+  submit [meta.yaml]    Run checks and dispatch the submit GitHub workflow.
+                         Use --no-prior-test to skip checks.
   create-paper [slug]   Create a starter submission package.
 
 Options:
