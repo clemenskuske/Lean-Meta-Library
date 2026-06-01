@@ -1,0 +1,317 @@
+name: Import Submission
+
+on:
+  issues:
+    types:
+      - opened
+      - labeled
+      - edited
+      - reopened
+
+concurrency:
+  group: submission-import
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Check submitted package
+    if: contains(github.event.issue.labels.*.name, 'submission')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+    outputs:
+      repo-url: ${{ steps.issue.outputs.repo-url }}
+      source-branch: ${{ steps.issue.outputs.source-branch }}
+      source-commit: ${{ steps.issue.outputs.source-commit }}
+      meta-path: ${{ steps.issue.outputs.meta-path }}
+
+    steps:
+      - name: Checkout Lean Meta Library
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Set up Lean
+        run: |
+          curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Read submission issue
+        id: issue
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+        run: |
+          node <<'NODE'
+          const { writeFileSync } = require("node:fs");
+
+          const body = process.env.ISSUE_BODY ?? "";
+          const fields = readFields(body);
+          const repoUrl = fields["Repo Url"] ?? fields["Git Repo"];
+          const sourceBranch = fields["Source Branch"];
+          const sourceCommit = fields["Source Commit"];
+          const metaPath = fields["Metadata File"] ?? "meta.yaml";
+
+          requireValue("Repo Url", repoUrl);
+          requireValue("Source Branch", sourceBranch);
+          requireValue("Source Commit", sourceCommit);
+
+          if (!/^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(?:\.git)?$/.test(repoUrl)) {
+            throw new Error(`Unsupported repository URL: ${repoUrl}`);
+          }
+          if (!/^[A-Za-z0-9._/-]+$/.test(sourceBranch) || sourceBranch.includes("..")) {
+            throw new Error(`Unsupported source branch: ${sourceBranch}`);
+          }
+          if (!/^[0-9a-fA-F]{40}$/.test(sourceCommit)) {
+            throw new Error(`Source Commit must be a full 40-character SHA: ${sourceCommit}`);
+          }
+          if (metaPath.startsWith("/") || metaPath.split("/").includes("..")) {
+            throw new Error(`Metadata path must be relative to the submitted repository: ${metaPath}`);
+          }
+
+          appendOutput("repo-url", repoUrl);
+          appendOutput("source-branch", sourceBranch);
+          appendOutput("source-commit", sourceCommit);
+          appendOutput("meta-path", metaPath);
+
+          function readFields(text) {
+            const values = {};
+            for (const line of text.split(/\r?\n/)) {
+              const match = line.match(/^\s*-?\s*([^:]+):\s*(.*?)\s*$/);
+              if (match) {
+                values[match[1].trim()] = match[2].trim();
+              }
+            }
+            return values;
+          }
+
+          function requireValue(name, value) {
+            if (!value) {
+              throw new Error(`Submission issue is missing ${name}.`);
+            }
+          }
+
+          function appendOutput(name, value) {
+            writeFileSync(process.env.GITHUB_OUTPUT, `${name}=${value}\n`, { flag: "a" });
+          }
+          NODE
+
+      - name: Checkout submitted repository
+        env:
+          REPO_URL: ${{ steps.issue.outputs.repo-url }}
+          SOURCE_BRANCH: ${{ steps.issue.outputs.source-branch }}
+          SOURCE_COMMIT: ${{ steps.issue.outputs.source-commit }}
+        run: |
+          git clone --filter=blob:none --single-branch --branch "$SOURCE_BRANCH" "$REPO_URL" submission
+          cd submission
+          git fetch --depth=1 origin "$SOURCE_COMMIT"
+          git checkout --detach "$SOURCE_COMMIT"
+          test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
+
+      - name: Run submission checks
+        env:
+          META_PATH: ${{ steps.issue.outputs.meta-path }}
+        run: |
+          node "$GITHUB_WORKSPACE/.github-actions/test/run-all.mjs" "$GITHUB_WORKSPACE/submission/$META_PATH"
+
+      - name: Stage checked metadata
+        env:
+          META_PATH: ${{ steps.issue.outputs.meta-path }}
+        run: |
+          mkdir -p checked-metadata
+          cp "submission/$META_PATH" checked-metadata/meta.yaml
+
+      - name: Upload checked metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: checked-submission-metadata
+          path: checked-metadata/meta.yaml
+          if-no-files-found: error
+
+  import:
+    name: Import submission metadata
+    needs: check
+    if: contains(github.event.issue.labels.*.name, 'submission')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+
+    steps:
+      - name: Checkout Lean Meta Library
+        uses: actions/checkout@v4
+
+      - name: Download checked metadata
+        uses: actions/download-artifact@v4
+        with:
+          name: checked-submission-metadata
+          path: checked-submission
+
+      - name: Update submissions log
+        env:
+          REPO_URL: ${{ needs.check.outputs.repo-url }}
+          SOURCE_BRANCH: ${{ needs.check.outputs.source-branch }}
+          SOURCE_COMMIT: ${{ needs.check.outputs.source-commit }}
+          META_PATH: ${{ needs.check.outputs.meta-path }}
+          ISSUE_ID: ${{ github.event.issue.id }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          ISSUE_USER_ID: ${{ github.event.issue.user.id }}
+          ISSUE_USER_LOGIN: ${{ github.event.issue.user.login }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { existsSync, readFileSync, writeFileSync } from "node:fs";
+          import { dirname } from "node:path";
+          import { parseMetaYaml } from "./.github-actions/test/common.mjs";
+
+          const metaPath = "checked-submission/meta.yaml";
+          if (!existsSync(metaPath)) {
+            throw new Error(`Checked metadata artifact not found: ${metaPath}`);
+          }
+
+          const meta = parseMetaYaml(readFileSync(metaPath, "utf8"));
+          const repoUrl = process.env.REPO_URL;
+          const sourceBranch = process.env.SOURCE_BRANCH;
+          const sourceCommit = process.env.SOURCE_COMMIT;
+          const metadataPath = process.env.META_PATH;
+          const row = {
+            ...meta,
+            "Repo Url": repoUrl,
+            "Git Repo": repoUrl,
+            "Source Branch": sourceBranch,
+            "Source Commit": sourceCommit,
+            "Metadata File": metadataPath,
+            "Surface Folder": surfaceFolder(meta, metadataPath),
+            "User Id": Number(process.env.ISSUE_USER_ID),
+            "User Login": process.env.ISSUE_USER_LOGIN,
+            "Issue Id": Number(process.env.ISSUE_ID),
+            "Issue Number": Number(process.env.ISSUE_NUMBER),
+            "Issue Url": process.env.ISSUE_URL,
+            "Imported At": new Date().toISOString()
+          };
+
+          const logPath = "submissions.jsonl";
+          const existingText = existsSync(logPath) ? readFileSync(logPath, "utf8") : "";
+          const rows = existingText
+            .split(/\r?\n/)
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .map((line, index) => parseJsonLine(line, index + 1));
+
+          const index = rows.findIndex((candidate) => isSameSubmission(candidate, row));
+          if (index >= 0) {
+            rows[index] = row;
+          } else {
+            rows.push(row);
+          }
+
+          writeFileSync(logPath, rows.map((item) => JSON.stringify(item)).join("\n") + "\n");
+
+          function surfaceFolder(metadata, metadataPathValue) {
+            if (metadata.surfaceLakefilePath) {
+              return dirname(metadata.surfaceLakefilePath).replace(/^\.$/, "");
+            }
+            const firstEntryFolder = metadata.surfaceEntries?.find((entry) => entry.folder)?.folder;
+            if (firstEntryFolder) {
+              return firstEntryFolder.split("/").slice(0, -1).join("/") || firstEntryFolder;
+            }
+            return dirname(metadataPathValue).replace(/^\.$/, "");
+          }
+
+          function parseJsonLine(line, lineNumber) {
+            try {
+              return JSON.parse(line);
+            } catch (error) {
+              throw new Error(`${logPath}:${lineNumber} is not valid JSON: ${error.message}`);
+            }
+          }
+
+          function isSameSubmission(left, right) {
+            return (
+              left["Issue Id"] === right["Issue Id"] ||
+              left["Issue Number"] === right["Issue Number"] ||
+              (
+                normalize(left["Repo Url"] ?? left["Git Repo"]) === normalize(right["Repo Url"]) &&
+                left["Metadata File"] === right["Metadata File"]
+              )
+            );
+          }
+
+          function normalize(value) {
+            return String(value ?? "").trim().replace(/\.git$/i, "").replace(/\/$/g, "");
+          }
+          NODE
+
+      - name: Commit submissions log
+        run: |
+          if git diff --quiet -- submissions.jsonl; then
+            echo "submissions.jsonl already contains this submission."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add submissions.jsonl
+          git commit -m "Import submission metadata"
+          git push origin HEAD:"$GITHUB_REF_NAME"
+
+      - name: Close imported issue
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          node <<'NODE'
+          const { writeFileSync } = require("node:fs");
+
+          const token = process.env.GITHUB_TOKEN;
+          const repository = process.env.GITHUB_REPOSITORY;
+          const issueNumber = process.env.ISSUE_NUMBER;
+          const apiBase = "https://api.github.com";
+
+          main().catch((error) => {
+            console.error(error.message);
+            process.exit(1);
+          });
+
+          async function main() {
+            await github("POST", `/repos/${repository}/issues/${issueNumber}/comments`, {
+              body: "Submission checks passed and the metadata was imported into `submissions.jsonl`."
+            });
+            await github("PATCH", `/repos/${repository}/issues/${issueNumber}`, {
+              state: "closed",
+              state_reason: "completed"
+            });
+
+            if (process.env.GITHUB_STEP_SUMMARY) {
+              writeFileSync(process.env.GITHUB_STEP_SUMMARY, `Imported and closed issue #${issueNumber}.\n`, {
+                flag: "a"
+              });
+            }
+          }
+
+          async function github(method, path, body) {
+            const response = await fetch(`${apiBase}${path}`, {
+              method,
+              headers: {
+                Accept: "application/vnd.github+json",
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
+                "X-GitHub-Api-Version": "2022-11-28"
+              },
+              body: body ? JSON.stringify(body) : undefined
+            });
+
+            if (!response.ok) {
+              const text = await response.text();
+              throw new Error(`${method} ${path} failed with ${response.status}: ${text}`);
+            }
+
+            return response.json();
+          }
+          NODE
