@@ -16,6 +16,12 @@ Agents should treat the metadata file as the submission source of truth. The Lea
 
 ## How To Use `submissions.jsonl`
 
+```sh
+lml update
+```
+
+Start by syncing the local registry. `lml update` refreshes `submissions.jsonl` and the agent guide from the Lean Meta Library repository configured for the checkout. Use `lml init` instead when setting up a checkout for the first time; it performs the same metadata sync after checking local tooling.
+
 `submissions.jsonl` is the import registry. It is a JSON Lines file: each non-empty line is one complete JSON object for one imported submission.
 
 Read it when you need to know what has already been imported, what surface package a later submission may depend on, or which repository, branch, commit, metadata path, and surface folder define an imported surface.
@@ -32,7 +38,7 @@ Important fields include:
 
 For dependency work, the registry is the authorization source. A later submission may use at most the imported surface package authorized by its metadata row, and its Lake dependency must point to the recorded repository, source commit, and surface folder. Downstream Lean files should import only the required `.Surface` package from that dependency.
 
-Do not treat `submissions.jsonl` as a scratch log. Import automation normally creates or updates rows after checks pass. If you must edit it by hand, preserve JSON Lines format: one compact valid JSON object per line, no trailing commas, no pretty-printed multi-line objects.
+Do not change `submissions.jsonl` by hand. It is synced registry state, and import automation or `lml update` may recreate or overwrite it from the canonical repository state at any time.
 
 ## What The CLI Can Do
 
@@ -77,8 +83,8 @@ That command prints the guide for turning a Lean project into a checked Lean Met
 1. Read the local agent instructions and project README files.
 2. Inspect the metadata file before editing submission files.
 3. If preparing a new submission, ask the user to confirm the title, namespace slug, abstract, public surface entries, theorem/conjecture split, and proof sources.
-4. Use `submissions.jsonl` only for imported-surface context and dependency authorization.
-5. Run `lml test --meta=path/to/meta.yaml` before calling submission work complete.
-6. Use `lml submission-status path/to/meta.yaml` when the user wants to know whether a submitted package has been uploaded, tested, imported, or changed since submission.
+4. `lml update`: refresh `submissions.jsonl`, then use it only for imported-surface context and dependency authorization.
+5. `lml test --meta=path/to/meta.yaml`: run this before calling submission work complete.
+6. `lml submission-status path/to/meta.yaml`: run this when the user wants to know whether a submitted package has been uploaded, tested, imported, or changed since submission.
 
 Keep the package small and reviewable. Prefer the minimal surface and proof code needed for the user-approved mathematical submission over copying a whole source project into the submission package.
