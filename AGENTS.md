@@ -49,7 +49,7 @@ Surface files may always import other surface modules from the same submission p
 
 ## Submit workflow
 
-The `.github/workflows/submit.yml` workflow creates or updates a GitHub issue for a submission metadata file. It reads `submissionIssueNumber` from the metadata file when present, otherwise creates a new issue, labels it `submission`, writes `submissionIssueNumber` and `submissionIssueUrl` back to the metadata file, and commits that metadata update to the source branch. The issue body records the current repository URL, source branch, source commit, and metadata file path.
+The `.github/workflows/submit.yml` workflow creates or updates a GitHub issue for a submission metadata file. It reads `submissionIssueNumber` from the metadata file when present, otherwise creates a new issue, labels it `submission`, writes `submissionIssueNumber` and `submissionIssueUrl` back to the metadata file, and commits that metadata update to the source branch. The issue title is the submission title, and the issue body starts with the submission abstract before recording the submitting account login, current repository URL, source branch, source commit, and metadata file path.
 
 ## Submission status command
 
@@ -61,7 +61,7 @@ The CLI `agent-introduction` command prints a placeholder lorem ipsum agent intr
 
 ## Import submission workflow
 
-The `.github/workflows/import-submission.yml` workflow runs when an issue labeled `submission` is opened, labeled, edited, or reopened. It reads the repository URL, source branch, source commit, and metadata file path from the issue body, checks out that exact commit, runs the first-run checks from `.github-actions/test/` against the metadata file at that path, then adds or updates the matching row in `submissions.jsonl`. Imported rows include the parsed metadata plus repository, branch, commit, metadata path, surface folder, issue id/number/url, and submitting user id/login. After a successful import, the workflow comments on and closes the issue.
+The `.github/workflows/import-submission.yml` workflow runs when an issue labeled `submission` is opened, labeled, edited, or reopened. It reads the repository URL, source branch, source commit, metadata file path, and submitted-by login from the issue body, checks out that exact commit, runs the first-run checks from `.github-actions/test/` against the metadata file at that path, then adds or updates the matching row in `submissions.jsonl`. Imported rows include the parsed metadata plus repository, branch, commit, metadata path, surface folder, issue id/number/url, and submitting user id/login. After a successful import, the workflow comments on and closes the issue.
 
 Warning: the import workflow currently passes `GITHUB_TOKEN` as a Git HTTP extra header so it can check out private submitted repositories. This is acceptable temporarily, but it should be removed later when the import path no longer needs private-repository checkout support or has a better long-term authorization design.
 

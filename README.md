@@ -91,9 +91,9 @@ lml submission-status path/to/meta.yaml
 
 ## Submission Workflow
 
-The `Submit` GitHub Actions workflow can be run manually with a metadata path. It creates a submission issue when `submissionIssueNumber` is missing, or updates that issue when the field is present. The workflow labels the issue `submission`, records the repository URL, source branch, source commit, and metadata file path in the issue body, then writes `submissionIssueNumber` and `submissionIssueUrl` back to the metadata file.
+The `Submit` GitHub Actions workflow can be run manually with a metadata path. It creates a submission issue when `submissionIssueNumber` is missing, or updates that issue when the field is present. The workflow labels the issue `submission`, names it with the submission title, starts the issue body with the submission abstract, records the submitting account login plus the repository URL, source branch, source commit, and metadata file path, then writes `submissionIssueNumber` and `submissionIssueUrl` back to the metadata file.
 
-The `Import Submission` workflow starts from issues labeled `submission`. It checks out the submitted repository at the recorded branch and commit, runs `.github-actions/test/run-all.mjs` against the metadata file path from the issue, then adds or updates the corresponding `submissions.jsonl` row and closes the issue.
+The `Import Submission` workflow starts from issues labeled `submission`. It checks out the submitted repository at the recorded branch and commit, runs `.github-actions/test/run-all.mjs` against the metadata file path from the issue, then adds or updates the corresponding `submissions.jsonl` row with the submitted-by account and closes the issue.
 
 For a one-off run without linking:
 

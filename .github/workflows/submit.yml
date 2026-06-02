@@ -48,10 +48,12 @@ jobs:
           META_PATH: ${{ inputs.meta_path }}
           SOURCE_BRANCH: ${{ github.ref_name }}
           SOURCE_COMMIT: ${{ github.sha }}
+          SUBMITTER_ID: ${{ github.actor_id }}
+          SUBMITTER_LOGIN: ${{ github.actor }}
         run: |
           node <<'NODE'
           const { existsSync, readFileSync, writeFileSync } = require("node:fs");
-          const { resolve } = require("node:path");
+          const { dirname, resolve } = require("node:path");
 
           const token = process.env.GITHUB_TOKEN;
           const repository = process.env.GITHUB_REPOSITORY;
@@ -61,12 +63,15 @@ jobs:
           const metaPath = process.env.META_PATH || defaultMetadataPath;
           const sourceBranch = process.env.SOURCE_BRANCH;
           const sourceCommit = process.env.SOURCE_COMMIT;
+          const submitterLogin = process.env.SUBMITTER_LOGIN;
+          const submitterId = process.env.SUBMITTER_ID;
           const repoUrl = `${serverUrl}/${repository}`;
           const label = "submission";
           const [owner, repo] = repository.split("/");
           const apiBase = "https://api.github.com";
           const issueNumberField = "submissionIssueNumber";
           const issueUrlField = "submissionIssueUrl";
+          let issueAbstract = null;
 
           main().catch((error) => {
             console.error(error.message);
@@ -86,7 +91,9 @@ jobs:
             const issueNumber = issueNumberValue ? Number.parseInt(issueNumberValue, 10) : null;
             const paperTitle = readTopLevelScalar(metaText, "paperTitle");
             const namespaceSlug = readTopLevelScalar(metaText, "namespaceSlug");
-            const title = `Submission: ${paperTitle || namespaceSlug || metaPath}`;
+            const abstractUrl = readTopLevelScalar(metaText, "abstractUrl");
+            const title = paperTitle || namespaceSlug || metaPath;
+            issueAbstract = readAbstract(metaPath, abstractUrl);
 
             await ensureLabel();
 
@@ -117,16 +124,35 @@ jobs:
           }
 
           function issueBody() {
-            return [
+            const lines = [
+              issueAbstract,
+              "",
               "<!-- lean-meta-library:submission -->",
               "",
-              "## Submission",
+              "## Source",
               "",
+              `- Submitted By: ${submitterLogin || "unknown"}`,
               `- Repo Url: ${repoUrl}`,
               `- Source Branch: ${sourceBranch}`,
               `- Source Commit: ${sourceCommit}`,
               `- Metadata File: ${metaPath}`
-            ].join("\n");
+            ];
+            if (submitterId) {
+              lines.splice(lines.indexOf(`- Repo Url: ${repoUrl}`), 0, `- Submitter Id: ${submitterId}`);
+            }
+            return lines.join("\n");
+          }
+
+          function readAbstract(metadataPath, abstractUrl) {
+            if (!abstractUrl) {
+              return "_No abstract file is recorded in the submission metadata._";
+            }
+            const abstractPath = resolve(dirname(metadataPath), abstractUrl);
+            if (!existsSync(abstractPath)) {
+              return `_Abstract file not found: ${abstractUrl}_`;
+            }
+            const text = readFileSync(abstractPath, "utf8").trim();
+            return text || "_The recorded abstract file is empty._";
           }
 
           function readTopLevelScalar(text, key) {

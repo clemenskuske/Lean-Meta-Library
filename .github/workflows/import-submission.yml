@@ -25,6 +25,8 @@ jobs:
       source-branch: ${{ steps.issue.outputs.source-branch }}
       source-commit: ${{ steps.issue.outputs.source-commit }}
       meta-path: ${{ steps.issue.outputs.meta-path }}
+      submitter-id: ${{ steps.issue.outputs.submitter-id }}
+      submitter-login: ${{ steps.issue.outputs.submitter-login }}
 
     steps:
       - name: Checkout Lean Meta Library
@@ -59,6 +61,8 @@ jobs:
           const sourceBranch = fields["Source Branch"];
           const sourceCommit = fields["Source Commit"];
           const metaPath = fields["Metadata File"] ?? defaultMetadataPath;
+          const submitterId = fields["Submitter Id"] ?? "";
+          const submitterLogin = normalizeLogin(fields["Submitted By"] ?? fields["Submitter Login"] ?? "");
 
           requireValue("Repo Url", repoUrl);
           requireValue("Source Branch", sourceBranch);
@@ -81,6 +85,8 @@ jobs:
           appendOutput("source-branch", sourceBranch);
           appendOutput("source-commit", sourceCommit);
           appendOutput("meta-path", metaPath);
+          appendOutput("submitter-id", submitterId);
+          appendOutput("submitter-login", submitterLogin);
 
           function readFields(text) {
             const values = {};
@@ -97,6 +103,10 @@ jobs:
             if (!value) {
               throw new Error(`Submission issue is missing ${name}.`);
             }
+          }
+
+          function normalizeLogin(value) {
+            return String(value ?? "").trim().replace(/^@/, "");
           }
 
           function appendOutput(name, value) {
@@ -171,6 +181,8 @@ jobs:
           SOURCE_BRANCH: ${{ needs.check.outputs.source-branch }}
           SOURCE_COMMIT: ${{ needs.check.outputs.source-commit }}
           META_PATH: ${{ needs.check.outputs.meta-path }}
+          SUBMITTER_ID: ${{ needs.check.outputs.submitter-id }}
+          SUBMITTER_LOGIN: ${{ needs.check.outputs.submitter-login }}
           ISSUE_ID: ${{ github.event.issue.id }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           ISSUE_URL: ${{ github.event.issue.html_url }}
@@ -192,6 +204,8 @@ jobs:
           const sourceBranch = process.env.SOURCE_BRANCH;
           const sourceCommit = process.env.SOURCE_COMMIT;
           const metadataPath = process.env.META_PATH;
+          const submitterId = process.env.SUBMITTER_ID || process.env.ISSUE_USER_ID;
+          const submitterLogin = process.env.SUBMITTER_LOGIN || process.env.ISSUE_USER_LOGIN;
           const row = {
             ...meta,
             "Repo Url": repoUrl,
@@ -200,8 +214,8 @@ jobs:
             "Source Commit": sourceCommit,
             "Metadata File": metadataPath,
             "Surface Folder": surfaceFolder(meta, metadataPath),
-            "User Id": Number(process.env.ISSUE_USER_ID),
-            "User Login": process.env.ISSUE_USER_LOGIN,
+            "User Id": Number(submitterId),
+            "User Login": submitterLogin,
             "Issue Id": Number(process.env.ISSUE_ID),
             "Issue Number": Number(process.env.ISSUE_NUMBER),
             "Issue Url": process.env.ISSUE_URL,
