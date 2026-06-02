@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { agentIntroduction } from "./commands/agent-introduction.js";
-import { agentReadme } from "./commands/agent-readme.js";
+import { agentSubmissionGuide } from "./commands/agent-submission-guide.js";
 import { createPaper } from "./commands/create-paper.js";
 import { init } from "./commands/init.js";
 import { login } from "./commands/login.js";
@@ -12,7 +12,7 @@ import { update } from "./commands/update.js";
 
 const commands = new Map([
   ["agent-introduction", agentIntroduction],
-  ["agent-readme", agentReadme],
+  ["agent-submission-guide", agentSubmissionGuide],
   ["login", login],
   ["logout", logout],
   ["init", init],
@@ -31,7 +31,8 @@ Usage:
 
 Commands:
   agent-introduction    Print the Lean Meta Library startup guide for agents.
-  agent-readme          Print the paper-submission readiness guide for agents.
+  agent-submission-guide
+                         Print the paper-submission readiness guide for agents.
   login                 Login to GitHub with the GitHub CLI.
   logout                Logout from GitHub with the GitHub CLI.
   init                  Check local tooling and sync repository metadata.

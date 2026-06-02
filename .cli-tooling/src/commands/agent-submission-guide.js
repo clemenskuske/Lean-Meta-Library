@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const commandDir = dirname(fileURLToPath(import.meta.url));
 
-export async function agentReadme({ cwd }) {
+export async function agentSubmissionGuide({ cwd }) {
   const candidates = [
     join(commandDir, "../../../agent-info/paper-submission-readiness-agent-guide.md"),
     join(cwd, "agent-info/paper-submission-readiness-agent-guide.md")

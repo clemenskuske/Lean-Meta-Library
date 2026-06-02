@@ -57,11 +57,11 @@ The CLI `submission-status` command reports whether a metadata file has a submis
 
 ## Agent introduction command
 
-The CLI `agent-introduction` command prints `agent-info/README.md`, the general Lean Meta Library startup guide for agents. That guide explains the submission model, how to read and preserve `submissions.jsonl`, what the CLI commands do, and points agents to `lml agent-readme` for the paper-submission readiness workflow.
+The CLI `agent-introduction` command prints `agent-info/README.md`, the general Lean Meta Library startup guide for agents. That guide explains the submission model, how to read and preserve `submissions.jsonl`, what the CLI commands do, and points agents to `lml agent-submission-guide` for the paper-submission readiness workflow.
 
-## Agent README command
+## Agent submission guide command
 
-The CLI `agent-readme` command prints `agent-info/paper-submission-readiness-agent-guide.md`, the guide for agents preparing an arbitrary Lean project as a Lean Meta Library paper submission with user-approved metadata, surface files, and proofs that should pass the local checks.
+The CLI `agent-submission-guide` command prints `agent-info/paper-submission-readiness-agent-guide.md`, the guide for agents preparing an arbitrary Lean project as a Lean Meta Library paper submission with user-approved metadata, surface files, and proofs that should pass the local checks.
 
 ## Import submission workflow
 

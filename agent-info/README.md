@@ -42,7 +42,7 @@ Common commands:
 
 ```sh
 lml agent-introduction
-lml agent-readme
+lml agent-submission-guide
 lml login
 lml logout
 lml init
@@ -56,7 +56,7 @@ lml submission-status path/to/meta.yaml
 The commands have these roles:
 
 - `agent-introduction`: print this startup guide.
-- `agent-readme`: print the detailed paper-submission readiness guide for agents.
+- `agent-submission-guide`: print the detailed paper-submission readiness guide for agents.
 - `login` and `logout`: manage GitHub CLI authentication for commands that need GitHub.
 - `init` and `update`: check local tooling and synchronize repository metadata.
 - `create-paper <slug>`: create a starter submission package that an agent can adapt with user-approved surface entries, metadata, and proofs.
@@ -67,7 +67,7 @@ The commands have these roles:
 When a user asks you to make an arbitrary Lean project submission ready, start with:
 
 ```sh
-lml agent-readme
+lml agent-submission-guide
 ```
 
 That command prints the guide for turning a Lean project into a checked Lean Meta Library submission. Use `lml create-paper <slug>` for the starter package, then replace the starter content with the user's actual title, abstract, surface declarations, proof files, and bibliographic metadata.
