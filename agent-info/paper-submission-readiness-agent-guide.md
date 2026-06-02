@@ -8,15 +8,17 @@ Assume the consuming agent has the Lean Meta Library CLI and the current `submis
 
 Do not infer the submitted paper surface from the source project alone. Build the submission together with the user. Ask what definitions, theorem statements, and conjectures should become the public surface, which results are required proofs, and which project details should stay private implementation.
 
-A submission is ready only when both conditions hold:
+A submission is ready only when all conditions hold:
 
 - The metadata and surface files represent what the user wants to submit.
 - The package passes `lml test --meta=<path-to-meta.yaml>`.
+- The user is pleased with the result.
 
 ## First Conversation With The User
 
 Before writing the submission package, gather these decisions from the user:
 
+- Check whether a PDF of the paper is present. If it is present, use it to answer the relevant metadata and surface-selection questions where possible; if it is not present, ask the user whether they can provide one.
 - The submission title, namespace slug, and short abstract.
 - Which Lean project folder, archive, or remote source is the starting point.
 - Which declarations should be public surface entries.
