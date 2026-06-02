@@ -59,6 +59,10 @@ The CLI `submission-status` command reports whether a metadata file has a submis
 
 The CLI `agent-introduction` command prints a placeholder lorem ipsum agent introduction.
 
+## Agent README command
+
+The CLI `agent-readme` command prints `agent-info/README.md`, the agent guide for preparing an arbitrary Lean project as a Lean Meta Library submission with user-approved metadata, surface files, and proofs that should pass the local checks.
+
 ## Import submission workflow
 
 The `.github/workflows/import-submission.yml` workflow runs when an issue labeled `submission` is opened, labeled, edited, or reopened. It reads the repository URL, source branch, source commit, metadata file path, and submitted-by login from the issue body, checks out that exact commit, runs the first-run checks from `.github-actions/test/` against the metadata file at that path, then adds or updates the matching row in `submissions.jsonl`. Imported rows include the parsed metadata plus repository, branch, commit, metadata path, surface folder, issue id/number/url, and submitting user id/login. After a successful import, the workflow comments on and closes the issue.

@@ -52,6 +52,7 @@ Common commands:
 
 ```sh
 lml agent-introduction
+lml agent-readme
 lml login
 lml logout
 lml init
@@ -61,6 +62,8 @@ lml submit path/to/meta.yaml
 lml submission-status path/to/meta.yaml
 lml create-paper
 ```
+
+The `agent-readme` command prints `agent-info/README.md`, the agent guide for turning an arbitrary Lean project into a submission package whose surface, metadata, and proofs are user-approved and checker-ready.
 
 The `test` command runs `.github-actions/test/run-all.mjs` using the metadata file as the source of submission information:
 

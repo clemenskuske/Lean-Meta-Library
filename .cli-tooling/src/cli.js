@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { agentIntroduction } from "./commands/agent-introduction.js";
+import { agentReadme } from "./commands/agent-readme.js";
 import { createPaper } from "./commands/create-paper.js";
 import { init } from "./commands/init.js";
 import { login } from "./commands/login.js";
@@ -11,6 +12,7 @@ import { update } from "./commands/update.js";
 
 const commands = new Map([
   ["agent-introduction", agentIntroduction],
+  ["agent-readme", agentReadme],
   ["login", login],
   ["logout", logout],
   ["init", init],
@@ -29,6 +31,7 @@ Usage:
 
 Commands:
   agent-introduction    Print a placeholder agent introduction.
+  agent-readme          Print the submission-ready project agent guide.
   login                 Login to GitHub with the GitHub CLI.
   logout                Logout from GitHub with the GitHub CLI.
   init                  Check local tooling and sync repository metadata.
