@@ -2,6 +2,18 @@
 
 Lean Meta Library workspace.
 
+## Beta CLI Package
+
+The beta CLI package is available as [lean-meta-library-cli.tgz](lean-meta-library-cli.tgz).
+
+For repository users who want only the npm package without cloning the repository:
+
+```sh
+gh api "repos/clemenskuske/Lean-Meta-Library/contents/lean-meta-library-cli.tgz?ref=main" --jq .content | base64 --decode > lean-meta-library-cli.tgz
+npm install -g ./lean-meta-library-cli.tgz
+lml --help
+```
+
 ## Project Environment
 
 Repository-level values that may change later but are fixed for all projects right now live in `lml-env.json`.
@@ -31,12 +43,11 @@ Surface files may always import other surface modules from the same submission p
 
 ## CLI Tooling
 
-The command line tool lives in `.cli-tooling`.
+The command line source lives in `.cli-tooling`; npm package metadata lives at the repository root.
 
 Install it locally from the repository root:
 
 ```sh
-cd .cli-tooling
 npm install
 npm link
 ```
@@ -103,6 +114,5 @@ The `Import Submission` workflow starts from issues labeled `submission`. It che
 For a one-off run without linking:
 
 ```sh
-cd .cli-tooling
-node ./src/cli.js --help
+npm run smoke
 ```
