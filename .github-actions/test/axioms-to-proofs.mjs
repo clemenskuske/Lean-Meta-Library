@@ -11,16 +11,18 @@ import {
   loadContext,
   maxBuildOutputBytes,
   proofConstantForTheorem,
-  proofModuleForFile,
   proofNamespaceForTheorem,
   readIfExists,
   report,
-  surfaceModuleForEntry,
   surfaceNamespaceForEntry
 } from "./common.mjs";
+import { lakeModuleForFile, loadLakeConfig } from "./lake-config.mjs";
 
 const { packageRoot, meta } = loadContext();
 const errors = [];
+const rootLakeConfig = loadLakeConfig(packageRoot, "root lakefile", errors);
+const surfaceRoot = join(packageRoot, "surface-package");
+const surfaceLakeConfig = loadLakeConfig(surfaceRoot, "surface lakefile", errors);
 const proofByTheorem = new Map(
   (meta.proofs ?? []).filter((proof) => !isConjectureProofEntry(proof)).map((proof) => [proof.theorem, proof])
 );
@@ -48,7 +50,7 @@ for (const entry of (meta.surfaceEntries ?? []).filter((item) => item.type === "
     if (!proofSource) {
       continue;
     }
-    const surfaceModule = surfaceModuleForEntry(entry);
+    const surfaceModule = lakeModuleForFile(surfaceLakeConfig, surfaceRoot, join(packageRoot, entry.folder ?? "", "Surface.lean"));
     if (surfaceModule && !proofSource.includes(`import ${surfaceModule}`)) {
       errors.push(`proof file ${proof.proofFile} should import ${surfaceModule}`);
     }
@@ -60,7 +62,7 @@ for (const entry of (meta.surfaceEntries ?? []).filter((item) => item.type === "
 }
 
 function checkProofType({ surfaceName, proof, surfaceModule }) {
-  const proofModule = proofModuleForFile(proof.proofFile);
+  const proofModule = lakeModuleForFile(rootLakeConfig, packageRoot, proof.proofFile);
   const proofNamespace = proofNamespaceForTheorem(surfaceName);
   const proofConstant = proofConstantForTheorem(surfaceName);
   if (!surfaceModule || !proofModule || !proofNamespace || !proofConstant) {

@@ -11,7 +11,6 @@ import {
   loadContext,
   maxBuildOutputBytes,
   proofConstantForTheorem,
-  proofModuleForFile,
   proofNamespaceForTheorem,
   readIfExists,
   relativePath,
@@ -19,9 +18,11 @@ import {
   stripLeanCommentsAndStrings,
   walkFiles
 } from "./common.mjs";
+import { lakeModuleForFile, loadLakeConfig } from "./lake-config.mjs";
 
 const { packageRoot, meta, namespaceRoot } = loadContext();
 const errors = [];
+const rootLakeConfig = loadLakeConfig(packageRoot, "root lakefile", errors);
 const proofFiles = new Set(
   (meta.proofs ?? [])
     .map((proof) => proof.proofFile)
@@ -75,7 +76,7 @@ function checkCompiledProofAxioms() {
   const proofTargets = [];
 
   for (const proof of (meta.proofs ?? []).filter((item) => !isConjectureProofEntry(item))) {
-    const proofModule = proofModuleForFile(proof.proofFile);
+    const proofModule = lakeModuleForFile(rootLakeConfig, packageRoot, proof.proofFile);
     const proofNamespace = proofNamespaceForTheorem(proof.theorem ?? "");
     const proofConstant = proofConstantForTheorem(proof.theorem ?? "");
 

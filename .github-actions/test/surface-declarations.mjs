@@ -4,20 +4,25 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, relative } from "node:path";
+import { join } from "node:path";
 import {
-  listImports,
   loadContext,
   maxBuildOutputBytes,
   readIfExists,
-  relativePath,
   report,
   stripLeanCommentsAndStrings
 } from "./common.mjs";
+import { lakeModuleForFile, loadLakeConfig } from "./lake-config.mjs";
+import { parseLeanImports } from "./lean-imports.mjs";
 
 const { packageRoot, meta } = loadContext();
 const errors = [];
 const surfaceRoot = join(packageRoot, "surface-package");
+const surfaceLakeConfig = loadLakeConfig(surfaceRoot, "surface lakefile", errors);
+const surfaceFiles = (meta.surfaceEntries ?? [])
+  .map((entry) => join(packageRoot, entry.folder ?? "", "Surface.lean"))
+  .filter(existsSync);
+const importsByFile = parseLeanImports(surfaceFiles, errors);
 
 for (const entry of meta.surfaceEntries ?? []) {
   checkSurfaceEntry(entry);
@@ -32,9 +37,9 @@ function checkSurfaceEntry(entry) {
     return;
   }
 
-  const moduleName = moduleNameForSurfacePath(surfacePath);
+  const moduleName = lakeModuleForFile(surfaceLakeConfig, surfaceRoot, surfacePath);
   if (!moduleName) {
-    errors.push(`could not infer Lean module name for ${label}`);
+    errors.push(`Lake does not expose a buildable Lean module for ${label}`);
     return;
   }
 
@@ -59,7 +64,7 @@ function checkSurfaceEntry(entry) {
     return;
   }
 
-  const imports = ["Init", ...listImports(source).filter((imported) => imported !== moduleName)];
+  const imports = ["Init", ...(importsByFile.get(surfacePath) ?? []).filter((imported) => imported !== moduleName)];
   const declarations = introducedDeclarations({ moduleName, imports, label });
   if (!declarations) {
     return;
@@ -168,19 +173,6 @@ function parseDeclarationOutput(output) {
       const [, name, kind, isInstance] = line.split("\t");
       return { name, kind, isInstance: isInstance === "true" };
     });
-}
-
-function moduleNameForSurfacePath(surfacePath) {
-  if (!existsSync(surfacePath)) {
-    return null;
-  }
-
-  const rel = relative(surfaceRoot, surfacePath);
-  if (rel.startsWith("..")) {
-    return null;
-  }
-
-  return rel.replace(/\.lean$/i, "").split(/[\\/]/).join(".");
 }
 
 function isLeanModuleName(name) {

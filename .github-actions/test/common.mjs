@@ -269,11 +269,6 @@ export function surfaceNamespaceForEntry(entry) {
   return entry.name;
 }
 
-export function surfaceModuleForEntry(entry) {
-  const folder = String(entry.folder ?? "").split("/").filter(Boolean).at(-1);
-  return folder ? `${folder}.Surface` : null;
-}
-
 export function proofNamespaceForTheorem(theoremName) {
   const parts = theoremName.split(".");
   const root = parts[0];
@@ -286,19 +281,6 @@ export function proofNamespaceForTheorem(theoremName) {
 
 export function proofConstantForTheorem(theoremName) {
   return theoremName.split(".").at(-1);
-}
-
-export function proofModuleForFile(proofFile) {
-  const parts = String(proofFile ?? "").split(/[\\/]/).filter(Boolean);
-  if (parts[0] === "proofs") {
-    parts.shift();
-  }
-  if (parts.length === 0 || !parts.at(-1).endsWith(".lean")) {
-    return null;
-  }
-
-  parts[parts.length - 1] = parts.at(-1).replace(/\.lean$/i, "");
-  return parts.join(".");
 }
 
 export function isConjectureProofEntry(proof) {
@@ -334,11 +316,4 @@ export function requireMeta(context, errors) {
   if (!existsSync(context.metaPath)) {
     errors.push(`metadata file not found: ${context.metaPath}`);
   }
-}
-
-export function listImports(source) {
-  return stripLeanCommentsAndStrings(source)
-    .split(/\r?\n/)
-    .map((line) => line.match(/^\s*import\s+(.+?)\s*$/)?.[1])
-    .filter(Boolean);
 }

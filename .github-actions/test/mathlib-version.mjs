@@ -3,11 +3,14 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import lmlEnv from "../../lml-env.json" with { type: "json" };
-import { loadContext, readIfExists, report, requireMeta } from "./common.mjs";
+import { loadContext, report, requireMeta } from "./common.mjs";
+import { lakeDependencies, loadLakeConfig } from "./lake-config.mjs";
 
 const context = loadContext();
 const { packageRoot, meta } = context;
 const errors = [];
+const proofLakeConfig = loadLakeConfig(packageRoot, "root lakefile", errors);
+const surfaceLakeConfig = loadLakeConfig(join(packageRoot, "surface-package"), "surface lakefile", errors);
 
 requireMeta(context, errors);
 
@@ -30,8 +33,8 @@ if (meta.pinnedLeanToolchain && String(meta.pinnedLeanToolchain).trim() !== expe
 
 checkLeanToolchainFile(join(packageRoot, "lean-toolchain"), "root lean-toolchain");
 checkLeanToolchainFile(join(packageRoot, "surface-package/lean-toolchain"), "surface lean-toolchain");
-checkMathlibRequire(join(packageRoot, "lakefile.lean"), "root lakefile");
-checkMathlibRequire(join(packageRoot, "surface-package/lakefile.lean"), "surface lakefile");
+checkMathlibRequire(proofLakeConfig, "root lakefile");
+checkMathlibRequire(surfaceLakeConfig, "surface lakefile");
 
 function checkLeanToolchainFile(path, label) {
   if (!existsSync(path)) {
@@ -45,19 +48,18 @@ function checkLeanToolchainFile(path, label) {
   }
 }
 
-function checkMathlibRequire(path, label) {
-  const source = readIfExists(path);
-  if (!source) {
+function checkMathlibRequire(config, label) {
+  if (!config) {
     return;
   }
 
-  const requires = [...source.matchAll(/\brequire\s+mathlib\s+from\s+git\s+"([^"]+)"(?:\s+@\s+"([^"]+)")?/g)];
+  const requires = lakeDependencies(config).filter((dependency) => dependency.kind === "git" && dependency.name === "mathlib");
   if (requires.length !== 1) {
     errors.push(`${label} should have exactly one mathlib git dependency`);
     return;
   }
 
-  const [, url, revision] = requires[0];
+  const { url, ref: revision } = requires[0];
   if (normalizeGitUrl(url) !== expectedMathlibUrl) {
     errors.push(`${label} mathlib URL must be https://github.com/${lmlEnv.mathlib.repository}.git, found ${url}`);
   }

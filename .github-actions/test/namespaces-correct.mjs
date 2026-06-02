@@ -11,10 +11,13 @@ import {
   report,
   requireMeta
 } from "./common.mjs";
+import { hasLeanLib, lakeDependencies, loadLakeConfig, normalizePath } from "./lake-config.mjs";
 
 const context = loadContext();
 const { packageRoot, meta, namespaceRoot } = context;
 const errors = [];
+const proofLakeConfig = loadLakeConfig(packageRoot, "proof lakefile", errors);
+const surfaceLakeConfig = loadLakeConfig(join(packageRoot, "surface-package"), "surface lakefile", errors);
 
 requireMeta(context, errors);
 
@@ -26,8 +29,8 @@ if (!meta.namespaceSlug) {
   errors.push("metadata must define namespaceSlug for namespace checks");
 }
 
-checkProofLakefile(join(packageRoot, "lakefile.lean"));
-checkSurfaceLakefile(join(packageRoot, "surface-package/lakefile.lean"));
+checkProofLakefile(proofLakeConfig);
+checkSurfaceLakefile(surfaceLakeConfig);
 
 for (const entry of meta.surfaceEntries ?? []) {
   const expectedPrefix = `${namespaceRoot}.Surface.${entry.type}.`;
@@ -75,39 +78,42 @@ for (const proof of meta.proofs ?? []) {
   }
 }
 
-function checkProofLakefile(path) {
-  const source = readIfExists(path);
-  if (!source) {
+function checkProofLakefile(config) {
+  if (!config) {
     return;
   }
-  if (!source.includes(`package ${namespaceRoot}.Proofs where`)) {
+  if (config.name !== `${namespaceRoot}.Proofs`) {
     errors.push(`proof lakefile should declare package ${namespaceRoot}.Proofs`);
   }
-  if (!source.includes(`require ${namespaceRoot}.Surface from "./surface-package"`)) {
+  const localSurfaceDependency = lakeDependencies(config).find(
+    (dependency) => dependency.kind === "local" && dependency.name === `${namespaceRoot}.Surface`
+  );
+  if (!localSurfaceDependency || normalizePath(localSurfaceDependency.path) !== "surface-package") {
     errors.push(`proof lakefile should require local package ${namespaceRoot}.Surface from ./surface-package`);
   }
-  if (!source.includes(`lean_lib ${namespaceRoot}.Proofs where`)) {
+  const hasProofLib = hasLeanLib(config, (lib) => lib.name === `${namespaceRoot}.Proofs`);
+  if (!hasProofLib) {
     errors.push(`proof lakefile should declare lean_lib ${namespaceRoot}.Proofs`);
-  }
-  if (!source.includes(`srcDir := "proofs"`)) {
+  } else if (!hasLeanLib(config, (lib) => lib.name === `${namespaceRoot}.Proofs` && normalizePath(lib.srcDir) === "proofs")) {
     errors.push(`proof lakefile should set srcDir := "proofs"`);
   }
 }
 
-function checkSurfaceLakefile(path) {
-  const source = readIfExists(path);
-  if (!source) {
+function checkSurfaceLakefile(config) {
+  if (!config) {
     return;
   }
-  if (!source.includes(`package ${namespaceRoot}.Surface where`)) {
+  if (config.name !== `${namespaceRoot}.Surface`) {
     errors.push(`surface lakefile should declare package ${namespaceRoot}.Surface`);
   }
   for (const entry of meta.surfaceEntries ?? []) {
     const moduleRoot = entry.folder?.split("/")?.at(-1);
-    if (moduleRoot && !source.includes(`lean_lib ${moduleRoot} where`)) {
+    const surfaceLib = (config.leanLibs ?? []).find((lib) => lib.name === moduleRoot);
+    if (moduleRoot && !surfaceLib) {
       errors.push(`surface lakefile should declare lean_lib ${moduleRoot}`);
+      continue;
     }
-    if (moduleRoot && !source.includes(`globs := #[\`${moduleRoot}.+]`)) {
+    if (moduleRoot && !(surfaceLib.globs ?? []).includes(`${moduleRoot}.+`)) {
       errors.push(`surface lakefile should set globs := #[\`${moduleRoot}.+]`);
     }
   }

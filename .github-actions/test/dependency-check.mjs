@@ -7,15 +7,14 @@ import lmlEnv from "../../lml-env.json" with { type: "json" };
 import {
   isConjectureProofEntry,
   leanFiles,
-  listImports,
   loadContext,
-  proofModuleForFile,
   readIfExists,
   relativePath,
   report,
   slugToPascal,
-  surfaceModuleForEntry
 } from "./common.mjs";
+import { lakeDependencies, lakeModuleForFile, loadLakeConfig } from "./lake-config.mjs";
+import { parseLeanImports } from "./lean-imports.mjs";
 
 const { packageRoot, meta, namespaceRoot } = loadContext();
 const errors = [];
@@ -26,7 +25,14 @@ const allowedImportsByLakefile = {
   root: new Set(),
   surface: new Set()
 };
-const localSurfaceModules = new Set((meta.surfaceEntries ?? []).map(surfaceModuleForEntry).filter(Boolean));
+const rootLakeConfig = loadLakeConfig(packageRoot, "root lakefile", errors);
+const surfaceRoot = join(packageRoot, "surface-package");
+const surfaceLakeConfig = loadLakeConfig(surfaceRoot, "surface lakefile", errors);
+const localSurfaceModules = new Set(
+  (meta.surfaceEntries ?? [])
+    .map((entry) => lakeModuleForFile(surfaceLakeConfig, surfaceRoot, join(packageRoot, entry.folder ?? "", "Surface.lean")))
+    .filter(Boolean)
+);
 const surfaceEntryByFile = new Map(
   (meta.surfaceEntries ?? []).map((entry) => [normalizePath(`${entry.folder ?? ""}/Surface.lean`), entry])
 );
@@ -39,24 +45,23 @@ const authorizedSurfaceDependencyNamespaces = authorizedSurfaceNamespaces();
 const localProofModules = new Set(
   (meta.proofs ?? [])
     .filter((proof) => !isConjectureProofEntry(proof))
-    .map((proof) => proofModuleForFile(proof.proofFile))
+    .map((proof) => lakeModuleForFile(rootLakeConfig, packageRoot, proof.proofFile))
     .filter(Boolean)
 );
 
-checkLakefile(join(packageRoot, "lakefile.lean"), "root lakefile", allowedImportsByLakefile.root);
-checkLakefile(
-  join(packageRoot, "surface-package/lakefile.lean"),
-  "surface lakefile",
-  allowedImportsByLakefile.surface
-);
+checkLakefile(rootLakeConfig, "root lakefile", allowedImportsByLakefile.root);
+checkLakefile(surfaceLakeConfig, "surface lakefile", allowedImportsByLakefile.surface);
 
-for (const file of leanFiles(packageRoot)) {
+const files = leanFiles(packageRoot);
+const importsByFile = parseLeanImports(files, errors);
+
+for (const file of files) {
   const source = readIfExists(file);
   if (!source) {
     continue;
   }
 
-  for (const imported of listImports(source)) {
+  for (const imported of importsByFile.get(file) ?? []) {
     const verdict = importVerdict(imported, file, allowedExternalImportsFor(file));
     if (verdict.warning) {
       warnings.push(verdict.warning);
@@ -67,13 +72,12 @@ for (const file of leanFiles(packageRoot)) {
   }
 }
 
-function checkLakefile(path, label, allowedExternalImports) {
-  const source = readIfExists(path);
-  if (!source) {
+function checkLakefile(config, label, allowedExternalImports) {
+  if (!config) {
     return;
   }
 
-  const requires = parseLakeRequires(source);
+  const requires = lakeDependencies(config);
   const mathlibRequires = requires.filter((dependency) => dependency.kind === "git" && dependency.name === "mathlib");
   if (mathlibRequires.length !== 1) {
     errors.push(`${label} should have exactly one mathlib git dependency`);
@@ -135,16 +139,6 @@ function checkLocalDependency(dependency, label) {
   if (label !== "root lakefile" || dependency.name !== `${namespaceRoot}.Surface` || normalizePath(dependency.path) !== "surface-package") {
     errors.push(`${label} local dependency is not allowed: ${formatDependency(dependency)}`);
   }
-}
-
-function parseLakeRequires(source) {
-  const gitRequires = [...source.matchAll(/\brequire\s+([A-Za-z0-9_.-]+)\s+from\s+git\s+"([^"]+)"(?:\s+@\s+"([^"]+)")?(?:\s+\/\s+"([^"]+)")?/g)].map(
-    ([, name, url, ref, subDir]) => ({ kind: "git", name, url, ref, subDir })
-  );
-  const localRequires = [...source.matchAll(/\brequire\s+([A-Za-z0-9_.-]+)\s+from\s+"([^"]+)"/g)].map(
-    ([, name, path]) => ({ kind: "local", name, path })
-  );
-  return [...gitRequires, ...localRequires];
 }
 
 function findMatchingSubmissionDependency(dependency) {
@@ -335,7 +329,9 @@ function proofSurfacePolicyByProofFile() {
 
     const theoremNamespace = namespaceOfDeclaration(proof.theorem);
     const entry = surfaceEntryByName.get(theoremNamespace);
-    const ownModule = entry ? surfaceModuleForEntry(entry) : null;
+    const ownModule = entry
+      ? lakeModuleForFile(surfaceLakeConfig, surfaceRoot, join(packageRoot, entry.folder ?? "", "Surface.lean"))
+      : null;
     byFile.set(normalizePath(proof.proofFile), {
       theorem: proof.theorem,
       entry,
