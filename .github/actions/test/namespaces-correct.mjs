@@ -7,11 +7,12 @@ import {
   loadContext,
   proofConstantForTheorem,
   proofNamespaceForTheorem,
-  readIfExists,
   report,
   requireMeta
 } from "./common.mjs";
-import { hasLeanLib, lakeDependencies, loadLakeConfig, normalizePath } from "./lake-config.mjs";
+import { hasLeanLib, lakeDependencies, lakeModuleForFile, loadLakeConfig, normalizePath } from "./lake-config.mjs";
+import { inspectIntroducedDeclarations } from "./lean-inspect.mjs";
+import { parseLeanImports } from "./lean-imports.mjs";
 
 const context = loadContext();
 const { packageRoot, meta, namespaceRoot } = context;
@@ -38,15 +39,23 @@ for (const entry of meta.surfaceEntries ?? []) {
     errors.push(`surface entry namespace should start with ${expectedPrefix}: ${entry.name}`);
   }
 
-  const source = readIfExists(join(packageRoot, entry.folder ?? "", "Surface.lean"));
-  if (!source) {
+  const surfacePath = join(packageRoot, entry.folder ?? "", "Surface.lean");
+  const moduleName = lakeModuleForFile(surfaceLakeConfig, join(packageRoot, "surface-package"), surfacePath);
+  if (!moduleName) {
+    errors.push(`could not infer surface module for ${entry.folder ?? "(missing folder)"}/Surface.lean`);
     continue;
   }
-  if (!source.includes(`namespace ${entry.name}`)) {
-    errors.push(`surface file ${entry.folder}/Surface.lean missing namespace ${entry.name}`);
-  }
-  if (!source.includes(`end ${entry.name}`)) {
-    errors.push(`surface file ${entry.folder}/Surface.lean missing end ${entry.name}`);
+
+  const importsByFile = parseLeanImports([surfacePath], errors);
+  const declarations = inspectIntroducedDeclarations({
+    packageDir: join(packageRoot, "surface-package"),
+    moduleName,
+    imports: ["Init", ...(importsByFile.get(surfacePath) ?? []).filter((imported) => imported !== moduleName)],
+    label: `${entry.folder ?? "(missing folder)"}/Surface.lean`,
+    errors
+  }) ?? [];
+  if (!declarations.some((declaration) => isDirectChildOf(declaration.name, entry.name))) {
+    errors.push(`surface file ${entry.folder}/Surface.lean does not declare a direct child of ${entry.name}`);
   }
 }
 
@@ -59,21 +68,25 @@ for (const proof of meta.proofs ?? []) {
   }
   const expectedNamespace = proofNamespaceForTheorem(proof.theorem ?? "");
   const expectedConstant = proofConstantForTheorem(proof.theorem ?? "");
-  const source = readIfExists(join(packageRoot, proof.proofFile ?? ""));
+  const proofPath = join(packageRoot, proof.proofFile ?? "");
   if (!expectedNamespace) {
     errors.push(`proof theorem is not in a Surface.Theorem namespace: ${proof.theorem}`);
     continue;
   }
-  if (!source) {
+  const moduleName = lakeModuleForFile(proofLakeConfig, packageRoot, proof.proofFile);
+  if (!moduleName) {
+    errors.push(`could not infer proof module for ${proof.proofFile}`);
     continue;
   }
-  if (!source.includes(`namespace ${expectedNamespace}`)) {
-    errors.push(`proof file ${proof.proofFile} missing namespace ${expectedNamespace}`);
-  }
-  if (!source.includes(`end ${expectedNamespace}`)) {
-    errors.push(`proof file ${proof.proofFile} missing end ${expectedNamespace}`);
-  }
-  if (!new RegExp(`\\btheorem\\s+${expectedConstant}\\b`).test(source)) {
+
+  const declarations = inspectIntroducedDeclarations({
+    packageDir: packageRoot,
+    moduleName,
+    imports: ["Init"],
+    label: proof.proofFile,
+    errors
+  }) ?? [];
+  if (!declarations.some((declaration) => declaration.name === `${expectedNamespace}.${expectedConstant}` && declaration.kind === "theorem")) {
     errors.push(`proof file ${proof.proofFile} missing theorem ${expectedConstant}`);
   }
 }
@@ -117,6 +130,14 @@ function checkSurfaceLakefile(config) {
       errors.push(`surface lakefile should set globs := #[\`${moduleRoot}.+]`);
     }
   }
+}
+
+function isDirectChildOf(name, namespace) {
+  if (!namespace || !name.startsWith(`${namespace}.`)) {
+    return false;
+  }
+  const suffix = name.slice(namespace.length + 1);
+  return suffix.length > 0 && !suffix.includes(".");
 }
 
 report("namespaces correct", errors);

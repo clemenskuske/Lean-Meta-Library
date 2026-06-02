@@ -7,7 +7,7 @@ Use `main` for now, and push changes when a task is complete.
 Read this file before making changes, then preserve the existing folder roles:
 
 - `.website`: GitHub Pages site.
-- `.github-actions`: import policy and automation workflows.
+- `.github`: GitHub workflows plus import policy and automation helper scripts under `.github/actions`.
 - `.cli-tooling`: npm CLI tooling.
 - `submissions.jsonl`: root-level JSON Lines submission log.
 - `lml-env.json`: repository-level values that may change later but are fixed for all Lean Meta Library projects right now.
@@ -19,19 +19,21 @@ Lean version; Lake ships with that toolchain, so separate `lean.version` and `la
 
 ## Submission dependency policy
 
-Each `submissions.jsonl` row may authorize one imported surface package. The row must include `Repo Url`, `Source Branch`, `Source Commit`, and `Surface Folder`; Lake dependencies must use that repository, the source commit, and the surface folder as the dependency subdirectory, and downstream Lean files may import only the required `.Surface` package.
+Each `submissions.jsonl` row may authorize one imported surface package. The row must include `Repo Url`, `Source Branch`, `Source Commit`, and `Surface Folder`; `Surface Folder` is repository-relative, even when the submission metadata file lives in a package subdirectory. Lake dependencies must use that repository, the source commit, and the surface folder as the dependency subdirectory, and downstream Lean files may import only the required `.Surface` package.
 
 Submission Lean files may directly import Mathlib modules, Std modules, local surface modules, and authorized imported `.Surface` packages only.
 
 ## Submission checks
 
-The `.github-actions/test/` folder contains first-run submission package checks. The metadata file is the source of submission information. Run checks with:
+The `.github/actions/test/` folder contains first-run submission package checks. The metadata file is the source of submission information. Run checks with:
 
 ```sh
-node .github-actions/test/run-all.mjs --meta=path/to/meta.yaml
+node .github/actions/test/run-all.mjs --meta=path/to/meta.yaml
 ```
 
 Pass only one metadata file path, preferably with `--meta=path/to/meta.yaml`. The older positional form is accepted for compatibility. If no metadata path is provided, each check falls back to `meta.yaml` in the current working directory; directories are not accepted.
+
+`run-all.mjs` first prepares the Lean packages with `.github/actions/test/prepare-build-cache.mjs`, then runs static checks in parallel, then runs Lean inspector checks in parallel against the prepared build. In the import workflow, `Prepare Lean build/cache` is a separate first step before `Run submission checks`; the check step passes `--skip-build-cache` so preparation is not repeated. The cache fetch is best-effort and reports warnings, but Lake update and build failures reject the submission.
 
 The CLI test command uses the same metadata convention:
 
@@ -65,7 +67,10 @@ The CLI `agent-submission-guide` command prints `agent-info/paper-submission-rea
 
 ## Import submission workflow
 
-The `.github/workflows/import-submission.yml` workflow runs when an issue labeled `submission` is opened, labeled, edited, or reopened. It reads the repository URL, source branch, source commit, metadata file path, and submitted-by login from the issue body, checks out that exact commit, runs the first-run checks from `.github-actions/test/` against the metadata file at that path, then adds or updates the matching row in `submissions.jsonl`. Imported rows include the parsed metadata plus repository, branch, commit, metadata path, surface folder, issue id/number/url, and submitting user id/login. After a successful import, the workflow comments on and closes the issue.
+The `.github/workflows/import-submission.yml` workflow runs when an issue labeled `submission` is opened, labeled, edited, or reopened. It reads the repository URL, source branch, source commit, metadata file path, and submitted-by login from the issue body, checks out that exact commit, runs the first-run checks from `.github/actions/test/` against the metadata file at that path, then adds or updates the matching row in `submissions.jsonl`. Imported rows include the parsed metadata plus repository, branch, commit, metadata path, repository-relative surface folder, issue id/number/url, and submitting user id/login. After a successful import, the workflow comments on and closes the issue.
+
+The import workflow posts issue progress comments after completed milestones so submitters can see which step worked,
+how many steps remain, and what runs next. Keep those comments in place for long-running submission checks.
 
 Warning: the import workflow currently passes `GITHUB_TOKEN` as a Git HTTP extra header so it can check out private submitted repositories. This is acceptable temporarily, but it should be removed later when the import path no longer needs private-repository checkout support or has a better long-term authorization design.
 

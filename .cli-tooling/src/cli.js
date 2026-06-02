@@ -38,7 +38,7 @@ Commands:
   init                  Check local tooling and sync repository metadata.
   update                Run the same checks and sync as init.
   test --meta=meta.yaml
-                         Run submission checks from .github-actions/test.
+                         Run submission checks from .github/actions/test.
   submit --meta=meta.yaml
                          Run checks and dispatch the submit GitHub workflow.
                          Use --no-prior-test to skip checks.

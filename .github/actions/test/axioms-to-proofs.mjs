@@ -6,17 +6,17 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  declarationNames,
   isConjectureProofEntry,
   loadContext,
   maxBuildOutputBytes,
   proofConstantForTheorem,
   proofNamespaceForTheorem,
-  readIfExists,
   report,
   surfaceNamespaceForEntry
 } from "./common.mjs";
 import { lakeModuleForFile, loadLakeConfig } from "./lake-config.mjs";
+import { inspectIntroducedDeclarations } from "./lean-inspect.mjs";
+import { parseLeanImports } from "./lean-imports.mjs";
 
 const { packageRoot, meta } = loadContext();
 const errors = [];
@@ -28,33 +28,50 @@ const proofByTheorem = new Map(
 );
 
 for (const entry of (meta.surfaceEntries ?? []).filter((item) => item.type === "Theorem")) {
-  const source = readIfExists(join(packageRoot, entry.folder ?? "", "Surface.lean"));
-  if (!source) {
+  const namespace = surfaceNamespaceForEntry(entry);
+  const surfacePath = join(packageRoot, entry.folder ?? "", "Surface.lean");
+  const surfaceModule = lakeModuleForFile(surfaceLakeConfig, surfaceRoot, surfacePath);
+  if (!surfaceModule) {
+    errors.push(`could not infer surface module for ${entry.folder ?? "(missing folder)"}/Surface.lean`);
     continue;
   }
 
-  const namespace = surfaceNamespaceForEntry(entry);
-  const declarations = [
-    ...declarationNames(source, "axiom"),
-    ...declarationNames(source, "theorem")
-  ];
-  for (const declarationName of declarations) {
-    const fullName = `${namespace}.${declarationName}`;
+  const importsByFile = parseLeanImports([surfacePath], errors);
+  const declarations = inspectIntroducedDeclarations({
+    packageDir: surfaceRoot,
+    moduleName: surfaceModule,
+    imports: ["Init", ...(importsByFile.get(surfacePath) ?? []).filter((imported) => imported !== surfaceModule)],
+    label: `${entry.folder ?? "(missing folder)"}/Surface.lean`,
+    errors
+  }) ?? [];
+
+  for (const declaration of declarations.filter((item) => isDirectChildOf(item.name, namespace) && ["axiom", "theorem"].includes(item.kind))) {
+    const fullName = declaration.name;
     const proof = proofByTheorem.get(fullName);
     if (!proof) {
       errors.push(`surface theorem declaration has no matching proof metadata entry: ${fullName}`);
       continue;
     }
 
-    const proofSource = readIfExists(join(packageRoot, proof.proofFile ?? ""));
-    if (!proofSource) {
-      continue;
-    }
-    const surfaceModule = lakeModuleForFile(surfaceLakeConfig, surfaceRoot, join(packageRoot, entry.folder ?? "", "Surface.lean"));
-    if (surfaceModule && !proofSource.includes(`import ${surfaceModule}`)) {
+    const proofPath = join(packageRoot, proof.proofFile ?? "");
+    const proofImports = parseLeanImports([proofPath], errors).get(proofPath) ?? [];
+    if (!proofImports.includes(surfaceModule)) {
       errors.push(`proof file ${proof.proofFile} should import ${surfaceModule}`);
     }
-    if (!new RegExp(`\\btheorem\\s+${proofConstantForTheorem(fullName)}\\b`).test(proofSource)) {
+
+    const proofModule = lakeModuleForFile(rootLakeConfig, packageRoot, proof.proofFile);
+    const proofNamespace = proofNamespaceForTheorem(fullName);
+    const proofConstant = proofConstantForTheorem(fullName);
+    const proofDeclarations = proofModule
+      ? inspectIntroducedDeclarations({
+          packageDir: packageRoot,
+          moduleName: proofModule,
+          imports: ["Init"],
+          label: proof.proofFile,
+          errors
+        }) ?? []
+      : [];
+    if (!proofDeclarations.some((item) => item.name === `${proofNamespace}.${proofConstant}` && item.kind === "theorem")) {
       errors.push(`proof file ${proof.proofFile} should prove theorem ${proofConstantForTheorem(fullName)}`);
     }
     checkProofType({ surfaceName: fullName, proof, surfaceModule });
@@ -91,6 +108,14 @@ function checkProofType({ surfaceName, proof, surfaceModule }) {
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }
+}
+
+function isDirectChildOf(name, namespace) {
+  if (!namespace || !name.startsWith(`${namespace}.`)) {
+    return false;
+  }
+  const suffix = name.slice(namespace.length + 1);
+  return suffix.length > 0 && !suffix.includes(".");
 }
 
 function proofTypeInspector({ surfaceModule, proofModule, surfaceName, proofName }) {

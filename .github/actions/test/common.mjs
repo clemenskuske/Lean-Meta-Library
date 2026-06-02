@@ -3,7 +3,8 @@
 // It loads package metadata, walks files, parses the small metadata subset we need, and formats pass/fail output.
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import lmlEnv from "../../lml-env.json" with { type: "json" };
+import YAML from "yaml";
+import lmlEnv from "../../../lml-env.json" with { type: "json" };
 
 export const defaultMetadataPath = String(lmlEnv.submission?.defaultMetadataPath ?? "meta.yaml");
 export const maxBuildOutputBytes = Number(lmlEnv.checks?.maxBuildOutputBytes ?? 1024 * 1024 * 20);
@@ -76,119 +77,13 @@ function isMetadataFile(path) {
 }
 
 export function parseMetaYaml(text) {
-  const meta = {
+  const parsed = YAML.parse(text || "") ?? {};
+  return {
     surfaceEntries: [],
     proofs: [],
-    paper: {}
+    paper: {},
+    ...parsed
   };
-
-  let listName = null;
-  let current = null;
-  let nestedListName = null;
-  let nested = null;
-  let objectName = null;
-
-  for (const rawLine of text.split(/\r?\n/)) {
-    if (!rawLine.trim() || rawLine.trimStart().startsWith("#")) {
-      continue;
-    }
-
-    const top = rawLine.match(/^([A-Za-z0-9_]+):\s*(.*)$/);
-    if (top) {
-      const [, key, value] = top;
-      listName = null;
-      current = null;
-      nestedListName = null;
-      nested = null;
-      objectName = null;
-
-      if (key === "surfaceEntries" || key === "proofs") {
-        listName = key;
-        meta[key] = [];
-        continue;
-      }
-
-      if (value === "") {
-        objectName = key;
-        meta[key] = meta[key] ?? {};
-        continue;
-      }
-
-      meta[key] = parseScalar(value);
-      continue;
-    }
-
-    if (objectName) {
-      const objectField = rawLine.match(/^  ([A-Za-z0-9_]+):\s*(.*)$/);
-      if (objectField) {
-        const [, key, value] = objectField;
-        meta[objectName][key] = parseScalar(value);
-      }
-      continue;
-    }
-
-    if (listName) {
-      const listItem = rawLine.match(/^  -\s+([A-Za-z0-9_]+):\s*(.*)$/);
-      if (listItem) {
-        current = {};
-        nestedListName = null;
-        nested = null;
-        meta[listName].push(current);
-        current[listItem[1]] = parseScalar(listItem[2]);
-        continue;
-      }
-
-      const field = rawLine.match(/^    ([A-Za-z0-9_]+):\s*(.*)$/);
-      if (field && current) {
-        const [, key, value] = field;
-        if (value === "") {
-          nestedListName = key;
-          current[key] = [];
-        } else {
-          current[key] = parseScalar(value);
-        }
-        continue;
-      }
-
-      const nestedItem = rawLine.match(/^      -\s+([A-Za-z0-9_]+):\s*(.*)$/);
-      if (nestedItem && current && nestedListName) {
-        nested = {};
-        current[nestedListName].push(nested);
-        nested[nestedItem[1]] = parseScalar(nestedItem[2]);
-        continue;
-      }
-
-      const nestedField = rawLine.match(/^        ([A-Za-z0-9_]+):\s*(.*)$/);
-      if (nestedField && nested) {
-        nested[nestedField[1]] = parseScalar(nestedField[2]);
-      }
-    }
-  }
-
-  return meta;
-}
-
-export function parseScalar(value) {
-  const trimmed = value.trim();
-  if (trimmed === "[]") {
-    return [];
-  }
-  if (/^true$/i.test(trimmed)) {
-    return true;
-  }
-  if (/^false$/i.test(trimmed)) {
-    return false;
-  }
-  if (trimmed === "\"\"" || trimmed === "''") {
-    return "";
-  }
-  if (
-    (trimmed.startsWith("\"") && trimmed.endsWith("\"")) ||
-    (trimmed.startsWith("'") && trimmed.endsWith("'"))
-  ) {
-    return trimmed.slice(1, -1);
-  }
-  return trimmed;
 }
 
 export function inferNamespaceRoot(meta) {
@@ -250,19 +145,6 @@ export function relativePath(root, path) {
 export function isInside(parent, child) {
   const rel = relative(parent, child);
   return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
-}
-
-export function stripLeanCommentsAndStrings(source) {
-  return source
-    .replace(/\/-[\s\S]*?-\//g, " ")
-    .replace(/--.*$/gm, " ")
-    .replace(/"([^"\\]|\\.)*"/g, "\"\"");
-}
-
-export function declarationNames(source, keyword) {
-  const stripped = stripLeanCommentsAndStrings(source);
-  const matches = [...stripped.matchAll(new RegExp(`\\b${keyword}\\s+([A-Za-z_][A-Za-z0-9_']*)`, "g"))];
-  return matches.map((match) => match[1]);
 }
 
 export function surfaceNamespaceForEntry(entry) {

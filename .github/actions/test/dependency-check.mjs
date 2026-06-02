@@ -3,7 +3,8 @@
 // It allows mathlib plus surface-package dependencies recorded in submissions.jsonl.
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import lmlEnv from "../../lml-env.json" with { type: "json" };
+import lmlEnv from "../../../lml-env.json" with { type: "json" };
+import { validateSubmissionRow } from "../submission-schema.mjs";
 import {
   isConjectureProofEntry,
   leanFiles,
@@ -14,6 +15,7 @@ import {
   slugToPascal,
 } from "./common.mjs";
 import { lakeDependencies, lakeModuleForFile, loadLakeConfig } from "./lake-config.mjs";
+import { isLeanName } from "./lean-inspect.mjs";
 import { parseLeanImports } from "./lean-imports.mjs";
 
 const { packageRoot, meta, namespaceRoot } = loadContext();
@@ -383,16 +385,17 @@ function authorizedSurfaceNamespaces() {
 }
 
 function moduleFromSurfaceFile(surfaceFile) {
-  const parts = normalizePath(surfaceFile).split("/").filter(Boolean);
-  if (parts.at(-1) !== "Surface.lean" || parts.length < 2) {
-    return null;
-  }
-  return `${parts.at(-2)}.Surface`;
+  const normalized = normalizePath(surfaceFile);
+  return lakeModuleForFile(surfaceLakeConfig, surfaceRoot, join(packageRoot, normalized));
 }
 
 function namespaceRootForDefinition(definition) {
-  const match = stringValue(definition).match(/^([A-Za-z_][A-Za-z0-9_']*)\.Surface\./);
-  return match?.[1] ?? null;
+  const value = stringValue(definition);
+  if (!isLeanName(value)) {
+    return null;
+  }
+  const parts = value.split(".");
+  return parts[1] === "Surface" ? parts[0] : null;
 }
 
 function namespaceRootForSlug(slug) {
@@ -432,6 +435,12 @@ function parseSubmissionDependency(line, path, lineNumber) {
   const normalized = Object.fromEntries(
     Object.entries(row).map(([key, value]) => [key.toLowerCase().replace(/[^a-z0-9]/g, ""), value])
   );
+  const validation = validateSubmissionRow(row);
+  if (!validation.valid) {
+    errors.push(
+      `${path}:${lineNumber} does not match submissions.jsonl schema: ${validation.errors.map((error) => `${error.instancePath || "/"} ${error.message}`).join("; ")}`
+    );
+  }
   const dependency = {
     repoUrl: stringValue(normalized.repourl),
     sourceBranch: stringValue(normalized.sourcebranch),

@@ -5,7 +5,7 @@ import { ensureAuthenticated } from "../lib/github-auth.js";
 import { ensureGitHubCli } from "../lib/github-cli.js";
 import { lmlEnv } from "../lib/project-env.js";
 import { run } from "../lib/process.js";
-import { parseMetaYaml } from "../../../.github-actions/test/common.mjs";
+import { parseMetaYaml } from "../../../.github/actions/test/common.mjs";
 
 const defaultMetadataPath = String(lmlEnv.submission?.defaultMetadataPath ?? "meta.yaml");
 

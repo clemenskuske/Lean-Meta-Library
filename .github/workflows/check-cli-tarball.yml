@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - ".cli-tooling/**"
-      - ".github-actions/test/**"
+      - ".github/actions/**"
       - ".github/workflows/check-cli-tarball.yml"
       - "agent-info/**"
       - "lml-env.json"

@@ -2,7 +2,7 @@
 // Checks that submitted packages use the repository-pinned Lean toolchain and mathlib revision.
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import lmlEnv from "../../lml-env.json" with { type: "json" };
+import lmlEnv from "../../../lml-env.json" with { type: "json" };
 import { loadContext, report, requireMeta } from "./common.mjs";
 import { lakeDependencies, loadLakeConfig } from "./lake-config.mjs";
 

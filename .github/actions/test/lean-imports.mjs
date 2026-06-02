@@ -31,13 +31,20 @@ export function parseLeanImports(files, errors) {
       return importsByFile;
     }
 
-    for (const line of result.stdout.split(/\r?\n/)) {
-      if (!line.startsWith("IMPORT\t")) {
-        continue;
-      }
-      const [, file, imported] = line.split("\t");
-      if (imported !== "Init") {
-        importsByFile.get(file)?.push(imported);
+    let rows;
+    try {
+      rows = JSON.parse(result.stdout.trim() || "[]");
+    } catch (error) {
+      errors.push(`Lean import parser did not return valid JSON: ${error.message}\n${result.stdout}`.trim());
+      return importsByFile;
+    }
+
+    for (const row of rows) {
+      const file = row.file;
+      for (const imported of row.imports ?? []) {
+        if (imported !== "Init") {
+          importsByFile.get(file)?.push(imported);
+        }
       }
     }
   } finally {
@@ -52,10 +59,15 @@ function importInspectorSource() {
 open Lean
 
 def main (args : List String) : IO UInt32 := do
+  let mut rows := #[]
   for file in args do
     let header <- Lean.parseImports' (<- IO.FS.readFile file) file
-    for imp in header.imports do
-      IO.println s!"IMPORT\\t{file}\\t{imp.module}"
+    let imports := header.imports.map (fun imp => Json.str (toString imp.module))
+    rows := rows.push (Json.mkObj [
+      ("file", Json.str file),
+      ("imports", Json.arr imports)
+    ])
+  IO.println (Json.compress (Json.arr rows))
   return 0
 `;
 }

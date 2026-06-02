@@ -9,7 +9,7 @@
   },
   "files": [
     ".cli-tooling/src",
-    ".github-actions/test",
+    ".github/actions",
     "agent-info",
     "lml-env.json",
     "README.md"

@@ -133,7 +133,7 @@ Every surface entry folder must also include `latex-file.tex` explaining the ent
 
 Surface files may freely import other local surface modules from the same submission package. Prefer fully qualified names over `open`.
 
-If a surface entry imports a surface module from another Lean Meta Library submission, first find the matching authorization row in `submissions.jsonl`. The Lake dependency must use that row's source URL, source commit, and surface folder. The current entry must also list the dependency in `usedSurfaceFiles`.
+If a surface entry imports a surface module from another Lean Meta Library submission, first find the matching authorization row in `submissions.jsonl`. The Lake dependency must use that row's source URL, source commit, and repository-relative surface folder. The current entry must also list the dependency in `usedSurfaceFiles`.
 
 Use this metadata shape:
 

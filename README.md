@@ -78,11 +78,13 @@ The `agent-introduction` command prints `agent-info/README.md`, a general startu
 
 The `agent-submission-guide` command prints `agent-info/paper-submission-readiness-agent-guide.md`, the guide for agents turning an arbitrary Lean project into a paper submission package whose surface, metadata, and proofs are user-approved and checker-ready.
 
-The `test` command runs `.github-actions/test/run-all.mjs` using the metadata file as the source of submission information:
+The `test` command runs `.github/actions/test/run-all.mjs` using the metadata file as the source of submission information:
 
 ```sh
 lml test path/to/meta.yaml
 ```
+
+The first-run checker prepares the Lean build/cache first, runs static checks in parallel, and then runs the Lean inspector checks in parallel. In the import workflow, the preparation runs as its own `Prepare Lean build/cache` step before `Run submission checks`.
 
 Conjecture surface declarations are recorded in the metadata `proofs:` list, but they do not have proof files yet. Mark them with `conjecture: True` and omit `proofFile`:
 
@@ -109,7 +111,10 @@ lml submission-status path/to/meta.yaml
 
 The `Submit` GitHub Actions workflow can be run manually with a metadata path. It creates a submission issue when `submissionIssueNumber` is missing, or updates that issue when the field is present. The workflow labels the issue `submission`, names it with the submission title, starts the issue body with the submission abstract, records the submitting account login plus the repository URL, source branch, source commit, and metadata file path, then writes `submissionIssueNumber` and `submissionIssueUrl` back to the metadata file.
 
-The `Import Submission` workflow starts from issues labeled `submission`. It checks out the submitted repository at the recorded branch and commit, runs `.github-actions/test/run-all.mjs` against the metadata file path from the issue, then adds or updates the corresponding `submissions.jsonl` row with the submitted-by account and closes the issue.
+The `Import Submission` workflow starts from issues labeled `submission`. It checks out the submitted repository at the recorded branch and commit, runs `.github/actions/test/run-all.mjs` against the metadata file path from the issue, then adds or updates the corresponding `submissions.jsonl` row with the submitted-by account and closes the issue.
+
+During import, the workflow posts issue comments after completed milestones. Each progress comment says which step
+worked, how many steps remain, and which step will run next.
 
 For a one-off run without linking:
 

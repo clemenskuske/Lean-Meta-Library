@@ -14,32 +14,6 @@ The core idea is to separate three things:
 
 Agents should treat the metadata file as the submission source of truth. The Lean files should match it, and the checks should be run from it.
 
-## How To Use `submissions.jsonl`
-
-```sh
-lml update
-```
-
-Start by syncing the local registry. `lml update` refreshes `submissions.jsonl` and the agent guide from the Lean Meta Library repository configured for the checkout. Use `lml init` instead when setting up a checkout for the first time; it performs the same metadata sync after checking local tooling.
-
-`submissions.jsonl` is the import registry. It is a JSON Lines file: each non-empty line is one complete JSON object for one imported submission.
-
-Read it when you need to know what has already been imported, what surface package a later submission may depend on, or which repository, branch, commit, metadata path, and surface folder define an imported surface.
-
-Important fields include:
-
-- `Repo Url`, `Source Branch`, and `Source Commit`: the exact source revision for the imported submission.
-- `Metadata File`: the metadata path used for the import.
-- `Surface Folder`: the folder containing the imported surface package.
-- `surfaceEntries`: the public definition, theorem, and conjecture entries recorded for that submission.
-- `proofs`: theorem proof targets and conjecture markers.
-- `paper`: paper title and bibliographic metadata.
-- `User Login`, `Issue Number`, and `Issue Url`: submission provenance from the import workflow.
-
-For dependency work, the registry is the authorization source. A later submission may use at most the imported surface package authorized by its metadata row, and its Lake dependency must point to the recorded repository, source commit, and surface folder. Downstream Lean files should import only the required `.Surface` package from that dependency.
-
-Do not change `submissions.jsonl` by hand. It is synced registry state, and import automation or `lml update` may recreate or overwrite it from the canonical repository state at any time.
-
 ## What The CLI Can Do
 
 Install or link the CLI, then use either `lml` or `lean-meta-library`.
@@ -77,6 +51,34 @@ lml agent-submission-guide
 ```
 
 That command prints the guide for turning a Lean project into a checked Lean Meta Library submission. Use `lml create-paper <slug>` for the starter package, then replace the starter content with the user's actual title, abstract, surface declarations, proof files, and bibliographic metadata.
+
+
+## How To Use `submissions.jsonl`
+
+```sh
+lml update
+```
+
+Start by syncing the local registry. `lml update` refreshes `submissions.jsonl` and the agent guide from the Lean Meta Library repository configured for the checkout. Use `lml init` instead when setting up a checkout for the first time; it performs the same metadata sync after checking local tooling.
+
+`submissions.jsonl` is the import registry. It is a JSON Lines file: each non-empty line is one complete JSON object for one imported submission.
+
+Read it when you need to know what has already been imported, what surface package a later submission may depend on, or which repository, branch, commit, metadata path, and repository-relative surface folder define an imported surface.
+
+Important fields include:
+
+- `Repo Url`, `Source Branch`, and `Source Commit`: the exact source revision for the imported submission.
+- `Metadata File`: the metadata path used for the import.
+- `Surface Folder`: the repository-relative folder containing the imported surface package.
+- `surfaceEntries`: the public definition, theorem, and conjecture entries recorded for that submission.
+- `proofs`: theorem proof targets and conjecture markers.
+- `paper`: paper title and bibliographic metadata.
+- `User Login`, `Issue Number`, and `Issue Url`: submission provenance from the import workflow.
+
+For dependency work, the registry is the authorization source. A later submission may use at most the imported surface package authorized by its metadata row, and its Lake dependency must point to the recorded repository, source commit, and repository-relative surface folder. Downstream Lean files should import only the required `.Surface` package from that dependency.
+
+Do not change `submissions.jsonl` by hand. It is synced registry state, and import automation or `lml update` may recreate or overwrite it from the canonical repository state at any time.
+
 
 ## Agent Workflow
 

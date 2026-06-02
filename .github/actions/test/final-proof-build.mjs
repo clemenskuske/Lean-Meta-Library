@@ -13,7 +13,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, extname, join, relative, sep } from "node:path";
-import lmlEnv from "../../lml-env.json" with { type: "json" };
+import lmlEnv from "../../../lml-env.json" with { type: "json" };
 import {
   isConjectureProofEntry,
   loadContext,
@@ -22,7 +22,7 @@ import {
   proofConstantForTheorem,
   proofNamespaceForTheorem,
   report,
-  stripLeanCommentsAndStrings,
+  slugToPascal,
   walkFiles
 } from "./common.mjs";
 
@@ -127,7 +127,7 @@ function removeSurfaceTheoremDeclarations() {
       }
 
       const before = readFileSync(surfaceFile, "utf8");
-      const after = stripTheoremDeclarations(before);
+      const after = emptySurfaceTheoremModule(entry);
       if (after !== before) {
         writeFileSync(surfaceFile, after, "utf8");
         changed += 1;
@@ -160,32 +160,13 @@ function rewriteProofTheoremReferences() {
   }
 }
 
-function stripTheoremDeclarations(source) {
-  const lines = source.split(/\r?\n/);
-  const kept = [];
-  let skipping = false;
-
-  for (const line of lines) {
-    if (!skipping && /^(?:\s*)(?:protected\s+|private\s+)?(?:axiom|theorem)\s+[A-Za-z_][A-Za-z0-9_']*\b/.test(line)) {
-      while (kept.at(-1)?.trim().startsWith("@[")) {
-        kept.pop();
-      }
-      skipping = true;
-      continue;
-    }
-
-    if (skipping) {
-      if (/^\s*end(?:\s+.+)?\s*$/.test(line)) {
-        skipping = false;
-        kept.push(line);
-      }
-      continue;
-    }
-
-    kept.push(line);
-  }
-
-  return kept.join("\n");
+function emptySurfaceTheoremModule(entry) {
+  return [
+    `namespace ${entry.name}`,
+    "",
+    `end ${entry.name}`,
+    ""
+  ].join("\n");
 }
 
 function walkFilesIncludingLake(root) {
@@ -226,31 +207,8 @@ function checkBuildOutputForSorry(result) {
 }
 
 function checkRewrittenSources() {
-  for (const file of checkedLeanSourceFiles()) {
-    const source = readFileSync(file, "utf8");
-    const stripped = stripLeanCommentsAndStrings(source);
-    const label = relativePath(isolatedPackageRoot, file);
-
-    if (/\bsorry\b/.test(stripped)) {
-      errors.push(`rewritten build source contains sorry: ${label}`);
-    }
-    if (/\badmit\b/.test(stripped)) {
-      errors.push(`rewritten build source contains admit: ${label}`);
-    }
-  }
-}
-
-function checkedLeanSourceFiles() {
-  return walkFilesIncludingLake(isolatedPackageRoot).filter((file) => {
-    if (extname(file) !== ".lean") {
-      return false;
-    }
-    const rel = relativePath(isolatedPackageRoot, file);
-    if (!rel.startsWith(".lake/packages/")) {
-      return true;
-    }
-    return !isIgnoredLakePackage(rel.split("/")[2] ?? "");
-  });
+  // Source-level sorry/admit scans are intentionally avoided here. The final
+  // check relies on Lean elaboration plus compiled axiom inspection.
 }
 
 function isIgnoredLakePackage(packageName) {
@@ -270,9 +228,9 @@ function isIgnoredLakePackage(packageName) {
 
 function checkCompiledAxioms() {
   const proofTargets = proofTargetNames();
-  const declaredAxioms = declaredAxiomNames();
-  const allowedConjectureAxioms = declaredAxioms.filter((name) => name.includes(".Surface.Conjecture."));
-  if (proofTargets.length === 0 && declaredAxioms.length === 0) {
+  const checkedNamespaceRoots = namespaceRootsForFinalInspection();
+  const allowedConjectureAxioms = conjectureAxiomNames();
+  if (proofTargets.length === 0 && checkedNamespaceRoots.length === 0) {
     warnings.push("no proof targets or declared axioms were found for final axiom inspection");
     return;
   }
@@ -281,7 +239,7 @@ function checkCompiledAxioms() {
   const inspector = join(isolatedPackageRoot, "FinalProofBuildInspect.lean");
   writeFileSync(
     inspector,
-    finalProofBuildInspector({ modules, proofTargets, declaredAxioms, allowedMathlibAxioms, allowedConjectureAxioms }),
+    finalProofBuildInspector({ modules, proofTargets, checkedNamespaceRoots, allowedMathlibAxioms, allowedConjectureAxioms }),
     "utf8"
   );
 
@@ -311,47 +269,30 @@ function proofTargetNames() {
     .filter(isLeanName);
 }
 
-function declaredAxiomNames() {
-  const names = new Set();
-  for (const file of checkedLeanSourceFiles()) {
-    const stripped = stripLeanCommentsAndStrings(readFileSync(file, "utf8"));
-    for (const name of declaredAxiomsInSource(stripped)) {
-      if (isLeanName(name)) {
-        names.add(name);
-      }
-    }
-  }
-  return [...names].sort();
+function namespaceRootsForFinalInspection() {
+  return [...new Set(
+    metadataContexts()
+      .map(({ meta }) => meta.namespaceSlug ? slugToPascal(meta.namespaceSlug) : meta.surfaceEntries?.find((entry) => entry.name)?.name?.split(".")?.[0])
+      .filter(isLeanName)
+  )].sort();
 }
 
-function declaredAxiomsInSource(source) {
-  const names = [];
-  const namespaces = [];
-
-  for (const rawLine of source.split(/\r?\n/)) {
-    const line = rawLine.trim();
-    const namespace = line.match(/^namespace\s+(.+?)\s*$/);
-    if (namespace) {
-      namespaces.push(namespace[1].trim());
-      continue;
-    }
-
-    const axiom = line.match(/^(?:protected\s+|private\s+)?axiom\s+([A-Za-z_][A-Za-z0-9_']*(?:\.[A-Za-z_][A-Za-z0-9_']*)*)\b/);
-    if (axiom) {
-      const name = axiom[1];
-      names.push(name.includes(".") || namespaces.length === 0 ? name : `${namespaces.join(".")}.${name}`);
-      continue;
-    }
-
-    if (/^end(?:\s+.+)?\s*$/.test(line) && namespaces.length > 0) {
-      namespaces.pop();
-    }
-  }
-
-  return names;
+function conjectureAxiomNames() {
+  return [...new Set(
+    metadataContexts()
+      .flatMap(({ meta }) => meta.proofs ?? [])
+      .filter(isConjectureProofEntry)
+      .map((proof) => proof.theorem)
+      .filter(isLeanName)
+  )].sort();
 }
 
 function builtModuleNames() {
+  const lakeModules = lakeEmittedModuleNames();
+  if (lakeModules.length > 0) {
+    return lakeModules;
+  }
+
   const names = new Set();
   for (const { root, dependency } of buildLibraryRoots()) {
     for (const file of walkFiles(root, { ignoreDirs: new Set() })) {
@@ -369,6 +310,61 @@ function builtModuleNames() {
     }
   }
   return [...names].sort();
+}
+
+function lakeEmittedModuleNames() {
+  const outFile = join(isolatedPackageRoot, ".lake-build-mapping.json");
+  const result = spawnSync("lake", ["build", "-o", outFile], {
+    cwd: isolatedPackageRoot,
+    encoding: "utf8",
+    maxBuffer: maxBuildOutputBytes
+  });
+  if (result.error || result.status !== 0 || !existsSync(outFile)) {
+    return [];
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(readFileSync(outFile, "utf8"));
+  } catch {
+    return [];
+  }
+
+  const artifactPaths = [];
+  collectStrings(parsed, artifactPaths);
+  return [...new Set(
+    artifactPaths
+      .filter((value) => value.endsWith(".olean"))
+      .map((value) => moduleNameFromOleanPath(value))
+      .filter(isLeanName)
+      .filter((moduleName) => !isIgnoredModule(moduleName))
+  )].sort();
+}
+
+function collectStrings(value, out) {
+  if (typeof value === "string") {
+    out.push(value);
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      collectStrings(item, out);
+    }
+    return;
+  }
+  if (value && typeof value === "object") {
+    for (const item of Object.values(value)) {
+      collectStrings(item, out);
+    }
+  }
+}
+
+function moduleNameFromOleanPath(path) {
+  const normalized = String(path ?? "").split(sep).join("/");
+  const marker = "/lib/lean/";
+  const index = normalized.lastIndexOf(marker);
+  const rel = index >= 0 ? normalized.slice(index + marker.length) : normalized;
+  return rel.replace(/\.olean$/i, "").split("/").join(".");
 }
 
 function buildLibraryRoots() {
@@ -423,7 +419,7 @@ function isIgnoredDependencyModule(moduleName) {
   return moduleName === "Cache" || moduleName.startsWith("Cache.");
 }
 
-function finalProofBuildInspector({ modules, proofTargets, declaredAxioms, allowedMathlibAxioms, allowedConjectureAxioms }) {
+function finalProofBuildInspector({ modules, proofTargets, checkedNamespaceRoots, allowedMathlibAxioms, allowedConjectureAxioms }) {
   const imports = modules.map((moduleName) => `import ${moduleName}`).join("\n");
   return `import Lean
 import Lean.Util.CollectAxioms
@@ -434,7 +430,10 @@ open Lean
 def allowedBaseAxioms : Array Name := ${leanNameArray(allowedMathlibAxioms)}
 def allowedConjectureAxioms : Array Name := ${leanNameArray(allowedConjectureAxioms)}
 def checkedProofTargets : Array Name := ${leanNameArray(proofTargets)}
-def checkedDeclaredAxioms : Array Name := ${leanNameArray(declaredAxioms)}
+def checkedNamespaceRoots : Array Name := ${leanNameArray(checkedNamespaceRoots)}
+
+def isCheckedDeclarationName (name : Name) : Bool :=
+  checkedNamespaceRoots.any (fun root => root.isPrefixOf name)
 
 def sameAxiomType (candidate allowed : ConstantInfo) : CoreM Bool := do
   if candidate.levelParams.length != allowed.levelParams.length then
@@ -470,20 +469,13 @@ def checkAxiom (label : String) (owner : Name) (axiomName : Name) : CoreM Bool :
 #eval show CoreM Unit from do
   let mut failed := false
 
-  for axiomName in checkedDeclaredAxioms do
-    try
-      let info <- getConstInfo axiomName
+  for (axiomName, info) in (← getEnv).constants.toList do
+    if isCheckedDeclarationName axiomName then
       match info with
       | .axiomInfo _ =>
           if (← checkAxiom "declared" axiomName axiomName) then
             failed := true
-      | _ =>
-          IO.eprintln s!"DECLARED_AXIOM_NOT_AXIOM\\t{axiomName}"
-          failed := true
-    catch error =>
-      let message <- error.toMessageData.toString
-      IO.eprintln s!"DECLARED_AXIOM_NOT_FOUND\\t{axiomName}\\t{message}"
-      failed := true
+      | _ => pure ()
 
   for proofName in checkedProofTargets do
     try

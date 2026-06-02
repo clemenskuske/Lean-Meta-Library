@@ -4,7 +4,7 @@
 // LML_MAX_FOLDER_BYTES, and LML_MAX_FILE_BYTES.
 import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
-import lmlEnv from "../../lml-env.json" with { type: "json" };
+import lmlEnv from "../../../lml-env.json" with { type: "json" };
 import { fileSize, loadContext, report, relativePath, walkFiles } from "./common.mjs";
 
 const { packageRoot, meta } = loadContext();

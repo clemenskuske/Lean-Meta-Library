@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      issues: read
+      issues: write
     outputs:
       repo-url: ${{ steps.issue.outputs.repo-url }}
       source-branch: ${{ steps.issue.outputs.source-branch }}
@@ -38,6 +38,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      - name: Install Node dependencies
+        run: npm ci
 
       - name: Set up Lean
         run: |
@@ -114,6 +117,25 @@ jobs:
           }
           NODE
 
+      - name: "Comment progress: submission issue read"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          STEP_NUMBER: 1
+          TOTAL_STEPS: 10
+          STEP_NAME: Submission issue was parsed
+          NEXT_STEP: Checkout the submitted repository
+          STEP_DETAILS: |
+            Repository: ${{ steps.issue.outputs.repo-url }}
+            Branch: ${{ steps.issue.outputs.source-branch }}
+            Commit: ${{ steps.issue.outputs.source-commit }}
+            Metadata file: ${{ steps.issue.outputs.meta-path }}
+            Submitted by: ${{ steps.issue.outputs.submitter-login || github.event.issue.user.login }}
+        run: node .github/actions/import-progress-comment.mjs
+
       - name: Checkout submitted repository
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -130,17 +152,77 @@ jobs:
           git checkout --detach "$SOURCE_COMMIT"
           test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
 
+      - name: "Comment progress: repository checked out"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          STEP_NUMBER: 2
+          TOTAL_STEPS: 10
+          STEP_NAME: Submitted repository was checked out at the requested commit
+          NEXT_STEP: Prepare the Lean build/cache
+          STEP_DETAILS: |
+            Checked out commit: ${{ steps.issue.outputs.source-commit }}
+        run: node .github/actions/import-progress-comment.mjs
+
+      - name: Prepare Lean build/cache
+        env:
+          META_PATH: ${{ steps.issue.outputs.meta-path }}
+        run: |
+          node "$GITHUB_WORKSPACE/.github/actions/test/prepare-build-cache.mjs" "$GITHUB_WORKSPACE/submission/$META_PATH"
+
+      - name: "Comment progress: build/cache prepared"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          STEP_NUMBER: 3
+          TOTAL_STEPS: 10
+          STEP_NAME: Lean build/cache preparation completed
+          NEXT_STEP: Run first-run submission checks
+        run: node .github/actions/import-progress-comment.mjs
+
       - name: Run submission checks
         env:
           META_PATH: ${{ steps.issue.outputs.meta-path }}
         run: |
-          node "$GITHUB_WORKSPACE/.github-actions/test/run-all.mjs" "$GITHUB_WORKSPACE/submission/$META_PATH"
+          node "$GITHUB_WORKSPACE/.github/actions/test/run-all.mjs" --skip-build-cache "$GITHUB_WORKSPACE/submission/$META_PATH"
+
+      - name: "Comment progress: submission checks passed"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          STEP_NUMBER: 4
+          TOTAL_STEPS: 10
+          STEP_NAME: First-run submission checks passed
+          NEXT_STEP: Run the final rewritten proof build
+        run: node .github/actions/import-progress-comment.mjs
 
       - name: Run final rewritten proof build
         env:
           META_PATH: ${{ steps.issue.outputs.meta-path }}
         run: |
-          node "$GITHUB_WORKSPACE/.github-actions/test/final-proof-build.mjs" "$GITHUB_WORKSPACE/submission/$META_PATH"
+          node "$GITHUB_WORKSPACE/.github/actions/test/final-proof-build.mjs" "$GITHUB_WORKSPACE/submission/$META_PATH"
+
+      - name: "Comment progress: final proof build passed"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          STEP_NUMBER: 5
+          TOTAL_STEPS: 10
+          STEP_NAME: Final rewritten proof build passed
+          NEXT_STEP: Upload the checked metadata artifact
+        run: node .github/actions/import-progress-comment.mjs
 
       - name: Stage checked metadata
         env:
@@ -156,6 +238,19 @@ jobs:
           path: checked-metadata/meta.yaml
           if-no-files-found: error
 
+      - name: "Comment progress: checked metadata uploaded"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          STEP_NUMBER: 6
+          TOTAL_STEPS: 10
+          STEP_NAME: Checked metadata artifact was uploaded
+          NEXT_STEP: Download the checked metadata artifact in the import job
+        run: node .github/actions/import-progress-comment.mjs
+
   import:
     name: Import submission metadata
     needs: check
@@ -169,11 +264,32 @@ jobs:
       - name: Checkout Lean Meta Library
         uses: actions/checkout@v4
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Node dependencies
+        run: npm ci
+
       - name: Download checked metadata
         uses: actions/download-artifact@v4
         with:
           name: checked-submission-metadata
           path: checked-submission
+
+      - name: "Comment progress: checked metadata downloaded"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          STEP_NUMBER: 7
+          TOTAL_STEPS: 10
+          STEP_NAME: Checked metadata artifact was downloaded
+          NEXT_STEP: Update submissions.jsonl
+        run: node .github/actions/import-progress-comment.mjs
 
       - name: Update submissions log
         env:
@@ -191,8 +307,9 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           import { existsSync, readFileSync, writeFileSync } from "node:fs";
-          import { dirname } from "node:path";
-          import { parseMetaYaml } from "./.github-actions/test/common.mjs";
+          import { posix as path } from "node:path";
+          import { assertSubmissionRow } from "./.github/actions/submission-schema.mjs";
+          import { parseMetaYaml } from "./.github/actions/test/common.mjs";
 
           const metaPath = "checked-submission/meta.yaml";
           if (!existsSync(metaPath)) {
@@ -221,6 +338,7 @@ jobs:
             "Issue Url": process.env.ISSUE_URL,
             "Imported At": new Date().toISOString()
           };
+          assertSubmissionRow(row, "new submissions.jsonl row");
 
           const logPath = "submissions.jsonl";
           const existingText = existsSync(logPath) ? readFileSync(logPath, "utf8") : "";
@@ -229,6 +347,7 @@ jobs:
             .map((line) => line.trim())
             .filter(Boolean)
             .map((line, index) => parseJsonLine(line, index + 1));
+          rows.forEach((existingRow, index) => assertSubmissionRow(existingRow, `${logPath}:${index + 1}`));
 
           const index = rows.findIndex((candidate) => isSameSubmission(candidate, row));
           if (index >= 0) {
@@ -240,14 +359,32 @@ jobs:
           writeFileSync(logPath, rows.map((item) => JSON.stringify(item)).join("\n") + "\n");
 
           function surfaceFolder(metadata, metadataPathValue) {
+            const metadataDir = path.dirname(normalizePath(metadataPathValue)).replace(/^\.$/, "");
             if (metadata.surfaceLakefilePath) {
-              return dirname(metadata.surfaceLakefilePath).replace(/^\.$/, "");
+              return repoRelativePath(metadataDir, path.dirname(normalizePath(metadata.surfaceLakefilePath)));
             }
             const firstEntryFolder = metadata.surfaceEntries?.find((entry) => entry.folder)?.folder;
             if (firstEntryFolder) {
-              return firstEntryFolder.split("/").slice(0, -1).join("/") || firstEntryFolder;
+              const surfaceDir = normalizePath(firstEntryFolder).split("/").slice(0, -1).join("/") || firstEntryFolder;
+              return repoRelativePath(metadataDir, surfaceDir);
             }
-            return dirname(metadataPathValue).replace(/^\.$/, "");
+            return metadataDir;
+          }
+
+          function repoRelativePath(base, relativePathValue) {
+            const normalizedBase = normalizePath(base).replace(/^\.$/, "");
+            const normalizedRelative = normalizePath(relativePathValue).replace(/^\.$/, "");
+            if (!normalizedBase) {
+              return normalizedRelative;
+            }
+            if (!normalizedRelative) {
+              return normalizedBase;
+            }
+            return path.join(normalizedBase, normalizedRelative);
+          }
+
+          function normalizePath(value) {
+            return String(value ?? "").replace(/\\/g, "/").replace(/^\.\/+/, "").replace(/\/+/g, "/");
           }
 
           function parseJsonLine(line, lineNumber) {
@@ -274,6 +411,19 @@ jobs:
           }
           NODE
 
+      - name: "Comment progress: submissions log updated"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          STEP_NUMBER: 8
+          TOTAL_STEPS: 10
+          STEP_NAME: submissions.jsonl was updated locally
+          NEXT_STEP: Commit and push submissions.jsonl if it changed
+        run: node .github/actions/import-progress-comment.mjs
+
       - name: Commit submissions log
         run: |
           if git diff --quiet -- submissions.jsonl; then
@@ -287,11 +437,31 @@ jobs:
           git commit -m "Import submission metadata"
           git push origin HEAD:"$GITHUB_REF_NAME"
 
+      - name: "Comment progress: submissions log committed"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          STEP_NUMBER: 9
+          TOTAL_STEPS: 10
+          STEP_NAME: submissions.jsonl commit step completed
+          NEXT_STEP: Close the imported issue
+          STEP_DETAILS: |
+            If submissions.jsonl already contained this submission, no commit was needed.
+        run: node .github/actions/import-progress-comment.mjs
+
       - name: Close imported issue
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
+          STEP_NUMBER: 10
+          TOTAL_STEPS: 10
+          STEP_NAME: Imported issue was closed
         run: |
           node <<'NODE'
           const { writeFileSync } = require("node:fs");
@@ -307,9 +477,6 @@ jobs:
           });
 
           async function main() {
-            await github("POST", `/repos/${repository}/issues/${issueNumber}/comments`, {
-              body: "Submission checks passed and the metadata was imported into `submissions.jsonl`."
-            });
             await github("PATCH", `/repos/${repository}/issues/${issueNumber}`, {
               state: "closed",
               state_reason: "completed"
@@ -342,3 +509,4 @@ jobs:
             return response.json();
           }
           NODE
+          node .github/actions/import-progress-comment.mjs

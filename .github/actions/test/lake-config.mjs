@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { parse as parseToml } from "smol-toml";
 import { maxBuildOutputBytes } from "./common.mjs";
 
 export function loadLakeConfig(packageDir, label, errors) {
@@ -27,7 +28,12 @@ export function loadLakeConfig(packageDir, label, errors) {
       return null;
     }
 
-    return parseLakeToml(readFileSync(outFile, "utf8"));
+    try {
+      return normalizeLakeConfig(parseToml(readFileSync(outFile, "utf8")));
+    } catch (error) {
+      errors.push(`could not parse Lake TOML output for ${label}: ${error.message}`);
+      return null;
+    }
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }
@@ -49,6 +55,15 @@ function prepareConfigCopy(packageDir, workDir) {
   if (existsSync(toolchain)) {
     copyFileSync(toolchain, join(workDir, "lean-toolchain"));
   }
+}
+
+function normalizeLakeConfig(config) {
+  return {
+    ...config,
+    defaultTargets: config.defaultTargets ?? config.default_targets ?? [],
+    requires: config.requires ?? config.require ?? [],
+    leanLibs: config.leanLibs ?? config.lean_lib ?? []
+  };
 }
 
 export function lakeDependencies(config) {
@@ -110,63 +125,6 @@ function resolveFileForPackage(absPackageDir, packageDir, file) {
 
 export function hasLeanLib(config, predicate) {
   return (config?.leanLibs ?? []).some(predicate);
-}
-
-function parseLakeToml(source) {
-  const config = {
-    name: null,
-    defaultTargets: [],
-    requires: [],
-    leanLibs: []
-  };
-  let section = config;
-
-  for (const raw of source.split(/\r?\n/)) {
-    const line = raw.trim();
-    if (!line || line.startsWith("#")) {
-      continue;
-    }
-
-    if (line === "[[require]]") {
-      section = {};
-      config.requires.push(section);
-      continue;
-    }
-    if (line === "[[lean_lib]]") {
-      section = {};
-      config.leanLibs.push(section);
-      continue;
-    }
-
-    const match = line.match(/^([A-Za-z0-9_]+)\s*=\s*(.*)$/);
-    if (!match) {
-      continue;
-    }
-    section[match[1]] = parseTomlValue(match[2]);
-  }
-
-  return config;
-}
-
-function parseTomlValue(value) {
-  const trimmed = value.trim();
-  if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
-    return [...trimmed.matchAll(/"((?:[^"\\]|\\.)*)"/g)].map((match) => unescapeTomlString(match[1]));
-  }
-  if (trimmed.startsWith("\"") && trimmed.endsWith("\"")) {
-    return unescapeTomlString(trimmed.slice(1, -1));
-  }
-  if (trimmed === "true") {
-    return true;
-  }
-  if (trimmed === "false") {
-    return false;
-  }
-  return trimmed;
-}
-
-function unescapeTomlString(value) {
-  return value.replace(/\\"/g, "\"").replace(/\\\\/g, "\\");
 }
 
 export function normalizePath(path) {

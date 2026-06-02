@@ -6,19 +6,17 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  declarationNames,
   isConjectureProofEntry,
   loadContext,
   maxBuildOutputBytes,
   proofConstantForTheorem,
   proofNamespaceForTheorem,
-  readIfExists,
   relativePath,
   report,
-  stripLeanCommentsAndStrings,
   walkFiles
 } from "./common.mjs";
 import { lakeModuleForFile, loadLakeConfig } from "./lake-config.mjs";
+import { inspectIntroducedDeclarations } from "./lean-inspect.mjs";
 
 const { packageRoot, meta, namespaceRoot } = loadContext();
 const errors = [];
@@ -35,24 +33,7 @@ for (const file of walkFiles(join(packageRoot, "proofs")).filter((path) => path.
 }
 
 for (const file of proofFiles) {
-  const source = readIfExists(file);
-  if (!source) {
-    continue;
-  }
   const label = relativePath(packageRoot, file);
-  const stripped = stripLeanCommentsAndStrings(source);
-  if (/\bsorry\b/.test(stripped)) {
-    errors.push(`proof file contains local sorry: ${label}`);
-  }
-  if (/\badmit\b/.test(stripped)) {
-    errors.push(`proof file contains local admit: ${label}`);
-  }
-  if (/\bunsafe\b/.test(stripped)) {
-    errors.push(`proof file contains local unsafe: ${label}`);
-  }
-  if (declarationNames(stripped, "axiom").length > 0) {
-    errors.push(`proof file declares local axioms: ${label}`);
-  }
 
   const result = spawnSync("lake", ["--dir", packageRoot, "lean", file], {
     encoding: "utf8",
@@ -69,7 +50,41 @@ for (const file of proofFiles) {
   }
 }
 
+checkProofFileIntroducedDeclarations();
 checkCompiledProofAxioms();
+
+function checkProofFileIntroducedDeclarations() {
+  const files = [...proofFiles];
+
+  for (const file of files) {
+    const label = relativePath(packageRoot, file);
+    const moduleName = lakeModuleForFile(rootLakeConfig, packageRoot, file);
+    if (!moduleName) {
+      errors.push(`could not infer proof module for ${label}`);
+      continue;
+    }
+
+    const declarations = inspectIntroducedDeclarations({
+      packageDir: packageRoot,
+      moduleName,
+      imports: ["Init"],
+      label,
+      errors
+    });
+
+    for (const declaration of (declarations ?? []).filter((item) => !namespaceRoot || item.name.startsWith(`${namespaceRoot}.Proofs.`))) {
+      if (declaration.kind === "axiom") {
+        errors.push(`proof file declares local axiom ${declaration.name}: ${label}`);
+      }
+      if (declaration.isUnsafe) {
+        errors.push(`proof file declares unsafe constant ${declaration.name}: ${label}`);
+      }
+      if ((declaration.axioms ?? []).includes("sorryAx")) {
+        errors.push(`proof file declaration depends on sorryAx: ${declaration.name} in ${label}`);
+      }
+    }
+  }
+}
 
 function checkCompiledProofAxioms() {
   const proofImports = new Set();
