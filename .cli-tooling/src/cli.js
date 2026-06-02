@@ -31,7 +31,7 @@ Usage:
 
 Commands:
   agent-introduction    Print a placeholder agent introduction.
-  agent-readme          Print the submission-ready project agent guide.
+  agent-readme          Print the paper-submission readiness guide for agents.
   login                 Login to GitHub with the GitHub CLI.
   logout                Logout from GitHub with the GitHub CLI.
   init                  Check local tooling and sync repository metadata.

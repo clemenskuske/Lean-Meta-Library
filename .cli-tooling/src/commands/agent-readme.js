@@ -6,8 +6,8 @@ const commandDir = dirname(fileURLToPath(import.meta.url));
 
 export async function agentReadme({ cwd }) {
   const candidates = [
-    join(commandDir, "../../../agent-info/README.md"),
-    join(cwd, "agent-info/README.md")
+    join(commandDir, "../../../agent-info/paper-submission-readiness-agent-guide.md"),
+    join(cwd, "agent-info/paper-submission-readiness-agent-guide.md")
   ];
 
   for (const path of candidates) {
@@ -19,5 +19,5 @@ export async function agentReadme({ cwd }) {
     }
   }
 
-  throw new Error("Could not find agent-info/README.md.");
+  throw new Error("Could not find agent-info/paper-submission-readiness-agent-guide.md.");
 }

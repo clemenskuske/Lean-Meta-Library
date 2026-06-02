@@ -61,7 +61,7 @@ The CLI `agent-introduction` command prints a placeholder lorem ipsum agent intr
 
 ## Agent README command
 
-The CLI `agent-readme` command prints `agent-info/README.md`, the agent guide for preparing an arbitrary Lean project as a Lean Meta Library submission with user-approved metadata, surface files, and proofs that should pass the local checks.
+The CLI `agent-readme` command prints `agent-info/paper-submission-readiness-agent-guide.md`, the guide for agents preparing an arbitrary Lean project as a Lean Meta Library paper submission with user-approved metadata, surface files, and proofs that should pass the local checks.
 
 ## Import submission workflow
 
