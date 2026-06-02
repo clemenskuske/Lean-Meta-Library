@@ -1,4 +1,5 @@
 .DS_Store
 node_modules/
+.vscode/
 *.tgz
 !lean-meta-library-cli.tgz
