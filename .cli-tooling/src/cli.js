@@ -30,7 +30,7 @@ Usage:
   lean-meta-library <command> [options]
 
 Commands:
-  agent-introduction    Print a placeholder agent introduction.
+  agent-introduction    Print the Lean Meta Library startup guide for agents.
   agent-readme          Print the paper-submission readiness guide for agents.
   login                 Login to GitHub with the GitHub CLI.
   logout                Logout from GitHub with the GitHub CLI.

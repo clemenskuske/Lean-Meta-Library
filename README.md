@@ -63,6 +63,8 @@ lml submission-status path/to/meta.yaml
 lml create-paper
 ```
 
+The `agent-introduction` command prints `agent-info/README.md`, a general startup guide for agents working with the Lean Meta Library setup, `submissions.jsonl`, and the CLI.
+
 The `agent-readme` command prints `agent-info/paper-submission-readiness-agent-guide.md`, the guide for agents turning an arbitrary Lean project into a paper submission package whose surface, metadata, and proofs are user-approved and checker-ready.
 
 The `test` command runs `.github-actions/test/run-all.mjs` using the metadata file as the source of submission information:

@@ -57,7 +57,7 @@ The CLI `submission-status` command reports whether a metadata file has a submis
 
 ## Agent introduction command
 
-The CLI `agent-introduction` command prints a placeholder lorem ipsum agent introduction.
+The CLI `agent-introduction` command prints `agent-info/README.md`, the general Lean Meta Library startup guide for agents. That guide explains the submission model, how to read and preserve `submissions.jsonl`, what the CLI commands do, and points agents to `lml agent-readme` for the paper-submission readiness workflow.
 
 ## Agent README command
 
