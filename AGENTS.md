@@ -63,6 +63,8 @@ The CLI `agent-introduction` command prints a placeholder lorem ipsum agent intr
 
 The `.github/workflows/import-submission.yml` workflow runs when an issue labeled `submission` is opened, labeled, edited, or reopened. It reads the repository URL, source branch, source commit, and metadata file path from the issue body, checks out that exact commit, runs the first-run checks from `.github-actions/test/` against the metadata file at that path, then adds or updates the matching row in `submissions.jsonl`. Imported rows include the parsed metadata plus repository, branch, commit, metadata path, surface folder, issue id/number/url, and submitting user id/login. After a successful import, the workflow comments on and closes the issue.
 
+Warning: the import workflow currently passes `GITHUB_TOKEN` as a Git HTTP extra header so it can check out private submitted repositories. This is acceptable temporarily, but it should be removed later when the import path no longer needs private-repository checkout support or has a better long-term authorization design.
+
 ## Submission package structure
 
 The CLI `create-paper` command creates one submission package folder. Preserve this structure:
