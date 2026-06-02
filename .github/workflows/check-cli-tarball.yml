@@ -1,4 +1,4 @@
-name: Check CLI Tarball
+name: Update CLI Tarball
 
 on:
   push:
@@ -14,21 +14,18 @@ on:
       - "package-lock.json"
       - "README.md"
       - "lean-meta-library-cli.tgz"
-  pull_request:
-    paths:
-      - ".cli-tooling/**"
-      - ".github-actions/test/**"
-      - ".github/workflows/check-cli-tarball.yml"
-      - "agent-info/**"
-      - "lml-env.json"
-      - "package.json"
-      - "package-lock.json"
-      - "README.md"
-      - "lean-meta-library-cli.tgz"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-cli-tarball-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  check:
-    name: Verify committed beta tarball
+  update:
+    name: Rebuild committed beta tarball
     runs-on: ubuntu-latest
 
     steps:
@@ -47,15 +44,21 @@ jobs:
       - name: Smoke test CLI
         run: npm run smoke
 
-      - name: Rebuild and compare beta tarball
+      - name: Rebuild beta tarball
         run: |
           mkdir -p .tarball-check
           npm pack --pack-destination .tarball-check
-          cp .tarball-check/*.tgz .tarball-check/lean-meta-library-cli.tgz
+          cp .tarball-check/*.tgz lean-meta-library-cli.tgz
 
-          if ! cmp -s .tarball-check/lean-meta-library-cli.tgz lean-meta-library-cli.tgz; then
-            echo "::error file=lean-meta-library-cli.tgz::The committed beta tarball is stale. Rebuild it from the current package contents before pushing."
-            echo "Run this from the repository root:"
-            echo 'tmpdir="$(mktemp -d)" && npm pack --pack-destination "$tmpdir" && cp "$tmpdir"/*.tgz lean-meta-library-cli.tgz'
-            exit 1
+      - name: Commit updated tarball
+        run: |
+          if git diff --quiet -- lean-meta-library-cli.tgz; then
+            echo "lean-meta-library-cli.tgz is already current."
+            exit 0
           fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lean-meta-library-cli.tgz
+          git commit -m "Update beta CLI tarball"
+          git push
