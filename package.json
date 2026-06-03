@@ -15,7 +15,8 @@
     "README.md"
   ],
   "scripts": {
-    "smoke": "node ./.cli-tooling/src/cli.js --help"
+    "smoke": "node ./.cli-tooling/src/cli.js --help",
+    "test:imports": "node .github/actions/test/test-imports.mjs"
   },
   "engines": {
     "node": ">=20"

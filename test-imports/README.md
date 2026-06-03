@@ -5,7 +5,13 @@ This folder contains small Lean Meta Library submission packages that are meant
 to fail the import checks. They are useful as regression inputs when changing
 the local checker suite or the GitHub import workflow.
 
-Run any fixture from the repository root with:
+Run all negative fixtures from the repository root with:
+
+```sh
+npm run test:imports
+```
+
+Run one fixture manually with:
 
 ```sh
 node .github/actions/test/run-all.mjs --meta=test-imports/<fixture>/meta.yaml
