@@ -121,3 +121,10 @@ For a one-off run without linking:
 ```sh
 npm run smoke
 ```
+
+## Import Failure Fixtures
+
+Negative import-check fixtures live in `test-imports/`. Each package is a small
+submission that should fail for one documented reason, such as a missing proof
+file, a mismatched proof type, `sorry`, an extra surface declaration, or an
+unauthorized surface import.

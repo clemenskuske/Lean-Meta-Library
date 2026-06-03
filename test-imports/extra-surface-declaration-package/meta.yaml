@@ -1,0 +1,27 @@
+pinnedLeanToolchain: leanprover/lean4:v4.30.0
+proofLakefileUrl: .
+paperTitle: Extra Surface Declaration Fixture
+namespaceSlug: extra-surface-declaration
+surfaceLakefilePath: surface-package/lakefile.lean
+abstractUrl: abstract.tex
+surfaceEntries:
+  - type: Definition
+    name: ExtraSurfaceDeclaration.Surface.Definition.ConnectedGraph
+    folder: surface-package/ConnectedGraph
+    usedSurfaceFiles: []
+  - type: Theorem
+    name: ExtraSurfaceDeclaration.Surface.Theorem.ConnectedIffReachable
+    folder: surface-package/ConnectedIffReachable
+    usedSurfaceFiles: []
+proofs:
+  - theorem: ExtraSurfaceDeclaration.Surface.Theorem.ConnectedIffReachable.connected_iff_reachable
+    proofFile: proofs/ConnectedIffReachableProof.lean
+bibtex: ""
+paper:
+  paperTitle: Extra Surface Declaration Fixture
+  arxivUrl: ""
+  onlineSource: ""
+  doi: ""
+  orcids: []
+  journalOrConference: ""
+  keywords: []

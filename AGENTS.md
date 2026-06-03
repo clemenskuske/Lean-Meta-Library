@@ -9,6 +9,7 @@ Read this file before making changes, then preserve the existing folder roles:
 - `.website`: GitHub Pages site.
 - `.github`: GitHub workflows plus import policy and automation helper scripts under `.github/actions`.
 - `.cli-tooling`: npm CLI tooling.
+- `test-imports`: intentionally failing submission packages for import-check regression testing.
 - `submissions.jsonl`: root-level JSON Lines submission log.
 - `lml-env.json`: repository-level values that may change later but are fixed for all Lean Meta Library projects right now.
 
