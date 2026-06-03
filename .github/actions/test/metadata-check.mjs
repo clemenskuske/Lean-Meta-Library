@@ -3,7 +3,7 @@
 // It also applies a small character/token whitelist to catch suspicious metadata early.
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { isConjectureProofEntry, isInside, loadContext, report, requireMeta } from "./common.mjs";
+import { isInside, loadContext, report, requireMeta } from "./common.mjs";
 
 const context = loadContext();
 const { packageRoot, meta } = context;
@@ -14,12 +14,12 @@ requireMeta(context, errors);
 
 const requiredKeys = [
   "pinnedLeanToolchain",
-  "proofLakefileUrl",
+  "proofLakefilePath",
   "paperTitle",
   "namespaceSlug",
   "surfaceLakefilePath",
-  "abstractUrl",
-  "surfaceEntries",
+  "abstractPath",
+  "declarations",
   "proofs"
 ];
 
@@ -29,21 +29,29 @@ for (const key of requiredKeys) {
   }
 }
 
-if (!Array.isArray(meta.surfaceEntries) || meta.surfaceEntries.length === 0) {
-  errors.push("surfaceEntries must contain at least one entry");
+checkRelativePath(meta.proofLakefilePath, `proofLakefilePath ${meta.proofLakefilePath}`);
+checkRelativePath(meta.surfaceLakefilePath, `surfaceLakefilePath ${meta.surfaceLakefilePath}`);
+checkRelativePath(meta.abstractPath, `abstractPath ${meta.abstractPath}`);
+
+if (!Array.isArray(meta.declarations) || meta.declarations.length === 0) {
+  errors.push("declarations must contain at least one entry");
 }
 
-for (const entry of meta.surfaceEntries ?? []) {
-  if (!["Definition", "Theorem", "Conjecture"].includes(entry.type)) {
-    errors.push(`surface entry ${entry.name ?? "(unnamed)"} has invalid type ${entry.type}`);
+const declarationsByName = new Map();
+for (const entry of meta.declarations ?? []) {
+  if (!["Definition", "Statement"].includes(entry.type)) {
+    errors.push(`declaration ${entry.name ?? "(unnamed)"} has invalid type ${entry.type}`);
   }
   for (const key of ["name", "folder"]) {
     if (!entry[key]) {
-      errors.push(`surface entry is missing ${key}`);
+      errors.push(`declaration is missing ${key}`);
     }
   }
-  checkRelativePath(entry.folder, `surface entry folder ${entry.folder}`);
-  checkSurfaceEntryFolder(entry.folder, `surface entry folder ${entry.folder}`);
+  if (entry.name) {
+    declarationsByName.set(entry.name, entry);
+  }
+  checkRelativePath(entry.folder, `declaration folder ${entry.folder}`);
+  checkDeclarationFolder(entry.folder, `declaration folder ${entry.folder}`);
   for (const used of entry.usedSurfaceFiles ?? []) {
     checkRelativePath(used.surfaceFile, `used surface file ${used.surfaceFile}`);
     for (const key of ["githubRepo", "slug", "surfaceFile", "definition"]) {
@@ -59,33 +67,34 @@ for (const entry of meta.surfaceEntries ?? []) {
 }
 
 for (const proof of meta.proofs ?? []) {
-  if (!proof.theorem) {
-    errors.push("proof entry is missing theorem");
+  if (!proof.declaration) {
+    errors.push("proof entry is missing declaration");
     continue;
   }
 
-  if (isConjectureProofEntry(proof)) {
-    if (!proof.theorem.includes(".Surface.Conjecture.")) {
-      errors.push(`conjecture metadata entry must target a Surface.Conjecture declaration: ${proof.theorem}`);
-    }
-    if (proof.proofFile) {
-      errors.push(`conjecture metadata entry should not include proofFile: ${proof.theorem}`);
-    }
-    continue;
+  if (!["proof", "conditional-proof", "reduction"].includes(proof.type)) {
+    errors.push(`proof entry for ${proof.declaration} has invalid type ${proof.type}`);
   }
-
-  if (proof.theorem.includes(".Surface.Conjecture.")) {
-    errors.push(`conjecture metadata entry must set conjecture: True: ${proof.theorem}`);
+  if (!proof.declaration.includes(".Surface.Statement.")) {
+    errors.push(`proof entry must target a Surface.Statement declaration: ${proof.declaration}`);
   }
   if (!proof.proofFile) {
-    errors.push(`proof entry is missing proofFile: ${proof.theorem}`);
+    errors.push(`proof entry is missing proofFile: ${proof.declaration}`);
     continue;
   }
   checkRelativePath(proof.proofFile, `proof file ${proof.proofFile}`);
+
+  const declarationNamespace = namespaceOfDeclaration(proof.declaration);
+  const declarationEntry = declarationsByName.get(declarationNamespace);
+  if (!declarationEntry) {
+    errors.push(`proof entry does not match a metadata declaration: ${proof.declaration}`);
+  } else if (declarationEntry.type !== "Statement") {
+    errors.push(`proof entry must target a Statement declaration, found ${declarationEntry.type}: ${proof.declaration}`);
+  }
 }
 
 const metadataStrings = collectStrings(meta);
-const allowedText = /^[A-Za-z0-9_ .:/@+\-()[\],|]*$/;
+const allowedText = /^[\t\r\n\x20-\x7E]*$/;
 for (const value of metadataStrings) {
   if (!allowedText.test(value)) {
     errors.push(`metadata contains a non-whitelisted character sequence: ${value}`);
@@ -102,8 +111,16 @@ if (meta.surfaceLakefilePath && !existsSync(join(packageRoot, meta.surfaceLakefi
   errors.push(`surfaceLakefilePath does not exist: ${meta.surfaceLakefilePath}`);
 }
 
-if (meta.abstractUrl && !existsSync(join(packageRoot, meta.abstractUrl))) {
-  errors.push(`abstractUrl does not exist: ${meta.abstractUrl}`);
+if (meta.proofLakefilePath && !existsSync(join(packageRoot, meta.proofLakefilePath))) {
+  errors.push(`proofLakefilePath does not exist: ${meta.proofLakefilePath}`);
+}
+
+if (meta.abstractPath && !existsSync(join(packageRoot, meta.abstractPath))) {
+  errors.push(`abstractPath does not exist: ${meta.abstractPath}`);
+}
+
+if (!Array.isArray(meta.bibtex)) {
+  errors.push("bibtex must be a list");
 }
 
 function checkRelativePath(value, label) {
@@ -116,7 +133,7 @@ function checkRelativePath(value, label) {
   }
 }
 
-function checkSurfaceEntryFolder(value, label) {
+function checkDeclarationFolder(value, label) {
   if (!value) {
     return;
   }

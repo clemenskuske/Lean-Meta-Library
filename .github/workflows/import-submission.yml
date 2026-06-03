@@ -202,10 +202,10 @@ jobs:
           STEP_NUMBER: 4
           TOTAL_STEPS: 10
           STEP_NAME: First-run submission checks passed
-          NEXT_STEP: Run the final rewritten proof build
+          NEXT_STEP: Run the final proof build
         run: node .github/actions/import-progress-comment.mjs
 
-      - name: Run final rewritten proof build
+      - name: Run final proof build
         env:
           META_PATH: ${{ steps.issue.outputs.meta-path }}
         run: |
@@ -220,7 +220,7 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           STEP_NUMBER: 5
           TOTAL_STEPS: 10
-          STEP_NAME: Final rewritten proof build passed
+          STEP_NAME: Final proof build passed
           NEXT_STEP: Upload the checked metadata artifact
         run: node .github/actions/import-progress-comment.mjs
 
@@ -363,7 +363,7 @@ jobs:
             if (metadata.surfaceLakefilePath) {
               return repoRelativePath(metadataDir, path.dirname(normalizePath(metadata.surfaceLakefilePath)));
             }
-            const firstEntryFolder = metadata.surfaceEntries?.find((entry) => entry.folder)?.folder;
+            const firstEntryFolder = metadata.declarations?.find((entry) => entry.folder)?.folder;
             if (firstEntryFolder) {
               const surfaceDir = normalizePath(firstEntryFolder).split("/").slice(0, -1).join("/") || firstEntryFolder;
               return repoRelativePath(metadataDir, surfaceDir);

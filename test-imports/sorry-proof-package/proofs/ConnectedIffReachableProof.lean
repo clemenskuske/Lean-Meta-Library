@@ -1,7 +1,7 @@
 import Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected
 import ConnectedIffReachable.Surface
 
-namespace SorryProof.Proofs.Theorem.ConnectedIffReachable
+namespace SorryProof.Proofs.Statement.ConnectedIffReachable
 
 theorem connected_iff_reachable {V : Type u} (G : SimpleGraph V) :
     SorryProof.Surface.Definition.ConnectedGraph.IsConnectedGraph G ↔
@@ -9,4 +9,4 @@ theorem connected_iff_reachable {V : Type u} (G : SimpleGraph V) :
   by
     sorry
 
-end SorryProof.Proofs.Theorem.ConnectedIffReachable
+end SorryProof.Proofs.Statement.ConnectedIffReachable

@@ -29,7 +29,7 @@ for (const file of packageFiles) {
 for (const folder of [
   "surface-package",
   "proofs",
-  ...(meta.surfaceEntries ?? []).map((entry) => entry.folder).filter(Boolean)
+  ...(meta.declarations ?? []).map((entry) => entry.folder).filter(Boolean)
 ]) {
   const absolute = join(packageRoot, folder);
   if (!existsSync(absolute) || !statSync(absolute).isDirectory()) {

@@ -332,7 +332,7 @@ function optionalGit(repoRoot, args) {
 
 function compareSurfaceFiles({ repoRoot, metaRelPath, sourceCommit, currentMeta }) {
   const usedMetaText = optionalGit(repoRoot, ["show", `${sourceCommit}:${metaRelPath}`]);
-  const usedMeta = usedMetaText ? parseMetaYaml(usedMetaText) : { surfaceEntries: [] };
+  const usedMeta = usedMetaText ? parseMetaYaml(usedMetaText) : { declarations: [] };
   const packageRelRoot = dirname(metaRelPath).replace(/^\.$/, "");
   const currentFiles = currentSurfaceFiles(currentMeta, packageRelRoot);
   const usedFiles = currentSurfaceFiles(usedMeta, packageRelRoot);
@@ -359,7 +359,7 @@ function compareSurfaceFiles({ repoRoot, metaRelPath, sourceCommit, currentMeta 
 }
 
 function currentSurfaceFiles(meta, packageRelRoot = "") {
-  return [...new Set((meta.surfaceEntries ?? []).map((entry) => surfaceFileForEntry(entry, packageRelRoot)).filter(Boolean))];
+  return [...new Set((meta.declarations ?? []).map((entry) => surfaceFileForEntry(entry, packageRelRoot)).filter(Boolean))];
 }
 
 function surfaceFileForEntry(entry, packageRelRoot) {

@@ -1,22 +1,23 @@
 pinnedLeanToolchain: leanprover/lean4:v4.30.0
-proofLakefileUrl: .
+proofLakefilePath: lakefile.lean
 paperTitle: Missing Proof File Fixture
 namespaceSlug: missing-proof-file
 surfaceLakefilePath: surface-package/lakefile.lean
-abstractUrl: abstract.tex
-surfaceEntries:
+abstractPath: abstract.tex
+declarations:
   - type: Definition
     name: MissingProofFile.Surface.Definition.ConnectedGraph
     folder: surface-package/ConnectedGraph
     usedSurfaceFiles: []
-  - type: Theorem
-    name: MissingProofFile.Surface.Theorem.ConnectedIffReachable
+  - type: Statement
+    name: MissingProofFile.Surface.Statement.ConnectedIffReachable
     folder: surface-package/ConnectedIffReachable
     usedSurfaceFiles: []
 proofs:
-  - theorem: MissingProofFile.Surface.Theorem.ConnectedIffReachable.connected_iff_reachable
+  - declaration: MissingProofFile.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
+    type: proof
     proofFile: proofs/ConnectedIffReachableProof.lean
-bibtex: ""
+bibtex: []
 paper:
   paperTitle: Missing Proof File Fixture
   arxivUrl: ""

@@ -20,26 +20,26 @@ Repository-level values that may change later but are fixed for all projects rig
 CLI tooling and submission checks import this file for the Lean toolchain, mathlib revision, default metadata path,
 allowed submission file/import policy, first-run size limits, checker output limits, and final proof-build base axiom signatures.
 
-## Proof Checking Contract
+## Submission Contract
 
-Surface theorem files state public declarations, usually as axioms:
+A submission consists of declarations and proofs. Declarations live in the surface package and are the trustworthy public surface: definitions are Lean `def`s, and statements are usually Lean `axiom`s or `theorem`s.
 
 ```lean
-axiom Surface.statement : SomeStatement
+axiom Surface.Statement.entry : SomeStatement
 ```
 
-Proof files must provide a theorem with the same statement without relying on the surface axiom:
+Proofs live in the proof package. A proof entry has type `proof`, `conditional-proof`, or `reduction`, and it must provide a proof-side theorem with the same Lean type as the surface statement:
 
 ```lean
-theorem Proofs.statement : SomeStatement := by
+theorem Proofs.Statement.entry : SomeStatement := by
   ...
 ```
 
-When `lml test` runs, the checker asks Lean to compare the compiled types of each surface theorem declaration and its matching proof theorem. This checks matching by Lean type, not by textual dependency on the surface axiom. Separately, the proof-file checker elaborates proof files, rejects local proof-namespace `axiom` and `unsafe` declarations, rejects declarations whose compiled axiom list includes `sorryAx` such as from `sorry` or `admit`, and asks Lean for each submitted proof theorem's compiled axiom dependencies. A submitted proof theorem must not depend on `sorryAx`, same-submission proof axioms, or same-submission surface axioms.
+When `lml test` runs, the checker asks Lean `isDefEq` to compare the compiled types of each surface statement declaration and its matching proof theorem. A statement is classified as a theorem when it has a `proof` or `conditional-proof`; it is classified as a conjecture when it has a `reduction`. Proof files may rely on declarations, Std, and Mathlib. The checker still rejects local proof-namespace `axiom` and `unsafe` declarations and declarations whose compiled axiom list includes `sorryAx` such as from `sorry` or `admit`.
 
-At the end of the import workflow, a final-only proof build runs in an isolated temporary copy. It runs `lake update`, removes `Surface.Theorem` declarations while keeping surface definition and conjecture modules, rewrites proof-side `.Surface.Theorem.` references to `.Proofs.Theorem.`, runs `lake clean`, fetches the Lake build cache best-effort, then runs `lake build`. The final check relies on Lean elaboration, build output, and compiled axiom inspection rather than a separate rewritten-source text scan for `sorry` or `admit`. It rejects build output that reports `sorry`/`sorryAx`, then asks Lean to verify that declared axioms in checked submission namespaces and proof-target axiom dependencies are either allowed conjectures or have the same types as the constants listed in `lml-env.json` at `checks.allowedMathlibAxioms`, currently `propext`, `Quot.sound`, and `Classical.choice`.
+At the end of the import workflow, a final proof build runs in an isolated temporary copy. It runs `lake update`, `lake clean`, fetches the Lake build cache best-effort, then runs `lake build`. The final check relies on Lean elaboration, build output, and compiled axiom inspection. It rejects build output that reports `sorry`/`sorryAx`, then asks Lean to verify that declared proof-side axioms and proof-target dependencies are either surface statement declarations or have the same types as the constants listed in `lml-env.json` at `checks.allowedMathlibAxioms`, currently `propext`, `Quot.sound`, and `Classical.choice`.
 
-Surface files may always import other surface modules from the same submission package. Surface imports from other packages or namespaces must be justified by the current surface entry's `usedSurfaceFiles` metadata; each `usedSurfaceFiles` item must include a referenced declaration, and metadata validation rejects references in the same namespace as the current surface entry. A theorem proof file may import its own surface theorem module, but any other surface imports must be justified by that theorem surface entry's `usedSurfaceFiles` metadata. Accepted proof package dependencies are still reported as warnings.
+Surface files may always import other surface modules from the same submission package. Surface imports from other packages or namespaces must be justified by the current declaration's `usedSurfaceFiles` metadata; each `usedSurfaceFiles` item must include a referenced declaration, and metadata validation rejects references in the same namespace as the current declaration. A proof file may import its own surface statement module, but any other surface imports must be justified by that statement declaration's `usedSurfaceFiles` metadata. Accepted proof package dependencies are still reported as warnings.
 
 ## CLI Tooling
 
@@ -86,12 +86,11 @@ lml test path/to/meta.yaml
 
 The first-run checker prepares the Lean build/cache first, runs static checks in parallel, and then runs the Lean inspector checks in parallel. In the import workflow, the preparation runs as its own `Prepare Lean build/cache` step before `Run submission checks`.
 
-Conjecture surface declarations are recorded in the metadata `proofs:` list, but they do not have proof files yet. Mark them with `conjecture: True` and omit `proofFile`:
-
 ```yaml
 proofs:
-  - theorem: MySlug.Surface.Conjecture.SomeEntry.some_conjecture
-    conjecture: True
+  - declaration: MySlug.Surface.Statement.SomeEntry.some_statement
+    type: reduction
+    proofFile: proofs/SomeEntryReduction.lean
 ```
 
 The `submit` command runs the submission checks first, then dispatches `.github/workflows/submit.yml` for the current repository, branch, commit, and metadata file:
@@ -109,7 +108,7 @@ lml submission-status path/to/meta.yaml
 
 ## Submission Workflow
 
-The `Submit` GitHub Actions workflow can be run manually with a metadata path. It creates a submission issue when `submissionIssueNumber` is missing, or updates that issue when the field is present. The workflow labels the issue `submission`, names it with the submission title, starts the issue body with the submission abstract, records the submitting account login plus the repository URL, source branch, source commit, and metadata file path, then writes `submissionIssueNumber` and `submissionIssueUrl` back to the metadata file.
+The `Submit` GitHub Actions workflow can be run manually with a metadata path. It creates a submission issue when `submissionIssueNumber` is missing, or updates that issue when the field is present. The workflow labels the issue `submission`, names it with the submission title, starts the issue body with the submission abstract, records the submitting account login plus the repository URL, source branch, source commit, metadata file path, and generated source URLs, then writes `submissionIssueNumber` and `submissionIssueUrl` back to the metadata file.
 
 The `Import Submission` workflow starts from issues labeled `submission`. It checks out the submitted repository at the recorded branch and commit, runs `.github/actions/test/run-all.mjs` against the metadata file path from the issue, then adds or updates the corresponding `submissions.jsonl` row with the submitted-by account and closes the issue.
 

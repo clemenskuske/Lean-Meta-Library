@@ -1,22 +1,23 @@
 pinnedLeanToolchain: leanprover/lean4:v4.30.0
-proofLakefileUrl: .
+proofLakefilePath: lakefile.lean
 paperTitle: Mismatched Proof Type Fixture
 namespaceSlug: mismatched-proof-type
 surfaceLakefilePath: surface-package/lakefile.lean
-abstractUrl: abstract.tex
-surfaceEntries:
+abstractPath: abstract.tex
+declarations:
   - type: Definition
     name: MismatchedProofType.Surface.Definition.ConnectedGraph
     folder: surface-package/ConnectedGraph
     usedSurfaceFiles: []
-  - type: Theorem
-    name: MismatchedProofType.Surface.Theorem.ConnectedIffReachable
+  - type: Statement
+    name: MismatchedProofType.Surface.Statement.ConnectedIffReachable
     folder: surface-package/ConnectedIffReachable
     usedSurfaceFiles: []
 proofs:
-  - theorem: MismatchedProofType.Surface.Theorem.ConnectedIffReachable.connected_iff_reachable
+  - declaration: MismatchedProofType.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
+    type: proof
     proofFile: proofs/ConnectedIffReachableProof.lean
-bibtex: ""
+bibtex: []
 paper:
   paperTitle: Mismatched Proof Type Fixture
   arxivUrl: ""

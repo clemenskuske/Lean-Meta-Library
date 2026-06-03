@@ -18,12 +18,12 @@ const { packageRoot, meta } = loadContext();
 const errors = [];
 const surfaceRoot = join(packageRoot, "surface-package");
 const surfaceLakeConfig = loadLakeConfig(surfaceRoot, "surface lakefile", errors);
-const surfaceFiles = (meta.surfaceEntries ?? [])
+const surfaceFiles = (meta.declarations ?? [])
   .map((entry) => join(packageRoot, entry.folder ?? "", "Surface.lean"))
   .filter(existsSync);
 const importsByFile = parseLeanImports(surfaceFiles, errors);
 
-for (const entry of meta.surfaceEntries ?? []) {
+for (const entry of meta.declarations ?? []) {
   checkSurfaceEntry(entry);
 }
 
@@ -110,7 +110,7 @@ function allowedKindForEntry(type, kind) {
   if (type === "Definition") {
     return kind === "definition";
   }
-  if (type === "Theorem" || type === "Conjecture") {
+  if (type === "Statement") {
     return kind === "axiom" || kind === "theorem";
   }
   return false;

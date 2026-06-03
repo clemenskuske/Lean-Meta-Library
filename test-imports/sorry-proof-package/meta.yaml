@@ -1,22 +1,23 @@
 pinnedLeanToolchain: leanprover/lean4:v4.30.0
-proofLakefileUrl: .
+proofLakefilePath: lakefile.lean
 paperTitle: Sorry Proof Fixture
 namespaceSlug: sorry-proof
 surfaceLakefilePath: surface-package/lakefile.lean
-abstractUrl: abstract.tex
-surfaceEntries:
+abstractPath: abstract.tex
+declarations:
   - type: Definition
     name: SorryProof.Surface.Definition.ConnectedGraph
     folder: surface-package/ConnectedGraph
     usedSurfaceFiles: []
-  - type: Theorem
-    name: SorryProof.Surface.Theorem.ConnectedIffReachable
+  - type: Statement
+    name: SorryProof.Surface.Statement.ConnectedIffReachable
     folder: surface-package/ConnectedIffReachable
     usedSurfaceFiles: []
 proofs:
-  - theorem: SorryProof.Surface.Theorem.ConnectedIffReachable.connected_iff_reachable
+  - declaration: SorryProof.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
+    type: proof
     proofFile: proofs/ConnectedIffReachableProof.lean
-bibtex: ""
+bibtex: []
 paper:
   paperTitle: Sorry Proof Fixture
   arxivUrl: ""

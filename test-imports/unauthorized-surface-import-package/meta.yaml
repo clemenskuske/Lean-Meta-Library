@@ -1,22 +1,23 @@
 pinnedLeanToolchain: leanprover/lean4:v4.30.0
-proofLakefileUrl: .
+proofLakefilePath: lakefile.lean
 paperTitle: Unauthorized Surface Import Fixture
 namespaceSlug: unauthorized-surface-import
 surfaceLakefilePath: surface-package/lakefile.lean
-abstractUrl: abstract.tex
-surfaceEntries:
+abstractPath: abstract.tex
+declarations:
   - type: Definition
     name: UnauthorizedSurfaceImport.Surface.Definition.ConnectedGraph
     folder: surface-package/ConnectedGraph
     usedSurfaceFiles: []
-  - type: Theorem
-    name: UnauthorizedSurfaceImport.Surface.Theorem.ConnectedIffReachable
+  - type: Statement
+    name: UnauthorizedSurfaceImport.Surface.Statement.ConnectedIffReachable
     folder: surface-package/ConnectedIffReachable
     usedSurfaceFiles: []
 proofs:
-  - theorem: UnauthorizedSurfaceImport.Surface.Theorem.ConnectedIffReachable.connected_iff_reachable
+  - declaration: UnauthorizedSurfaceImport.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
+    type: proof
     proofFile: proofs/ConnectedIffReachableProof.lean
-bibtex: ""
+bibtex: []
 paper:
   paperTitle: Unauthorized Surface Import Fixture
   arxivUrl: ""

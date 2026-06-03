@@ -1,7 +1,7 @@
 import Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected
 import ConnectedIffReachable.Surface
 
-namespace ExtraSurfaceDeclaration.Proofs.Theorem.ConnectedIffReachable
+namespace ExtraSurfaceDeclaration.Proofs.Statement.ConnectedIffReachable
 
 -- The proof theorem must have exactly the same type as the matching surface declaration.
 -- `lml test` asks Lean to compare the compiled types of both constants.
@@ -16,4 +16,4 @@ theorem connected_iff_reachable {V : Type u} (G : SimpleGraph V) :
     · rintro ⟨hV, hreachable⟩
       exact { preconnected := hreachable, nonempty := hV }
 
-end ExtraSurfaceDeclaration.Proofs.Theorem.ConnectedIffReachable
+end ExtraSurfaceDeclaration.Proofs.Statement.ConnectedIffReachable

@@ -13,7 +13,6 @@ const staticChecks = [
   "metadata-check.mjs",
   "mathlib-version.mjs",
   "namespaces-correct.mjs",
-  "conjectures.mjs",
   "folder-size.mjs",
   "filetypes.mjs",
   "surface-file-context.mjs",
@@ -21,7 +20,7 @@ const staticChecks = [
 ];
 const leanChecks = [
   "proofs-axioms-sorrys.mjs",
-  "axioms-to-proofs.mjs",
+  "declarations-to-proofs.mjs",
   "surface-declarations.mjs"
 ];
 

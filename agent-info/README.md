@@ -8,9 +8,9 @@ Lean Meta Library records Lean formalization submissions in a form that can be c
 
 The core idea is to separate three things:
 
-- The public mathematical surface: definitions, theorem statements, and conjectures that a submission exposes.
-- The proof package: Lean files proving the submitted theorems without relying on the submitted surface theorem axioms.
-- The submission metadata: a small manifest that tells the checker where the surface entries, proofs, abstract, toolchain, and bibliographic data live.
+- The public mathematical surface: trustworthy declarations, either definitions or statements.
+- The proof package: Lean files for `proof`, `conditional-proof`, and `reduction` entries. A statement with a `proof` or `conditional-proof` is a theorem; a statement with a `reduction` is a conjecture.
+- The submission metadata: a small manifest that tells the checker where the declarations, proofs, abstract, toolchain, and bibliographic data live.
 
 Agents should treat the metadata file as the submission source of truth. The Lean files should match it, and the checks should be run from it.
 
@@ -39,7 +39,7 @@ The commands have these roles:
 - `agent-submission-guide`: print the detailed paper-submission readiness guide for agents.
 - `login` and `logout`: manage GitHub CLI authentication for commands that need GitHub.
 - `init` and `update`: check local tooling and synchronize repository metadata.
-- `create-paper <slug>`: create a starter submission package that an agent can adapt with user-approved surface entries, metadata, and proofs.
+- `create-paper <slug>`: create a starter submission package that an agent can adapt with user-approved declarations, metadata, and proofs.
 - `test --meta=path/to/meta.yaml`: run the local submission checks from the metadata file.
 - `submit --meta=path/to/meta.yaml`: run checks, then dispatch the GitHub submit workflow.
 - `submission-status path/to/meta.yaml`: report submission issue, workflow, import, source commit, and surface-file status.
@@ -70,8 +70,8 @@ Important fields include:
 - `Repo Url`, `Source Branch`, and `Source Commit`: the exact source revision for the imported submission.
 - `Metadata File`: the metadata path used for the import.
 - `Surface Folder`: the repository-relative folder containing the imported surface package.
-- `surfaceEntries`: the public definition, theorem, and conjecture entries recorded for that submission.
-- `proofs`: theorem proof targets and conjecture markers.
+- `declarations`: the public definition and statement declarations recorded for that submission.
+- `proofs`: typed proof targets using `proof`, `conditional-proof`, or `reduction`.
 - `paper`: paper title and bibliographic metadata.
 - `User Login`, `Issue Number`, and `Issue Url`: submission provenance from the import workflow.
 
@@ -84,7 +84,7 @@ Do not change `submissions.jsonl` by hand. It is synced registry state, and impo
 
 1. Read the local agent instructions and project README files.
 2. Inspect the metadata file before editing submission files.
-3. If preparing a new submission, ask the user to confirm the title, namespace slug, abstract, public surface entries, theorem/conjecture split, and proof sources.
+3. If preparing a new submission, ask the user to confirm the title, namespace slug, abstract, public declarations, proof types, and proof sources.
 4. `lml update`: refresh `submissions.jsonl`, then use it only for imported-surface context and dependency authorization.
 5. `lml test --meta=path/to/meta.yaml`: run this before calling submission work complete.
 6. `lml submission-status path/to/meta.yaml`: run this when the user wants to know whether a submitted package has been uploaded, tested, imported, or changed since submission.

@@ -1,16 +1,15 @@
 #!/usr/bin/env node
 // Scans proof files for local placeholders, asks Lean to elaborate them, then checks compiled proof theorem axiom dependencies.
-// Submitted proof theorems may not depend on sorryAx, local proof axioms, or same-submission surface axioms.
+// Submitted proof theorems may depend on surface declarations, but not on sorryAx or local proof axioms.
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  isConjectureProofEntry,
   loadContext,
   maxBuildOutputBytes,
-  proofConstantForTheorem,
-  proofNamespaceForTheorem,
+  proofConstantForDeclaration,
+  proofNamespaceForDeclaration,
   relativePath,
   report,
   walkFiles
@@ -90,17 +89,17 @@ function checkCompiledProofAxioms() {
   const proofImports = new Set();
   const proofTargets = [];
 
-  for (const proof of (meta.proofs ?? []).filter((item) => !isConjectureProofEntry(item))) {
+  for (const proof of meta.proofs ?? []) {
     const proofModule = lakeModuleForFile(rootLakeConfig, packageRoot, proof.proofFile);
-    const proofNamespace = proofNamespaceForTheorem(proof.theorem ?? "");
-    const proofConstant = proofConstantForTheorem(proof.theorem ?? "");
+    const proofNamespace = proofNamespaceForDeclaration(proof.declaration ?? "");
+    const proofConstant = proofConstantForDeclaration(proof.declaration ?? "");
 
     if (!proof.proofFile || !proofModule || !isLeanName(proofModule)) {
       errors.push(`could not infer proof module for ${proof.proofFile ?? "(missing proofFile)"}`);
       continue;
     }
     if (!proofNamespace || !proofConstant) {
-      errors.push(`could not infer proof theorem name for ${proof.theorem ?? "(missing theorem)"}`);
+      errors.push(`could not infer proof theorem name for ${proof.declaration ?? "(missing declaration)"}`);
       continue;
     }
 
@@ -139,7 +138,7 @@ function checkCompiledProofAxioms() {
 
 function proofAxiomInspector({ proofImports, proofTargets }) {
   const importLines = [...proofImports].sort().map((moduleName) => `import ${moduleName}`);
-  const forbiddenPrefixes = namespaceRoot ? [`${namespaceRoot}.Proofs`, `${namespaceRoot}.Surface`] : [];
+  const forbiddenPrefixes = namespaceRoot ? [`${namespaceRoot}.Proofs`] : [];
   const forbiddenPrefixArray = leanNameArray(forbiddenPrefixes);
   const proofTargetArray = `#[${
     proofTargets

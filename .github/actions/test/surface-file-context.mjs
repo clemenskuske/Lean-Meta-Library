@@ -38,7 +38,7 @@ const allowedCommandKinds = new Set([
   "Lean.Parser.Command.noncomputable"
 ]);
 
-for (const entry of meta.surfaceEntries ?? []) {
+for (const entry of meta.declarations ?? []) {
   const path = join(packageRoot, entry.folder ?? "", "Surface.lean");
   const label = `${entry.folder}/Surface.lean`;
   const inspected = inspectCommandSyntax({ file: path, label, errors })?.[0];

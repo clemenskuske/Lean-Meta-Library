@@ -1,6 +1,5 @@
 #!/usr/bin/env node
-// Final import-stage check: build the proof package in an isolated copy after
-// removing theorem surface declarations and rewriting theorem references to proofs.
+// Final import-stage check: build the proof package in an isolated copy and inspect compiled proof targets.
 import { spawnSync } from "node:child_process";
 import {
   cpSync,
@@ -12,15 +11,14 @@ import {
   writeFileSync
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, dirname, extname, join, relative, sep } from "node:path";
+import { basename, dirname, join, relative, sep } from "node:path";
 import lmlEnv from "../../../lml-env.json" with { type: "json" };
 import {
-  isConjectureProofEntry,
   loadContext,
   maxBuildOutputBytes,
   parseMetaYaml,
-  proofConstantForTheorem,
-  proofNamespaceForTheorem,
+  proofConstantForDeclaration,
+  proofNamespaceForDeclaration,
   report,
   slugToPascal,
   walkFiles
@@ -47,13 +45,10 @@ try {
     errors.push("lml-env.json checks.allowedMathlibAxioms must list at least one Lean axiom name");
   } else {
     runLake(["update"], "lake update");
-    removeSurfaceTheoremDeclarations();
-    rewriteProofTheoremReferences();
     runLake(["clean"], "lake clean");
     fetchBuildCache();
     const build = runLake(["build"], "lake build");
     checkBuildOutputForSorry(build);
-    checkRewrittenSources();
     if (errors.length === 0) {
       checkCompiledAxioms();
     }
@@ -66,7 +61,7 @@ try {
   }
 }
 
-report("final rewritten proof build", errors, warnings);
+report("final proof build", errors, warnings);
 
 function copyPackage(from, to) {
   cpSync(from, to, {
@@ -113,75 +108,11 @@ function fetchBuildCache() {
   }
 }
 
-function removeSurfaceTheoremDeclarations() {
-  let changed = 0;
-  for (const { root, meta } of metadataContexts()) {
-    for (const entry of meta.surfaceEntries ?? []) {
-      if (entry.type !== "Theorem" || !entry.folder) {
-        continue;
-      }
-
-      const surfaceFile = join(root, entry.folder, "Surface.lean");
-      if (!existsSync(surfaceFile)) {
-        continue;
-      }
-
-      const before = readFileSync(surfaceFile, "utf8");
-      const after = emptySurfaceTheoremModule(entry);
-      if (after !== before) {
-        writeFileSync(surfaceFile, after, "utf8");
-        changed += 1;
-      }
-    }
-  }
-
-  if (changed === 0) {
-    warnings.push("no Surface.Theorem declarations were removed before the final proof build");
-  }
-}
-
-function rewriteProofTheoremReferences() {
-  let changed = 0;
-  for (const file of walkFilesIncludingLake(isolatedPackageRoot)) {
-    if (!isProofSideLeanFile(file)) {
-      continue;
-    }
-
-    const before = readFileSync(file, "utf8");
-    const after = before.replace(/\.Surface\.Theorem\./g, ".Proofs.Theorem.");
-    if (after !== before) {
-      writeFileSync(file, after, "utf8");
-      changed += 1;
-    }
-  }
-
-  if (changed === 0) {
-    warnings.push("no proof-side .Surface.Theorem. references were rewritten before the final proof build");
-  }
-}
-
-function emptySurfaceTheoremModule(entry) {
-  return [
-    `namespace ${entry.name}`,
-    "",
-    `end ${entry.name}`,
-    ""
-  ].join("\n");
-}
-
 function walkFilesIncludingLake(root) {
   return walkFiles(root, { ignoreDirs: new Set([".git", "node_modules"]) }).filter((file) => {
     const rel = relativePath(root, file);
     return !rel.startsWith(".lake/build/");
   });
-}
-
-function isProofSideLeanFile(file) {
-  if (extname(file) !== ".lean") {
-    return false;
-  }
-  const rel = relativePath(isolatedPackageRoot, file);
-  return !rel.split("/").includes("surface-package") && !isIgnoredLakePackage(rel.split("/")[2] ?? "");
 }
 
 function metadataContexts() {
@@ -202,34 +133,13 @@ function metadataContexts() {
 function checkBuildOutputForSorry(result) {
   const output = `${result?.stdout ?? ""}${result?.stderr ?? ""}`;
   if (/\bdeclaration uses ['`]sorry['`]/i.test(output) || /\bsorryAx\b/.test(output)) {
-    errors.push("rewritten proof build output reports a sorry");
+    errors.push("final proof build output reports a sorry");
   }
-}
-
-function checkRewrittenSources() {
-  // Source-level sorry/admit scans are intentionally avoided here. The final
-  // check relies on Lean elaboration plus compiled axiom inspection.
-}
-
-function isIgnoredLakePackage(packageName) {
-  return new Set([
-    "aesop",
-    "batteries",
-    "cli",
-    "importgraph",
-    "leansearchclient",
-    "mathlib",
-    "plausible",
-    "proofwidgets",
-    "qq",
-    "std"
-  ]).has(String(packageName).toLowerCase());
 }
 
 function checkCompiledAxioms() {
   const proofTargets = proofTargetNames();
   const checkedNamespaceRoots = namespaceRootsForFinalInspection();
-  const allowedConjectureAxioms = conjectureAxiomNames();
   if (proofTargets.length === 0 && checkedNamespaceRoots.length === 0) {
     warnings.push("no proof targets or declared axioms were found for final axiom inspection");
     return;
@@ -239,7 +149,7 @@ function checkCompiledAxioms() {
   const inspector = join(isolatedPackageRoot, "FinalProofBuildInspect.lean");
   writeFileSync(
     inspector,
-    finalProofBuildInspector({ modules, proofTargets, checkedNamespaceRoots, allowedMathlibAxioms, allowedConjectureAxioms }),
+    finalProofBuildInspector({ modules, proofTargets, checkedNamespaceRoots, allowedMathlibAxioms }),
     "utf8"
   );
 
@@ -254,16 +164,15 @@ function checkCompiledAxioms() {
     return;
   }
   if (result.status !== 0) {
-    errors.push(`final rewritten proof build has forbidden axioms or sorries\n${result.stdout}${result.stderr}`.trim());
+    errors.push(`final proof build has forbidden axioms or sorries\n${result.stdout}${result.stderr}`.trim());
   }
 }
 
 function proofTargetNames() {
   return (context.meta.proofs ?? [])
-    .filter((proof) => !isConjectureProofEntry(proof))
     .map((proof) => {
-      const namespace = proofNamespaceForTheorem(proof.theorem ?? "");
-      const constant = proofConstantForTheorem(proof.theorem ?? "");
+      const namespace = proofNamespaceForDeclaration(proof.declaration ?? "");
+      const constant = proofConstantForDeclaration(proof.declaration ?? "");
       return namespace && constant ? `${namespace}.${constant}` : null;
     })
     .filter(isLeanName);
@@ -272,17 +181,7 @@ function proofTargetNames() {
 function namespaceRootsForFinalInspection() {
   return [...new Set(
     metadataContexts()
-      .map(({ meta }) => meta.namespaceSlug ? slugToPascal(meta.namespaceSlug) : meta.surfaceEntries?.find((entry) => entry.name)?.name?.split(".")?.[0])
-      .filter(isLeanName)
-  )].sort();
-}
-
-function conjectureAxiomNames() {
-  return [...new Set(
-    metadataContexts()
-      .flatMap(({ meta }) => meta.proofs ?? [])
-      .filter(isConjectureProofEntry)
-      .map((proof) => proof.theorem)
+      .map(({ meta }) => meta.namespaceSlug ? slugToPascal(meta.namespaceSlug) : meta.declarations?.find((entry) => entry.name)?.name?.split(".")?.[0])
       .filter(isLeanName)
   )].sort();
 }
@@ -419,7 +318,7 @@ function isIgnoredDependencyModule(moduleName) {
   return moduleName === "Cache" || moduleName.startsWith("Cache.");
 }
 
-function finalProofBuildInspector({ modules, proofTargets, checkedNamespaceRoots, allowedMathlibAxioms, allowedConjectureAxioms }) {
+function finalProofBuildInspector({ modules, proofTargets, checkedNamespaceRoots, allowedMathlibAxioms }) {
   const imports = modules.map((moduleName) => `import ${moduleName}`).join("\n");
   return `import Lean
 import Lean.Util.CollectAxioms
@@ -428,12 +327,19 @@ ${imports}
 open Lean
 
 def allowedBaseAxioms : Array Name := ${leanNameArray(allowedMathlibAxioms)}
-def allowedConjectureAxioms : Array Name := ${leanNameArray(allowedConjectureAxioms)}
 def checkedProofTargets : Array Name := ${leanNameArray(proofTargets)}
 def checkedNamespaceRoots : Array Name := ${leanNameArray(checkedNamespaceRoots)}
 
 def isCheckedDeclarationName (name : Name) : Bool :=
   checkedNamespaceRoots.any (fun root => root.isPrefixOf name)
+
+def hasSurfaceStatementParts : List String -> Bool
+  | "Surface" :: "Statement" :: _ => true
+  | _ :: rest => hasSurfaceStatementParts rest
+  | [] => false
+
+def isSurfaceStatementName (name : Name) : Bool :=
+  hasSurfaceStatementParts (name.components.map Name.toString)
 
 def sameAxiomType (candidate allowed : ConstantInfo) : CoreM Bool := do
   if candidate.levelParams.length != allowed.levelParams.length then
@@ -456,7 +362,7 @@ def isAllowedBaseAxiomByType (name : Name) : CoreM Bool := do
   | _ => return false
 
 def checkAxiom (label : String) (owner : Name) (axiomName : Name) : CoreM Bool := do
-  if allowedConjectureAxioms.contains axiomName then
+  if isSurfaceStatementName axiomName then
     return false
   if (← isAllowedBaseAxiomByType axiomName) then
     return false
@@ -490,7 +396,7 @@ def checkAxiom (label : String) (owner : Name) (axiomName : Name) : CoreM Bool :
       failed := true
 
   if failed then
-    throwError "final rewritten proof build has forbidden axioms or missing proof targets"
+    throwError "final proof build has forbidden axioms or missing proof targets"
 `;
 }
 

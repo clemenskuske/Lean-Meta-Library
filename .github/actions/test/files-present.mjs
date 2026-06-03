@@ -3,7 +3,7 @@
 // It follows the metadata entries to check every surface file, LaTeX file, and proof file.
 import { existsSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
-import { isConjectureProofEntry, loadContext, proofConstantForTheorem, report, requireMeta } from "./common.mjs";
+import { loadContext, proofConstantForDeclaration, report, requireMeta } from "./common.mjs";
 
 const context = loadContext();
 const { packageRoot, meta, namespaceRoot } = context;
@@ -24,21 +24,21 @@ for (const path of [
   }
 }
 
-for (const entry of meta.surfaceEntries ?? []) {
+for (const entry of meta.declarations ?? []) {
   if (!entry.folder) {
-    errors.push(`surface entry ${entry.name ?? "(unnamed)"} has no folder`);
+    errors.push(`declaration ${entry.name ?? "(unnamed)"} has no folder`);
     continue;
   }
 
   const folder = join(packageRoot, entry.folder);
   if (!existsSync(folder) || !statSync(folder).isDirectory()) {
-    errors.push(`surface entry folder missing: ${entry.folder}`);
+    errors.push(`declaration folder missing: ${entry.folder}`);
     continue;
   }
 
   for (const file of ["latex-file.tex", "Surface.lean"]) {
     if (!existsSync(join(folder, file))) {
-      errors.push(`surface entry ${entry.name ?? basename(entry.folder)} missing ${file}`);
+      errors.push(`declaration ${entry.name ?? basename(entry.folder)} missing ${file}`);
     }
   }
 }
@@ -48,15 +48,12 @@ if (namespaceRoot && existsSync(join(packageRoot, "surface-package", namespaceRo
 }
 
 for (const proof of meta.proofs ?? []) {
-  if (isConjectureProofEntry(proof)) {
-    continue;
-  }
   if (!proof.proofFile) {
-    errors.push(`proof for ${proof.theorem ?? "(unknown theorem)"} has no proofFile`);
+    errors.push(`proof for ${proof.declaration ?? "(unknown declaration)"} has no proofFile`);
     continue;
   }
   if (!existsSync(join(packageRoot, proof.proofFile))) {
-    errors.push(`proof file missing for ${proof.theorem ?? proofConstantForTheorem(proof.theorem)}: ${proof.proofFile}`);
+    errors.push(`proof file missing for ${proof.declaration ?? proofConstantForDeclaration(proof.declaration)}: ${proof.proofFile}`);
   }
 }
 

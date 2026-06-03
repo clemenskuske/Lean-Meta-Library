@@ -91,9 +91,9 @@ jobs:
             const issueNumber = issueNumberValue ? Number.parseInt(issueNumberValue, 10) : null;
             const paperTitle = readTopLevelScalar(metaText, "paperTitle");
             const namespaceSlug = readTopLevelScalar(metaText, "namespaceSlug");
-            const abstractUrl = readTopLevelScalar(metaText, "abstractUrl");
+            const abstractPath = readTopLevelScalar(metaText, "abstractPath");
             const title = paperTitle || namespaceSlug || metaPath;
-            issueAbstract = readAbstract(metaPath, abstractUrl);
+            issueAbstract = readAbstract(metaPath, abstractPath);
 
             await ensureLabel();
 
@@ -135,24 +135,38 @@ jobs:
               `- Repo Url: ${repoUrl}`,
               `- Source Branch: ${sourceBranch}`,
               `- Source Commit: ${sourceCommit}`,
-              `- Metadata File: ${metaPath}`
+              `- Metadata File: ${metaPath}`,
+              `- Metadata Url: ${repoBlobUrl(metaPath)}`
             ];
+            const abstractPath = readTopLevelScalar(readFileSync(metaPath, "utf8"), "abstractPath");
+            if (abstractPath) {
+              lines.push(`- Abstract Url: ${repoBlobUrl(resolveMetadataRelativePath(metaPath, abstractPath))}`);
+            }
             if (submitterId) {
               lines.splice(lines.indexOf(`- Repo Url: ${repoUrl}`), 0, `- Submitter Id: ${submitterId}`);
             }
             return lines.join("\n");
           }
 
-          function readAbstract(metadataPath, abstractUrl) {
-            if (!abstractUrl) {
+          function readAbstract(metadataPath, abstractPathValue) {
+            if (!abstractPathValue) {
               return "_No abstract file is recorded in the submission metadata._";
             }
-            const abstractPath = resolve(dirname(metadataPath), abstractUrl);
+            const abstractPath = resolve(dirname(metadataPath), abstractPathValue);
             if (!existsSync(abstractPath)) {
-              return `_Abstract file not found: ${abstractUrl}_`;
+              return `_Abstract file not found: ${abstractPathValue}_`;
             }
             const text = readFileSync(abstractPath, "utf8").trim();
             return text || "_The recorded abstract file is empty._";
+          }
+
+          function resolveMetadataRelativePath(metadataPath, relativePathValue) {
+            return `${dirname(metadataPath).replace(/^\.$/, "")}/${relativePathValue}`.replace(/^\/+/, "").replace(/\/+/g, "/");
+          }
+
+          function repoBlobUrl(pathValue) {
+            const normalized = String(pathValue ?? "").replace(/^\.\/+/, "").replace(/\\/g, "/");
+            return `${repoUrl}/blob/${sourceCommit}/${normalized}`;
           }
 
           function readTopLevelScalar(text, key) {
@@ -170,7 +184,7 @@ jobs:
               return text.replace(pattern, line);
             }
 
-            const insertionPoint = text.search(/^surfaceEntries:/m);
+            const insertionPoint = text.search(/^declarations:/m);
             if (insertionPoint >= 0) {
               const prefix = text.slice(0, insertionPoint);
               const suffix = text.slice(insertionPoint);

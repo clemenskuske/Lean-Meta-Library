@@ -1,7 +1,7 @@
 import Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected
 import ConnectedIffReachable.Surface
 
-namespace MismatchedProofType.Proofs.Theorem.ConnectedIffReachable
+namespace MismatchedProofType.Proofs.Statement.ConnectedIffReachable
 
 theorem connected_iff_reachable {V : Type u} (G : SimpleGraph V) :
     Nonempty V → True :=
@@ -9,4 +9,4 @@ theorem connected_iff_reachable {V : Type u} (G : SimpleGraph V) :
     intro _hV
     trivial
 
-end MismatchedProofType.Proofs.Theorem.ConnectedIffReachable
+end MismatchedProofType.Proofs.Statement.ConnectedIffReachable

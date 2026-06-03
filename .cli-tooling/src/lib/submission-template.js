@@ -94,24 +94,25 @@ lean_lib ConnectedIffReachable where
 
 function metaYaml({ slug, namespace }) {
   return `pinnedLeanToolchain: ${lmlEnv.lean.toolchain}
-proofLakefileUrl: .
+proofLakefilePath: lakefile.lean
 paperTitle: Your Submission Paper
 namespaceSlug: ${slug}
 surfaceLakefilePath: surface-package/lakefile.lean
-abstractUrl: abstract.tex
-surfaceEntries:
+abstractPath: abstract.tex
+declarations:
   - type: Definition
     name: ${namespace}.Surface.Definition.ConnectedGraph
     folder: surface-package/ConnectedGraph
     usedSurfaceFiles: []
-  - type: Theorem
-    name: ${namespace}.Surface.Theorem.ConnectedIffReachable
+  - type: Statement
+    name: ${namespace}.Surface.Statement.ConnectedIffReachable
     folder: surface-package/ConnectedIffReachable
     usedSurfaceFiles: []
 proofs:
-  - theorem: ${namespace}.Surface.Theorem.ConnectedIffReachable.connected_iff_reachable
+  - declaration: ${namespace}.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
+    type: proof
     proofFile: proofs/ConnectedIffReachableProof.lean
-bibtex: ""
+bibtex: []
 paper:
   paperTitle: Your Submission Paper
   arxivUrl: ""
@@ -144,13 +145,13 @@ function connectedIffReachableSurface(namespace) {
   return `import Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected
 import ConnectedGraph.Surface
 
-namespace ${namespace}.Surface.Theorem.ConnectedIffReachable
+namespace ${namespace}.Surface.Statement.ConnectedIffReachable
 
 axiom connected_iff_reachable {V : Type u} (G : SimpleGraph V) :
     ${namespace}.Surface.Definition.ConnectedGraph.IsConnectedGraph G ↔
       Nonempty V ∧ ∀ u v : V, G.Reachable u v
 
-end ${namespace}.Surface.Theorem.ConnectedIffReachable
+end ${namespace}.Surface.Statement.ConnectedIffReachable
 `;
 }
 
@@ -158,7 +159,7 @@ function connectedIffReachableProof(namespace) {
   return `import Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected
 import ConnectedIffReachable.Surface
 
-namespace ${namespace}.Proofs.Theorem.ConnectedIffReachable
+namespace ${namespace}.Proofs.Statement.ConnectedIffReachable
 
 -- The proof theorem must have exactly the same type as the matching surface declaration.
 -- \`lml test\` asks Lean to compare the compiled types of both constants.
@@ -173,6 +174,6 @@ theorem connected_iff_reachable {V : Type u} (G : SimpleGraph V) :
     · rintro ⟨hV, hreachable⟩
       exact { preconnected := hreachable, nonempty := hV }
 
-end ${namespace}.Proofs.Theorem.ConnectedIffReachable
+end ${namespace}.Proofs.Statement.ConnectedIffReachable
 `;
 }

@@ -28,7 +28,7 @@ export const submissionRowSchema = {
     "User Id": { type: "number" },
     "User Login": { type: "string", minLength: 1 },
     "Imported At": { type: "string" },
-    surfaceEntries: { type: "array" },
+    declarations: { type: "array" },
     proofs: { type: "array" }
   },
   additionalProperties: true

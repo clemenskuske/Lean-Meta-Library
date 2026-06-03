@@ -1,18 +1,17 @@
 #!/usr/bin/env node
-// Checks that every theorem surface declaration has a matching proof metadata entry.
-// It also asks Lean to verify that the proof theorem has the same type as the surface declaration.
+// Checks that every statement declaration has matching proof metadata.
+// It asks Lean to verify that the proof-side theorem has the same type as the surface declaration.
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  isConjectureProofEntry,
+  declarationNamespaceForEntry,
   loadContext,
   maxBuildOutputBytes,
-  proofConstantForTheorem,
-  proofNamespaceForTheorem,
-  report,
-  surfaceNamespaceForEntry
+  proofConstantForDeclaration,
+  proofNamespaceForDeclaration,
+  report
 } from "./common.mjs";
 import { lakeModuleForFile, loadLakeConfig } from "./lake-config.mjs";
 import { inspectIntroducedDeclarations } from "./lean-inspect.mjs";
@@ -23,12 +22,10 @@ const errors = [];
 const rootLakeConfig = loadLakeConfig(packageRoot, "root lakefile", errors);
 const surfaceRoot = join(packageRoot, "surface-package");
 const surfaceLakeConfig = loadLakeConfig(surfaceRoot, "surface lakefile", errors);
-const proofByTheorem = new Map(
-  (meta.proofs ?? []).filter((proof) => !isConjectureProofEntry(proof)).map((proof) => [proof.theorem, proof])
-);
+const proofByDeclaration = new Map((meta.proofs ?? []).map((proof) => [proof.declaration, proof]));
 
-for (const entry of (meta.surfaceEntries ?? []).filter((item) => item.type === "Theorem")) {
-  const namespace = surfaceNamespaceForEntry(entry);
+for (const entry of (meta.declarations ?? []).filter((item) => item.type === "Statement")) {
+  const namespace = declarationNamespaceForEntry(entry);
   const surfacePath = join(packageRoot, entry.folder ?? "", "Surface.lean");
   const surfaceModule = lakeModuleForFile(surfaceLakeConfig, surfaceRoot, surfacePath);
   if (!surfaceModule) {
@@ -47,9 +44,9 @@ for (const entry of (meta.surfaceEntries ?? []).filter((item) => item.type === "
 
   for (const declaration of declarations.filter((item) => isDirectChildOf(item.name, namespace) && ["axiom", "theorem"].includes(item.kind))) {
     const fullName = declaration.name;
-    const proof = proofByTheorem.get(fullName);
+    const proof = proofByDeclaration.get(fullName);
     if (!proof) {
-      errors.push(`surface theorem declaration has no matching proof metadata entry: ${fullName}`);
+      errors.push(`statement declaration has no matching proof metadata entry: ${fullName}`);
       continue;
     }
 
@@ -60,8 +57,8 @@ for (const entry of (meta.surfaceEntries ?? []).filter((item) => item.type === "
     }
 
     const proofModule = lakeModuleForFile(rootLakeConfig, packageRoot, proof.proofFile);
-    const proofNamespace = proofNamespaceForTheorem(fullName);
-    const proofConstant = proofConstantForTheorem(fullName);
+    const proofNamespace = proofNamespaceForDeclaration(fullName);
+    const proofConstant = proofConstantForDeclaration(fullName);
     const proofDeclarations = proofModule
       ? inspectIntroducedDeclarations({
           packageDir: packageRoot,
@@ -72,7 +69,7 @@ for (const entry of (meta.surfaceEntries ?? []).filter((item) => item.type === "
         }) ?? []
       : [];
     if (!proofDeclarations.some((item) => item.name === `${proofNamespace}.${proofConstant}` && item.kind === "theorem")) {
-      errors.push(`proof file ${proof.proofFile} should prove theorem ${proofConstantForTheorem(fullName)}`);
+      errors.push(`proof file ${proof.proofFile} should prove theorem ${proofConstantForDeclaration(fullName)}`);
     }
     checkProofType({ surfaceName: fullName, proof, surfaceModule });
   }
@@ -80,8 +77,8 @@ for (const entry of (meta.surfaceEntries ?? []).filter((item) => item.type === "
 
 function checkProofType({ surfaceName, proof, surfaceModule }) {
   const proofModule = lakeModuleForFile(rootLakeConfig, packageRoot, proof.proofFile);
-  const proofNamespace = proofNamespaceForTheorem(surfaceName);
-  const proofConstant = proofConstantForTheorem(surfaceName);
+  const proofNamespace = proofNamespaceForDeclaration(surfaceName);
+  const proofConstant = proofConstantForDeclaration(surfaceName);
   if (!surfaceModule || !proofModule || !proofNamespace || !proofConstant) {
     errors.push(`could not infer proof check target for ${surfaceName}`);
     return;
@@ -133,4 +130,4 @@ open Lean Meta
 `;
 }
 
-report("connect axioms to proofs", errors);
+report("connect declarations to proofs", errors);

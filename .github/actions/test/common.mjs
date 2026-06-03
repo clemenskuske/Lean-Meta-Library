@@ -2,7 +2,7 @@
 // Shared helper library for the first-run submission checks.
 // It loads package metadata, walks files, parses the small metadata subset we need, and formats pass/fail output.
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import YAML from "yaml";
 import lmlEnv from "../../../lml-env.json" with { type: "json" };
 
@@ -79,7 +79,7 @@ function isMetadataFile(path) {
 export function parseMetaYaml(text) {
   const parsed = YAML.parse(text || "") ?? {};
   return {
-    surfaceEntries: [],
+    declarations: [],
     proofs: [],
     paper: {},
     ...parsed
@@ -90,7 +90,7 @@ export function inferNamespaceRoot(meta) {
   if (meta.namespaceSlug) {
     return slugToPascal(String(meta.namespaceSlug));
   }
-  const fromEntry = meta.surfaceEntries?.find((entry) => entry.name)?.name?.split(".")?.[0];
+  const fromEntry = meta.declarations?.find((entry) => entry.name)?.name?.split(".")?.[0];
   if (fromEntry) {
     return fromEntry;
   }
@@ -147,31 +147,22 @@ export function isInside(parent, child) {
   return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
 }
 
-export function surfaceNamespaceForEntry(entry) {
+export function declarationNamespaceForEntry(entry) {
   return entry.name;
 }
 
-export function proofNamespaceForTheorem(theoremName) {
-  const parts = theoremName.split(".");
+export function proofNamespaceForDeclaration(declarationName) {
+  const parts = declarationName.split(".");
   const root = parts[0];
-  const theoremIndex = parts.indexOf("Theorem");
-  if (theoremIndex === -1 || theoremIndex + 1 >= parts.length) {
+  const statementIndex = parts.indexOf("Statement");
+  if (statementIndex === -1 || statementIndex + 1 >= parts.length) {
     return null;
   }
-  return `${root}.Proofs.Theorem.${parts[theoremIndex + 1]}`;
+  return `${root}.Proofs.Statement.${parts[statementIndex + 1]}`;
 }
 
-export function proofConstantForTheorem(theoremName) {
-  return theoremName.split(".").at(-1);
-}
-
-export function isConjectureProofEntry(proof) {
-  return proof?.conjecture === true || String(proof?.conjecture ?? "").toLowerCase() === "true";
-}
-
-export function theoremFolderName(theoremName) {
-  const namespace = proofNamespaceForTheorem(theoremName);
-  return namespace ? namespace.split(".").at(-1) : basename(dirname(theoremName));
+export function proofConstantForDeclaration(declarationName) {
+  return declarationName.split(".").at(-1);
 }
 
 export function fileSize(path) {

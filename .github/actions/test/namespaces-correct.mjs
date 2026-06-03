@@ -3,10 +3,9 @@
 // The metadata `namespaceSlug` is the source for `ChosenSlug.Surface...` and `ChosenSlug.Proofs...`.
 import { join } from "node:path";
 import {
-  isConjectureProofEntry,
   loadContext,
-  proofConstantForTheorem,
-  proofNamespaceForTheorem,
+  proofConstantForDeclaration,
+  proofNamespaceForDeclaration,
   report,
   requireMeta
 } from "./common.mjs";
@@ -33,10 +32,10 @@ if (!meta.namespaceSlug) {
 checkProofLakefile(proofLakeConfig);
 checkSurfaceLakefile(surfaceLakeConfig);
 
-for (const entry of meta.surfaceEntries ?? []) {
+for (const entry of meta.declarations ?? []) {
   const expectedPrefix = `${namespaceRoot}.Surface.${entry.type}.`;
   if (!entry.name?.startsWith(expectedPrefix)) {
-    errors.push(`surface entry namespace should start with ${expectedPrefix}: ${entry.name}`);
+    errors.push(`declaration namespace should start with ${expectedPrefix}: ${entry.name}`);
   }
 
   const surfacePath = join(packageRoot, entry.folder ?? "", "Surface.lean");
@@ -60,17 +59,14 @@ for (const entry of meta.surfaceEntries ?? []) {
 }
 
 for (const proof of meta.proofs ?? []) {
-  if (isConjectureProofEntry(proof)) {
-    continue;
-  }
   if (!proof.proofFile) {
     continue;
   }
-  const expectedNamespace = proofNamespaceForTheorem(proof.theorem ?? "");
-  const expectedConstant = proofConstantForTheorem(proof.theorem ?? "");
+  const expectedNamespace = proofNamespaceForDeclaration(proof.declaration ?? "");
+  const expectedConstant = proofConstantForDeclaration(proof.declaration ?? "");
   const proofPath = join(packageRoot, proof.proofFile ?? "");
   if (!expectedNamespace) {
-    errors.push(`proof theorem is not in a Surface.Theorem namespace: ${proof.theorem}`);
+    errors.push(`proof declaration target is not in a Surface.Statement namespace: ${proof.declaration}`);
     continue;
   }
   const moduleName = lakeModuleForFile(proofLakeConfig, packageRoot, proof.proofFile);
@@ -119,7 +115,7 @@ function checkSurfaceLakefile(config) {
   if (config.name !== `${namespaceRoot}.Surface`) {
     errors.push(`surface lakefile should declare package ${namespaceRoot}.Surface`);
   }
-  for (const entry of meta.surfaceEntries ?? []) {
+  for (const entry of meta.declarations ?? []) {
     const moduleRoot = entry.folder?.split("/")?.at(-1);
     const surfaceLib = (config.leanLibs ?? []).find((lib) => lib.name === moduleRoot);
     if (moduleRoot && !surfaceLib) {

@@ -6,7 +6,6 @@ import { dirname, join, resolve } from "node:path";
 import lmlEnv from "../../../lml-env.json" with { type: "json" };
 import { validateSubmissionRow } from "../submission-schema.mjs";
 import {
-  isConjectureProofEntry,
   leanFiles,
   loadContext,
   readIfExists,
@@ -31,22 +30,21 @@ const rootLakeConfig = loadLakeConfig(packageRoot, "root lakefile", errors);
 const surfaceRoot = join(packageRoot, "surface-package");
 const surfaceLakeConfig = loadLakeConfig(surfaceRoot, "surface lakefile", errors);
 const localSurfaceModules = new Set(
-  (meta.surfaceEntries ?? [])
+  (meta.declarations ?? [])
     .map((entry) => lakeModuleForFile(surfaceLakeConfig, surfaceRoot, join(packageRoot, entry.folder ?? "", "Surface.lean")))
     .filter(Boolean)
 );
 const surfaceEntryByFile = new Map(
-  (meta.surfaceEntries ?? []).map((entry) => [normalizePath(`${entry.folder ?? ""}/Surface.lean`), entry])
+  (meta.declarations ?? []).map((entry) => [normalizePath(`${entry.folder ?? ""}/Surface.lean`), entry])
 );
 const surfaceEntryByName = new Map(
-  (meta.surfaceEntries ?? []).map((entry) => [stringValue(entry.name), entry]).filter(([name]) => name)
+  (meta.declarations ?? []).map((entry) => [stringValue(entry.name), entry]).filter(([name]) => name)
 );
 const authorizedSurfaceImportsByFile = authorizedSurfaceImportsBySurfaceFile();
 const proofSurfacePolicyByFile = proofSurfacePolicyByProofFile();
 const authorizedSurfaceDependencyNamespaces = authorizedSurfaceNamespaces();
 const localProofModules = new Set(
   (meta.proofs ?? [])
-    .filter((proof) => !isConjectureProofEntry(proof))
     .map((proof) => lakeModuleForFile(rootLakeConfig, packageRoot, proof.proofFile))
     .filter(Boolean)
 );
@@ -220,7 +218,7 @@ function surfaceFileImportVerdict({ imported, rel, isOwnSurfaceEntryImport, isOw
   if (!entry || !authorized) {
     return {
       allowed: false,
-      error: `${rel} imports surface module ${imported}, but this surface entry has no usedSurfaceFiles metadata`
+      error: `${rel} imports surface module ${imported}, but this declaration has no usedSurfaceFiles metadata`
     };
   }
 
@@ -251,7 +249,7 @@ function proofFileSurfaceImportVerdict({ imported, rel }) {
   if (!policy) {
     return {
       allowed: false,
-      error: `${rel} imports surface module ${imported}, but this proof file is not linked to theorem metadata`
+      error: `${rel} imports surface module ${imported}, but this proof file is not linked to proof metadata`
     };
   }
 
@@ -271,7 +269,7 @@ function proofFileSurfaceImportVerdict({ imported, rel }) {
 
   return {
     allowed: false,
-    error: `${rel} imports surface module ${imported}, but theorem ${policy.theorem} only allows its own surface theorem module and modules listed in that entry's usedSurfaceFiles metadata`
+    error: `${rel} imports surface module ${imported}, but declaration ${policy.declaration} only allows its own surface statement module and modules listed in that entry's usedSurfaceFiles metadata`
   };
 }
 
@@ -293,7 +291,7 @@ function isProofImport(imported) {
 
 function authorizedSurfaceImportsBySurfaceFile() {
   const byFile = new Map();
-  for (const entry of meta.surfaceEntries ?? []) {
+  for (const entry of meta.declarations ?? []) {
     const rel = normalizePath(`${entry.folder ?? ""}/Surface.lean`);
     const authorized = {
       modules: new Set(),
@@ -325,17 +323,17 @@ function authorizedSurfaceImportsBySurfaceFile() {
 function proofSurfacePolicyByProofFile() {
   const byFile = new Map();
   for (const proof of meta.proofs ?? []) {
-    if (isConjectureProofEntry(proof) || !proof.proofFile || !proof.theorem) {
+    if (!proof.proofFile || !proof.declaration) {
       continue;
     }
 
-    const theoremNamespace = namespaceOfDeclaration(proof.theorem);
-    const entry = surfaceEntryByName.get(theoremNamespace);
+    const declarationNamespace = namespaceOfDeclaration(proof.declaration);
+    const entry = surfaceEntryByName.get(declarationNamespace);
     const ownModule = entry
       ? lakeModuleForFile(surfaceLakeConfig, surfaceRoot, join(packageRoot, entry.folder ?? "", "Surface.lean"))
       : null;
     byFile.set(normalizePath(proof.proofFile), {
-      theorem: proof.theorem,
+      declaration: proof.declaration,
       entry,
       ownModule,
       authorized: authorizedSurfaceImportsForEntry(entry)
@@ -372,7 +370,7 @@ function authorizedSurfaceImportsForEntry(entry) {
 
 function authorizedSurfaceNamespaces() {
   const namespaces = new Set();
-  for (const entry of meta.surfaceEntries ?? []) {
+  for (const entry of meta.declarations ?? []) {
     for (const used of entry.usedSurfaceFiles ?? []) {
       const definition = stringValue(used.definition);
       const namespace = namespaceRootForDefinition(definition) ?? namespaceRootForSlug(used.slug);
