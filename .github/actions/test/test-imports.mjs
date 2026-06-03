@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // Runs negative import fixtures and verifies each one fails for its intended reason.
 import { spawnSync } from "node:child_process";
-import { dirname, join } from "node:path";
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -17,17 +19,20 @@ const fixtures = [
   {
     name: "mismatched-proof-type-package",
     checker: "declarations-to-proofs.mjs",
-    expected: /proof theorem type does not match surface declaration/
+    expected: /proof theorem type does not match surface declaration/,
+    stripMathlibDependencyForCheck: true
   },
   {
     name: "sorry-proof-package",
     checker: "proofs-axioms-sorrys.mjs",
-    expected: /sorryAx|depends on sorryAx/
+    expected: /sorryAx|depends on sorryAx/,
+    stripMathlibDependencyForCheck: true
   },
   {
     name: "extra-surface-declaration-package",
     checker: "surface-declarations.mjs",
-    expected: /introduces extra declaration|should introduce exactly one direct declaration/
+    expected: /introduces extra declaration|should introduce exactly one direct declaration/,
+    stripMathlibDependencyForCheck: true
   },
   {
     name: "unauthorized-surface-import-package",
@@ -59,16 +64,23 @@ if (failed) {
 
 console.log(`All ${fixtures.length} negative import fixtures failed as expected.`);
 
-function runFixture({ name, checker, expected }) {
+function runFixture({ name, checker, expected, stripMathlibDependencyForCheck }) {
   const checkerPath = join(here, checker);
-  const metaPath = join(repoRoot, "test-imports", name, "meta.yaml");
-  const child = spawnSync(process.execPath, [checkerPath, `--meta=${metaPath}`], {
-    cwd: repoRoot,
-    encoding: "utf8",
-    maxBuffer: 1024 * 1024 * 20,
-    timeout: fixtureTimeoutMs
-  });
-  const output = `${child.stdout ?? ""}${child.stderr ?? ""}`;
+  const fixture = materializeFixture({ name, stripMathlibDependencyForCheck });
+  let child;
+
+  try {
+    child = spawnSync(process.execPath, [checkerPath, `--meta=${fixture.metaPath}`], {
+      cwd: repoRoot,
+      encoding: "utf8",
+      maxBuffer: 1024 * 1024 * 20,
+      timeout: fixtureTimeoutMs
+    });
+  } finally {
+    fixture.cleanup();
+  }
+
+  const output = `${child?.stdout ?? ""}${child?.stderr ?? ""}`;
 
   if (child.error) {
     return {
@@ -103,6 +115,43 @@ function runFixture({ name, checker, expected }) {
   }
 
   return { ok: true, output };
+}
+
+function materializeFixture({ name, stripMathlibDependencyForCheck }) {
+  const sourceDir = join(repoRoot, "test-imports", name);
+  if (!stripMathlibDependencyForCheck) {
+    return {
+      metaPath: join(sourceDir, "meta.yaml"),
+      cleanup() {}
+    };
+  }
+
+  const tmpRoot = mkdtempSync(join(tmpdir(), "lml-test-import-"));
+  const fixtureDir = join(tmpRoot, basename(sourceDir));
+  cpSync(sourceDir, fixtureDir, { recursive: true });
+
+  for (const lakefile of [
+    join(fixtureDir, "lakefile.lean"),
+    join(fixtureDir, "surface-package", "lakefile.lean")
+  ]) {
+    stripMathlibRequire(lakefile);
+  }
+
+  return {
+    metaPath: join(fixtureDir, "meta.yaml"),
+    cleanup() {
+      rmSync(tmpRoot, { recursive: true, force: true });
+    }
+  };
+}
+
+function stripMathlibRequire(lakefile) {
+  const source = readFileSync(lakefile, "utf8");
+  const stripped = source.replace(
+    /\nrequire mathlib from git\n\s+"https:\/\/github\.com\/leanprover-community\/mathlib4\.git" @ "[0-9a-fA-F]+"\n/g,
+    "\n"
+  );
+  writeFileSync(lakefile, stripped, "utf8");
 }
 
 function indent(text) {

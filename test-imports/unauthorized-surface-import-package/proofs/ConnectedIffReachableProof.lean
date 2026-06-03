@@ -1,20 +1,16 @@
-import Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected
 import ConnectedGraph.Surface
 import ConnectedIffReachable.Surface
 
 namespace UnauthorizedSurfaceImport.Proofs.Statement.ConnectedIffReachable
 
--- The proof theorem must have exactly the same type as the matching surface declaration.
--- `lml test` asks Lean to compare the compiled types of both constants.
-theorem connected_iff_reachable {V : Type u} (G : SimpleGraph V) :
-    UnauthorizedSurfaceImport.Surface.Definition.ConnectedGraph.IsConnectedGraph G ↔
-      Nonempty V ∧ ∀ u v : V, G.Reachable u v :=
+theorem connected_iff_reachable (n : Nat) :
+    UnauthorizedSurfaceImport.Surface.Definition.ConnectedGraph.IsConnectedGraph n ↔ True :=
   by
     unfold UnauthorizedSurfaceImport.Surface.Definition.ConnectedGraph.IsConnectedGraph
     constructor
-    · intro h
-      exact ⟨h.nonempty, h.preconnected⟩
-    · rintro ⟨hV, hreachable⟩
-      exact { preconnected := hreachable, nonempty := hV }
+    · intro _h
+      trivial
+    · intro _h
+      rfl
 
 end UnauthorizedSurfaceImport.Proofs.Statement.ConnectedIffReachable
