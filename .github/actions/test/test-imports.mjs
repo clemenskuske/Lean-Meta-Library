@@ -12,9 +12,52 @@ const fixtureTimeoutMs = Number(process.env.LML_TEST_IMPORT_TIMEOUT_MS ?? 10 * 6
 
 const fixtures = [
   {
+    name: "build-packages-failure-package",
+    checker: "build-packages.mjs",
+    expected: /proof package failed to build|unknown identifier/,
+    stripMathlibDependencyForCheck: true
+  },
+  {
+    name: "prepare-build-cache-failure-package",
+    checker: "prepare-build-cache.mjs",
+    expected: /surface package lake build failed|Unknown identifier|MissingName/,
+    stripMathlibDependencyForCheck: true
+  },
+  {
     name: "missing-proof-file-package",
     checker: "files-present.mjs",
     expected: /proof file missing/
+  },
+  {
+    name: "metadata-check-failure-package",
+    checker: "metadata-check.mjs",
+    expected: /bibtex must be a list/
+  },
+  {
+    name: "mathlib-version-failure-package",
+    checker: "mathlib-version.mjs",
+    expected: /root lean-toolchain must be/
+  },
+  {
+    name: "namespaces-correct-failure-package",
+    checker: "namespaces-correct.mjs",
+    expected: /proof lakefile should declare package|declaration namespace should start/,
+    stripMathlibDependencyForCheck: true
+  },
+  {
+    name: "folder-size-failure-package",
+    checker: "folder-size.mjs",
+    expected: /file is too large/
+  },
+  {
+    name: "filetypes-failure-package",
+    checker: "filetypes.mjs",
+    expected: /file type is not allowed/
+  },
+  {
+    name: "surface-file-context-failure-package",
+    checker: "surface-file-context.mjs",
+    expected: /forbidden eval commands/
   },
   {
     name: "mismatched-proof-type-package",
@@ -32,6 +75,12 @@ const fixtures = [
     name: "extra-surface-declaration-package",
     checker: "surface-declarations.mjs",
     expected: /introduces extra declaration|should introduce exactly one direct declaration/,
+    stripMathlibDependencyForCheck: true
+  },
+  {
+    name: "final-proof-build-failure-package",
+    checker: "final-proof-build.mjs",
+    expected: /FORBIDDEN_AXIOM|final proof build has forbidden axioms/,
     stripMathlibDependencyForCheck: true
   },
   {

@@ -1,0 +1,28 @@
+pinnedLeanToolchain: leanprover/lean4:v4.30.0
+proofLakefilePath: lakefile.lean
+paperTitle: Namespaces Correct Failure Fixture
+namespaceSlug: wrong-namespace
+surfaceLakefilePath: surface-package/lakefile.lean
+abstractPath: abstract.tex
+declarations:
+  - type: Definition
+    name: NamespacesCorrectFailure.Surface.Definition.ConnectedGraph
+    folder: surface-package/ConnectedGraph
+    usedSurfaceFiles: []
+  - type: Statement
+    name: NamespacesCorrectFailure.Surface.Statement.ConnectedIffReachable
+    folder: surface-package/ConnectedIffReachable
+    usedSurfaceFiles: []
+proofs:
+  - declaration: NamespacesCorrectFailure.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
+    type: proof
+    proofFile: proofs/ConnectedIffReachableProof.lean
+bibtex: []
+paper:
+  paperTitle: Namespaces Correct Failure Fixture
+  arxivUrl: ""
+  onlineSource: ""
+  doi: ""
+  orcids: []
+  journalOrConference: ""
+  keywords: []

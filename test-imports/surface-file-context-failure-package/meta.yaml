@@ -1,0 +1,28 @@
+pinnedLeanToolchain: leanprover/lean4:v4.30.0
+proofLakefilePath: lakefile.lean
+paperTitle: Surface File Context Failure Fixture
+namespaceSlug: surface-file-context-failure
+surfaceLakefilePath: surface-package/lakefile.lean
+abstractPath: abstract.tex
+declarations:
+  - type: Definition
+    name: SurfaceFileContextFailure.Surface.Definition.ConnectedGraph
+    folder: surface-package/ConnectedGraph
+    usedSurfaceFiles: []
+  - type: Statement
+    name: SurfaceFileContextFailure.Surface.Statement.ConnectedIffReachable
+    folder: surface-package/ConnectedIffReachable
+    usedSurfaceFiles: []
+proofs:
+  - declaration: SurfaceFileContextFailure.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
+    type: proof
+    proofFile: proofs/ConnectedIffReachableProof.lean
+bibtex: []
+paper:
+  paperTitle: Surface File Context Failure Fixture
+  arxivUrl: ""
+  onlineSource: ""
+  doi: ""
+  orcids: []
+  journalOrConference: ""
+  keywords: []

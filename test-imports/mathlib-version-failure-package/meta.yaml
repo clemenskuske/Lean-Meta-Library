@@ -1,0 +1,28 @@
+pinnedLeanToolchain: leanprover/lean4:v4.30.0
+proofLakefilePath: lakefile.lean
+paperTitle: Mathlib Version Failure Fixture
+namespaceSlug: mathlib-version-failure
+surfaceLakefilePath: surface-package/lakefile.lean
+abstractPath: abstract.tex
+declarations:
+  - type: Definition
+    name: MathlibVersionFailure.Surface.Definition.ConnectedGraph
+    folder: surface-package/ConnectedGraph
+    usedSurfaceFiles: []
+  - type: Statement
+    name: MathlibVersionFailure.Surface.Statement.ConnectedIffReachable
+    folder: surface-package/ConnectedIffReachable
+    usedSurfaceFiles: []
+proofs:
+  - declaration: MathlibVersionFailure.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
+    type: proof
+    proofFile: proofs/ConnectedIffReachableProof.lean
+bibtex: []
+paper:
+  paperTitle: Mathlib Version Failure Fixture
+  arxivUrl: ""
+  onlineSource: ""
+  doi: ""
+  orcids: []
+  journalOrConference: ""
+  keywords: []

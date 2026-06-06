@@ -1,0 +1,28 @@
+pinnedLeanToolchain: leanprover/lean4:v4.30.0
+proofLakefilePath: lakefile.lean
+paperTitle: Folder Size Failure Fixture
+namespaceSlug: folder-size-failure
+surfaceLakefilePath: surface-package/lakefile.lean
+abstractPath: abstract.tex
+declarations:
+  - type: Definition
+    name: FolderSizeFailure.Surface.Definition.ConnectedGraph
+    folder: surface-package/ConnectedGraph
+    usedSurfaceFiles: []
+  - type: Statement
+    name: FolderSizeFailure.Surface.Statement.ConnectedIffReachable
+    folder: surface-package/ConnectedIffReachable
+    usedSurfaceFiles: []
+proofs:
+  - declaration: FolderSizeFailure.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
+    type: proof
+    proofFile: proofs/ConnectedIffReachableProof.lean
+bibtex: []
+paper:
+  paperTitle: Folder Size Failure Fixture
+  arxivUrl: ""
+  onlineSource: ""
+  doi: ""
+  orcids: []
+  journalOrConference: ""
+  keywords: []

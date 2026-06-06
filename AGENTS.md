@@ -51,6 +51,7 @@ npm run test:imports
 ```
 
 This command checks every package under `test-imports/` and fails if any fixture is accepted or rejected for an unexpected reason.
+Keep `test-imports/` broad enough to cover each executable checker script in `.github/actions/test/`; helper modules are exercised through those checker fixtures.
 
 Each submission consists of declarations and proofs. Declarations live in the surface package and are the trustworthy public surface. A metadata declaration is either a `Definition` or a `Statement`. A statement is classified as a theorem when it has a proof entry of type `proof` or `conditional-proof`; it is classified as a conjecture when it has a proof entry of type `reduction`. An `assumption` is a conjecture expected to be true, and a `conditional-proof` is a proof that relies only on assumptions. The proof checker asks Lean `isDefEq` to compare the compiled types of each surface statement declaration and its matching proof-side theorem. Proof files may rely on declarations, Std, and Mathlib. The proof-file checker separately elaborates proof files, rejects local proof-namespace `axiom` and `unsafe` declarations, rejects declarations whose compiled axiom list includes `sorryAx` such as from `sorry` or `admit`, and asks Lean for each proof theorem's compiled axiom dependencies.
 
