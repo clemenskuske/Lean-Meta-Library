@@ -68,13 +68,13 @@ const fixtures = [
   {
     name: "sorry-proof-package",
     checker: "proofs-axioms-sorrys.mjs",
-    expected: /reports a sorry|sorryAx|depends on forbidden axioms/,
+    expected: /proof file proofs\/ConnectedIffReachableProof\.lean reports a sorry/,
     stripMathlibDependencyForCheck: true
   },
   {
     name: "unused-sorry-proof-package",
     checker: "proofs-axioms-sorrys.mjs",
-    expected: /reports a sorry|declaration uses ['"`]sorry['"`]/,
+    expected: /proof file proofs\/UnusedSorry\.lean reports a sorry/,
     stripMathlibDependencyForCheck: true
   },
   {
@@ -92,7 +92,7 @@ const fixtures = [
   {
     name: "unused-sorry-proof-package",
     checker: "final-proof-build.mjs",
-    expected: /final proof build output reports a sorry|declaration uses ['"`]sorry['"`]/,
+    expected: /final proof build output reports a sorry/,
     stripMathlibDependencyForCheck: true
   },
   {
