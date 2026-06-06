@@ -45,7 +45,8 @@ try {
     runLake(["update"], "lake update");
     runLake(["clean"], "lake clean");
     fetchBuildCache();
-    runLake(["build"], "lake build");
+    const build = runLake(["build"], "lake build");
+    checkBuildOutputForSorry(build);
     if (errors.length === 0) {
       checkCompiledAxioms();
     }
@@ -102,6 +103,13 @@ function fetchBuildCache() {
   }
   if (result.status !== 0) {
     warnings.push("lake exe cache get failed; final proof build will build from source");
+  }
+}
+
+function checkBuildOutputForSorry(result) {
+  const output = `${result?.stdout ?? ""}${result?.stderr ?? ""}`;
+  if (outputReportsSorry(output)) {
+    errors.push("final proof build output reports a sorry");
   }
 }
 
@@ -357,4 +365,8 @@ function isLeanName(name) {
 
 function relativePath(root, path) {
   return relative(root, path).split(sep).join("/");
+}
+
+function outputReportsSorry(output) {
+  return /\bdeclaration uses ['"`]sorry['"`]/i.test(output) || /\bsorryAx\b/.test(output);
 }

@@ -1,0 +1,28 @@
+pinnedLeanToolchain: leanprover/lean4:v4.30.0
+proofLakefilePath: lakefile.lean
+paperTitle: Unused Sorry Proof Fixture
+namespaceSlug: unused-sorry-proof
+surfaceLakefilePath: surface-package/lakefile.lean
+abstractPath: abstract.tex
+declarations:
+  - type: Definition
+    name: UnusedSorryProof.Surface.Definition.ConnectedGraph
+    folder: surface-package/ConnectedGraph
+    usedSurfaceFiles: []
+  - type: Statement
+    name: UnusedSorryProof.Surface.Statement.ConnectedIffReachable
+    folder: surface-package/ConnectedIffReachable
+    usedSurfaceFiles: []
+proofs:
+  - declaration: UnusedSorryProof.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
+    type: proof
+    proofFile: proofs/ConnectedIffReachableProof.lean
+bibtex: []
+paper:
+  paperTitle: Unused Sorry Proof Fixture
+  arxivUrl: ""
+  onlineSource: ""
+  doi: ""
+  orcids: []
+  journalOrConference: ""
+  keywords: []

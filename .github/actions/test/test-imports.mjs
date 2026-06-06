@@ -68,7 +68,13 @@ const fixtures = [
   {
     name: "sorry-proof-package",
     checker: "proofs-axioms-sorrys.mjs",
-    expected: /sorryAx|depends on sorryAx/,
+    expected: /reports a sorry|sorryAx|depends on forbidden axioms/,
+    stripMathlibDependencyForCheck: true
+  },
+  {
+    name: "unused-sorry-proof-package",
+    checker: "proofs-axioms-sorrys.mjs",
+    expected: /reports a sorry|declaration uses ['"`]sorry['"`]/,
     stripMathlibDependencyForCheck: true
   },
   {
@@ -81,6 +87,12 @@ const fixtures = [
     name: "final-proof-build-failure-package",
     checker: "final-proof-build.mjs",
     expected: /FORBIDDEN_AXIOM|final proof build has forbidden axioms/,
+    stripMathlibDependencyForCheck: true
+  },
+  {
+    name: "unused-sorry-proof-package",
+    checker: "final-proof-build.mjs",
+    expected: /final proof build output reports a sorry|declaration uses ['"`]sorry['"`]/,
     stripMathlibDependencyForCheck: true
   },
   {
