@@ -9,7 +9,7 @@ Lean Meta Library records Lean formalization submissions in a form that can be c
 The core idea is to separate three things:
 
 - The public mathematical surface: trustworthy declarations, either definitions or statements.
-- The proof package: Lean files for `proof`, `conditional-proof`, and `reduction` entries. A statement with a `proof` or `conditional-proof` is a theorem; a statement with a `reduction` is a conjecture.
+- The proof package: Lean files for `proof`, `conditional-proof`, and `reduction` entries. A statement with a `proof` or `conditional-proof` is a theorem; a statement with a `reduction` is a conjecture. An `assumption` is a conjecture expected to be true, and a `conditional-proof` is a proof relying only on assumptions.
 - The submission metadata: a small manifest that tells the checker where the declarations, proofs, abstract, toolchain, and bibliographic data live.
 
 Agents should treat the metadata file as the submission source of truth. The Lean files should match it, and the checks should be run from it.

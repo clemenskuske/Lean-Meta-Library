@@ -6,7 +6,7 @@ Assume the consuming agent has the Lean Meta Library CLI and the current `submis
 
 ## Core Principle
 
-Do not infer the submitted paper surface from the source project alone. Build the submission together with the user. Ask which definitions and statements should become the public declarations, which statements have `proof`, `conditional-proof`, or `reduction` evidence, and which project details should stay private implementation.
+Do not infer the submitted paper surface from the source project alone. Build the submission together with the user. Ask which definitions and statements should become the public declarations, which statements have `proof`, `conditional-proof`, or `reduction` evidence, which assumptions are used, and which project details should stay private implementation.
 
 A submission is ready only when all conditions hold:
 
@@ -24,6 +24,7 @@ Before writing the submission package, gather these decisions from the user:
 - Which declarations should be public surface declarations.
 - For each public declaration, whether it is a `Definition` or `Statement`.
 - For each statement, whether the proof entry type is `proof`, `conditional-proof`, or `reduction`, and which proof file in the source project should establish it.
+- Which conjectures are expected to be true and should be called `assumptions`.
 - Whether any declaration depends on another declaration in this submission.
 - Whether any declaration depends on a previously imported Lean Meta Library surface package listed in `submissions.jsonl`.
 - Bibliographic fields, if known: arXiv URL, DOI, online source, ORCIDs, venue, keywords, and BibTeX.
@@ -93,7 +94,7 @@ paper:
   keywords: []
 ```
 
-Use `type: proof` for a fully formal proof, `type: conditional-proof` for a proof using a conjecture expected to be true or a non-formalized result, and `type: reduction` for a reduction that uses unsupervised conjectures. A statement with `proof` or `conditional-proof` is classified as a theorem. A statement with `reduction` is classified as a conjecture:
+Use `type: proof` for a fully formal proof, `type: conditional-proof` for a proof relying only on assumptions, and `type: reduction` for a reduction that uses unsupervised conjectures. An `assumption` is a conjecture expected to be true. A statement with `proof` or `conditional-proof` is classified as a theorem. A statement with `reduction` is classified as a conjecture:
 
 ```yaml
 proofs:
