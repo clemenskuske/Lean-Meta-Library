@@ -674,6 +674,7 @@
       </div>
     </main>
 
+    <script src="./submissions-data.js"></script>
     <script>
       const state = {
         submissions: [],
@@ -734,6 +735,10 @@
 
       async function fetchJsonl() {
         const errors = [];
+        const embedded = embeddedJsonl();
+        if (window.location.protocol === "file:" && embedded) {
+          return embedded;
+        }
         for (const path of dataPaths) {
           try {
             const response = await fetch(`${path}?v=${Date.now()}`, { cache: "no-store" });
@@ -747,7 +752,26 @@
             errors.push(`${path}: ${error.message}`);
           }
         }
+        if (embedded) {
+          return embedded;
+        }
         throw new Error(`Could not load submissions.jsonl. Tried ${errors.join(", ")}.`);
+      }
+
+      function embeddedJsonl() {
+        if (typeof window.LML_SUBMISSIONS_JSONL === "string") {
+          return {
+            path: window.LML_SUBMISSIONS_DATA_SOURCE || "./submissions-data.js",
+            rows: parseJsonl(window.LML_SUBMISSIONS_JSONL)
+          };
+        }
+        if (Array.isArray(window.LML_SUBMISSIONS)) {
+          return {
+            path: window.LML_SUBMISSIONS_DATA_SOURCE || "./submissions-data.js",
+            rows: window.LML_SUBMISSIONS
+          };
+        }
+        return null;
       }
 
       function parseJsonl(text) {

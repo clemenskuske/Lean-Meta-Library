@@ -356,7 +356,9 @@ jobs:
             rows.push(row);
           }
 
-          writeFileSync(logPath, rows.map((item) => JSON.stringify(item)).join("\n") + "\n");
+          const nextLogText = rows.map((item) => JSON.stringify(item)).join("\n") + "\n";
+          writeFileSync(logPath, nextLogText);
+          writeFileSync(".website/submissions-data.js", websiteDataSource(nextLogText));
 
           function surfaceFolder(metadata, metadataPathValue) {
             const metadataDir = path.dirname(normalizePath(metadataPathValue)).replace(/^\.$/, "");
@@ -409,6 +411,16 @@ jobs:
           function normalize(value) {
             return String(value ?? "").trim().replace(/\.git$/i, "").replace(/\/$/g, "");
           }
+
+          function websiteDataSource(jsonl) {
+            return [
+              "// Generated snapshot for opening .website/index.html directly from the filesystem.",
+              "// The import workflow keeps this value synchronized with submissions.jsonl.",
+              "window.LML_SUBMISSIONS_DATA_SOURCE = \"./submissions-data.js\";",
+              `window.LML_SUBMISSIONS_JSONL = ${JSON.stringify(jsonl)};`,
+              ""
+            ].join("\n");
+          }
           NODE
 
       - name: "Comment progress: submissions log updated"
@@ -426,14 +438,14 @@ jobs:
 
       - name: Commit submissions log
         run: |
-          if git diff --quiet -- submissions.jsonl; then
-            echo "submissions.jsonl already contains this submission."
+          if git diff --quiet -- submissions.jsonl .website/submissions-data.js; then
+            echo "submissions.jsonl and website data snapshot already contain this submission."
             exit 0
           fi
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add submissions.jsonl
+          git add submissions.jsonl .website/submissions-data.js
           git commit -m "Import submission metadata"
           git push origin HEAD:"$GITHUB_REF_NAME"
 
