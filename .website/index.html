@@ -424,6 +424,113 @@
         gap: 10px;
       }
 
+      .tree-wrap {
+        display: grid;
+        gap: 10px;
+      }
+
+      .tree {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 6px;
+      }
+
+      .tree .tree {
+        margin-left: 14px;
+        padding-left: 16px;
+        border-left: 2px solid #ece6dc;
+      }
+
+      .tree-item {
+        min-width: 0;
+      }
+
+      .tree-node,
+      .tree-leaf {
+        min-width: 0;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fffdf7;
+      }
+
+      .tree-node[open] {
+        background: #ffffff;
+      }
+
+      .tree-node > summary,
+      .tree-leaf {
+        display: flex;
+        align-items: flex-start;
+        gap: 9px;
+        padding: 10px 11px;
+      }
+
+      .tree-node > summary {
+        cursor: pointer;
+      }
+
+      .tree-node > summary::marker {
+        color: var(--muted);
+      }
+
+      .tree-text {
+        display: grid;
+        gap: 4px;
+        min-width: 0;
+      }
+
+      .tree-label {
+        color: var(--text);
+        font-weight: 800;
+        overflow-wrap: anywhere;
+      }
+
+      .tree-detail {
+        color: var(--muted);
+        font-size: 0.86rem;
+        overflow-wrap: anywhere;
+      }
+
+      .tree-badge {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: #879193;
+        flex: 0 0 auto;
+        margin-top: 6px;
+      }
+
+      .tree-item.theorem > .tree-node > summary .tree-badge,
+      .tree-item.theorem > .tree-leaf .tree-badge {
+        background: var(--green);
+      }
+
+      .tree-item.proof > .tree-node > summary .tree-badge,
+      .tree-item.proof > .tree-leaf .tree-badge {
+        background: var(--violet);
+      }
+
+      .tree-item.dependency > .tree-node > summary .tree-badge,
+      .tree-item.dependency > .tree-leaf .tree-badge {
+        background: var(--blue);
+      }
+
+      .tree-item.axiom > .tree-node > summary .tree-badge,
+      .tree-item.axiom > .tree-leaf .tree-badge {
+        background: var(--amber);
+      }
+
+      .tree-item.missing > .tree-node > summary .tree-badge,
+      .tree-item.missing > .tree-leaf .tree-badge {
+        background: var(--rose);
+      }
+
+      .tree-node > .tree {
+        padding: 0 11px 11px 22px;
+      }
+
       .reference-item {
         border: 1px solid var(--line);
         border-radius: 8px;
@@ -539,7 +646,7 @@
           <div class="mark" aria-hidden="true">LML</div>
           <div>
             <h1>Lean Meta Library</h1>
-            <p class="subtitle">Browse imported submissions, inspect surface statements, and see the proof references recorded in metadata.</p>
+            <p class="subtitle">Browse imported submissions, inspect surface statements, and see proof references, dependency trees, and recorded axioms.</p>
           </div>
         </div>
         <div class="toolbar" aria-label="Submission tools">
@@ -948,6 +1055,8 @@
                 </div>
                 ${references(entry)}
               </div>
+
+              ${dependencyTree(entry)}
             </div>
           </article>
         `;
@@ -977,6 +1086,209 @@
             `).join("")}
           </div>
         `;
+      }
+
+      function dependencyTree(entry) {
+        const proof = entry.proof;
+        const theoremName = proof?.theorem || entry.name;
+        const proofName = proof?.proof || "";
+        const theoremChildren = [
+          treeLeaf("Surface file", entry.surfaceFile || "Not recorded", "dependency"),
+          treeGroup(
+            "Surface dependencies",
+            `${entry.usedSurfaceFiles.length} referenced surface ${entry.usedSurfaceFiles.length === 1 ? "file" : "files"}`,
+            entry.usedSurfaceFiles.length === 0
+              ? [treeLeaf("No external surface references", "The metadata does not list usedSurfaceFiles for this theorem.", "missing")]
+              : entry.usedSurfaceFiles.map((reference) => treeGroup(
+                  reference.definition || "Referenced declaration",
+                  reference.surfaceFile || "Surface file not recorded",
+                  [
+                    treeLeaf("Slug", reference.slug || "Not recorded", "dependency"),
+                    treeLeaf("Repository", reference.githubRepo || "Not recorded", "dependency")
+                  ],
+                  "dependency"
+                )),
+            "dependency"
+          )
+        ];
+        const proofDependencies = collectProofDependencies(proof);
+        const axiomDependencies = collectAxiomDependencies(entry, proof);
+        const proofChildren = proof
+          ? [
+              treeLeaf("Proof file", proof.proofFile || "Not recorded", "proof"),
+              treeLeaf("Proof type", proof.type || "Not recorded", "proof"),
+              treeGroup(
+                "Proof dependencies",
+                `${proofDependencies.length} recorded`,
+                proofDependencies.length === 0
+                  ? [treeLeaf("No explicit proof dependencies", "Only proof metadata fields are available in submissions.jsonl.", "missing")]
+                  : proofDependencies.map((dependency) => treeLeaf(dependency.label, dependency.detail, "dependency")),
+                "dependency"
+              ),
+              treeGroup(
+                "Axioms this proof needs",
+                axiomDependencies.recorded ? `${axiomDependencies.items.length} recorded` : "not recorded",
+                axiomDependencies.items.length === 0
+                  ? [treeLeaf("Compiled axiom list not recorded", "The checker inspects proof axioms, but imported rows do not currently store that list.", "missing")]
+                  : axiomDependencies.items.map((axiom) => treeLeaf(axiom.label, axiom.detail, "axiom")),
+                axiomDependencies.recorded ? "axiom" : "missing"
+              )
+            ]
+          : [
+              treeLeaf("No proof metadata", "This surface entry has no matching proofs row.", "missing")
+            ];
+        const tree = [
+          treeGroup("Theorem", theoremName, theoremChildren, "theorem"),
+          treeGroup("Proof", proofName || "No proof theorem recorded", proofChildren, proof ? "proof" : "missing")
+        ];
+
+        return `
+          <div class="tree-wrap" aria-label="Dependency tree for ${escapeAttr(entry.shortName)}">
+            <div class="panel-head-row">
+              <h3 class="panel-title">Dependency Tree</h3>
+              <span class="count">${axiomDependencies.recorded ? `${axiomDependencies.items.length} axioms` : "axioms not recorded"}</span>
+            </div>
+            <ol class="tree">
+              ${tree.map(renderTreeNode).join("")}
+            </ol>
+          </div>
+        `;
+      }
+
+      function treeGroup(label, detail, children, kind = "dependency") {
+        return { label, detail, children, kind };
+      }
+
+      function treeLeaf(label, detail, kind = "dependency") {
+        return { label, detail, children: [], kind };
+      }
+
+      function renderTreeNode(node) {
+        const label = escapeHtml(node.label);
+        const detail = node.detail ? `<span class="tree-detail">${escapeHtml(node.detail)}</span>` : "";
+        const content = `
+          <span class="tree-badge" aria-hidden="true"></span>
+          <span class="tree-text">
+            <span class="tree-label">${label}</span>
+            ${detail}
+          </span>
+        `;
+        const children = Array.isArray(node.children) ? node.children : [];
+        if (children.length === 0) {
+          return `<li class="tree-item ${escapeAttr(node.kind || "dependency")}"><div class="tree-leaf">${content}</div></li>`;
+        }
+        return `
+          <li class="tree-item ${escapeAttr(node.kind || "dependency")}">
+            <details class="tree-node" open>
+              <summary>${content}</summary>
+              <ol class="tree">
+                ${children.map(renderTreeNode).join("")}
+              </ol>
+            </details>
+          </li>
+        `;
+      }
+
+      function collectProofDependencies(proof) {
+        if (!proof) {
+          return [];
+        }
+        return uniqueObjects([
+          ...dependencyItemsFromValue(proof.dependencies, "Dependency"),
+          ...dependencyItemsFromValue(proof.proofDependencies, "Proof dependency"),
+          ...dependencyItemsFromValue(proof.imports, "Import"),
+          ...dependencyItemsFromValue(proof.usedDeclarations, "Used declaration"),
+          ...dependencyItemsFromValue(proof.uses, "Uses"),
+          ...dependencyItemsFromValue(proof.dependsOn, "Depends on")
+        ]);
+      }
+
+      function collectAxiomDependencies(entry, proof) {
+        const items = uniqueObjects([
+          ...axiomItemsFromValue(proof?.axioms),
+          ...axiomItemsFromValue(proof?.axiomDependencies),
+          ...axiomItemsFromValue(proof?.axiomDeps),
+          ...axiomItemsFromValue(proof?.proofAxioms),
+          ...axiomItemsFromValue(proof?.requiredAxioms),
+          ...axiomItemsFromValue(proof?.compiledAxioms),
+          ...axiomItemsFromValue(proof?.dependencies?.axioms),
+          ...axiomItemsFromValue(proof?.dependencies?.axiomDependencies),
+          ...axiomItemsFromValue(entry.raw?.axioms),
+          ...axiomItemsFromValue(entry.raw?.axiomDependencies)
+        ]);
+        return {
+          recorded: hasOwnValue(proof, "axioms") ||
+            hasOwnValue(proof, "axiomDependencies") ||
+            hasOwnValue(proof, "axiomDeps") ||
+            hasOwnValue(proof, "proofAxioms") ||
+            hasOwnValue(proof, "requiredAxioms") ||
+            hasOwnValue(proof, "compiledAxioms") ||
+            hasOwnValue(proof?.dependencies, "axioms") ||
+            hasOwnValue(proof?.dependencies, "axiomDependencies") ||
+            hasOwnValue(entry.raw, "axioms") ||
+            hasOwnValue(entry.raw, "axiomDependencies"),
+          items
+        };
+      }
+
+      function dependencyItemsFromValue(value, fallbackLabel) {
+        if (value == null) {
+          return [];
+        }
+        if (Array.isArray(value)) {
+          return value.flatMap((item) => dependencyItemsFromValue(item, fallbackLabel));
+        }
+        if (typeof value === "object") {
+          const blockedKeys = new Set(["axioms", "axiomDependencies", "axiomDeps", "proofAxioms", "requiredAxioms", "compiledAxioms"]);
+          const name = value.name || value.definition || value.declaration || value.theorem || value.proof || value.module || value.file || value.path;
+          const detail = value.detail || value.surfaceFile || value.proofFile || value.type || value.reason || value.source || "";
+          const direct = name ? [{ label: String(name), detail: String(detail || fallbackLabel) }] : [];
+          const nested = Object.entries(value)
+            .filter(([key]) => !blockedKeys.has(key))
+            .flatMap(([key, nestedValue]) => {
+              if (["name", "definition", "declaration", "theorem", "proof", "module", "file", "path", "detail", "surfaceFile", "proofFile", "type", "reason", "source"].includes(key)) {
+                return [];
+              }
+              return dependencyItemsFromValue(nestedValue, key);
+            });
+          return [...direct, ...nested];
+        }
+        return [{ label: String(value), detail: fallbackLabel }];
+      }
+
+      function axiomItemsFromValue(value) {
+        if (value == null) {
+          return [];
+        }
+        if (Array.isArray(value)) {
+          return value.flatMap(axiomItemsFromValue);
+        }
+        if (typeof value === "object") {
+          const name = value.name || value.axiom || value.axiomName || value.dependency || value.value;
+          const detail = value.type || value.kind || value.reason || value.owner || value.label || "";
+          const direct = name ? [{ label: String(name), detail: String(detail || "Axiom") }] : [];
+          const nested = Object.entries(value)
+            .filter(([key]) => !["name", "axiom", "axiomName", "dependency", "value", "type", "kind", "reason", "owner", "label"].includes(key))
+            .flatMap(([, nestedValue]) => axiomItemsFromValue(nestedValue));
+          return [...direct, ...nested];
+        }
+        return [{ label: String(value), detail: "Axiom" }];
+      }
+
+      function uniqueObjects(items) {
+        const seen = new Set();
+        return items.filter((item) => {
+          const key = `${item.label}\n${item.detail}`;
+          if (seen.has(key)) {
+            return false;
+          }
+          seen.add(key);
+          return true;
+        });
+      }
+
+      function hasOwnValue(object, key) {
+        return Boolean(object && Object.prototype.hasOwnProperty.call(object, key));
       }
 
       function activeSubmission() {
