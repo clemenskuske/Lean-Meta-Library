@@ -35,7 +35,7 @@ theorem Proofs.Statement.entry : SomeStatement := by
   ...
 ```
 
-When `lml test` runs, the checker asks Lean `isDefEq` to compare the compiled types of each surface statement declaration and its matching proof theorem. A statement is classified as a theorem when it has a `proof` or `conditional-proof`; it is classified as a conjecture when it has a `reduction`. An `assumption` is a conjecture expected to be true, and a `conditional-proof` is a proof that relies only on assumptions. Proof files may rely on declarations, Std, and Mathlib. The proof checker elaborates proof files, but only the metadata proof targets are trusted as submitted proofs: it asks Lean for each proof theorem's compiled axiom dependencies and rejects dependencies on `sorryAx` or local proof-namespace axioms. Unused declarations or imported declarations with `sorry` do not fail this check unless a submitted proof theorem depends on them.
+When `lml test` runs, each proof metadata entry explicitly names the surface theorem constant and the proof theorem constant. The checker passes both Lean names to Lean and asks `isDefEq` to compare their compiled types. A statement is classified as a theorem when it has a `proof` or `conditional-proof`; it is classified as a conjecture when it has a `reduction`. An `assumption` is a conjecture expected to be true, and a `conditional-proof` is a proof that relies only on assumptions. Proof files may rely on declarations, Std, and Mathlib. The proof checker elaborates proof files, but only the metadata proof targets are trusted as submitted proofs: it asks Lean for each proof theorem's compiled axiom dependencies and rejects dependencies on `sorryAx` or local proof-namespace axioms. Unused declarations or imported declarations with `sorry` do not fail this check unless a submitted proof theorem depends on them.
 
 At the end of the import workflow, a final proof build runs in an isolated temporary copy. It runs `lake update`, `lake clean`, fetches the Lake build cache best-effort, then runs `lake build`. The final check relies on Lean elaboration and compiled proof-target axiom inspection. It asks Lean to verify that each metadata proof theorem's dependencies are either surface statement declarations or have the same types as the constants listed in `lml-env.json` at `checks.allowedMathlibAxioms`, currently `propext`, `Quot.sound`, and `Classical.choice`.
 
@@ -88,7 +88,8 @@ The first-run checker prepares the Lean build/cache first, runs static checks in
 
 ```yaml
 proofs:
-  - declaration: MySlug.Surface.Statement.SomeEntry.some_statement
+  - theorem: MySlug.Surface.Statement.SomeEntry.some_statement
+    proof: MySlug.Proofs.Statement.SomeEntry.some_statement
     type: reduction
     proofFile: proofs/SomeEntryReduction.lean
 ```

@@ -16,8 +16,7 @@ import lmlEnv from "../../../lml-env.json" with { type: "json" };
 import {
   loadContext,
   maxBuildOutputBytes,
-  proofConstantForDeclaration,
-  proofNamespaceForDeclaration,
+  proofNameForProofEntry,
   report,
   walkFiles
 } from "./common.mjs";
@@ -145,11 +144,7 @@ function checkCompiledAxioms() {
 
 function proofTargetNames() {
   return (context.meta.proofs ?? [])
-    .map((proof) => {
-      const namespace = proofNamespaceForDeclaration(proof.declaration ?? "");
-      const constant = proofConstantForDeclaration(proof.declaration ?? "");
-      return namespace && constant ? `${namespace}.${constant}` : null;
-    })
+    .map(proofNameForProofEntry)
     .filter(isLeanName);
 }
 

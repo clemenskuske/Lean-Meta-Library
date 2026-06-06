@@ -7,10 +7,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   declarationNamespaceForEntry,
+  isLeanName,
   loadContext,
   maxBuildOutputBytes,
-  proofConstantForDeclaration,
-  proofNamespaceForDeclaration,
+  proofNameForProofEntry,
   report
 } from "./common.mjs";
 import { lakeModuleForFile, loadLakeConfig } from "./lake-config.mjs";
@@ -22,7 +22,7 @@ const errors = [];
 const rootLakeConfig = loadLakeConfig(packageRoot, "root lakefile", errors);
 const surfaceRoot = join(packageRoot, "surface-package");
 const surfaceLakeConfig = loadLakeConfig(surfaceRoot, "surface lakefile", errors);
-const proofByDeclaration = new Map((meta.proofs ?? []).map((proof) => [proof.declaration, proof]));
+const proofByTheorem = new Map((meta.proofs ?? []).map((proof) => [proof.theorem, proof]));
 
 for (const entry of (meta.declarations ?? []).filter((item) => item.type === "Statement")) {
   const namespace = declarationNamespaceForEntry(entry);
@@ -44,9 +44,14 @@ for (const entry of (meta.declarations ?? []).filter((item) => item.type === "St
 
   for (const declaration of declarations.filter((item) => isDirectChildOf(item.name, namespace) && ["axiom", "theorem"].includes(item.kind))) {
     const fullName = declaration.name;
-    const proof = proofByDeclaration.get(fullName);
+    const proof = proofByTheorem.get(fullName);
     if (!proof) {
       errors.push(`statement declaration has no matching proof metadata entry: ${fullName}`);
+      continue;
+    }
+    const proofName = proofNameForProofEntry(proof);
+    if (!isLeanName(proofName)) {
+      errors.push(`proof metadata entry for ${fullName} is missing a valid proof theorem name`);
       continue;
     }
 
@@ -57,8 +62,6 @@ for (const entry of (meta.declarations ?? []).filter((item) => item.type === "St
     }
 
     const proofModule = lakeModuleForFile(rootLakeConfig, packageRoot, proof.proofFile);
-    const proofNamespace = proofNamespaceForDeclaration(fullName);
-    const proofConstant = proofConstantForDeclaration(fullName);
     const proofDeclarations = proofModule
       ? inspectIntroducedDeclarations({
           packageDir: packageRoot,
@@ -68,23 +71,20 @@ for (const entry of (meta.declarations ?? []).filter((item) => item.type === "St
           errors
         }) ?? []
       : [];
-    if (!proofDeclarations.some((item) => item.name === `${proofNamespace}.${proofConstant}` && item.kind === "theorem")) {
-      errors.push(`proof file ${proof.proofFile} should prove theorem ${proofConstantForDeclaration(fullName)}`);
+    if (!proofDeclarations.some((item) => item.name === proofName && item.kind === "theorem")) {
+      errors.push(`proof file ${proof.proofFile} should prove theorem ${proofName}`);
     }
-    checkProofType({ surfaceName: fullName, proof, surfaceModule });
+    checkProofType({ surfaceName: fullName, proof, surfaceModule, proofName });
   }
 }
 
-function checkProofType({ surfaceName, proof, surfaceModule }) {
+function checkProofType({ surfaceName, proof, surfaceModule, proofName }) {
   const proofModule = lakeModuleForFile(rootLakeConfig, packageRoot, proof.proofFile);
-  const proofNamespace = proofNamespaceForDeclaration(surfaceName);
-  const proofConstant = proofConstantForDeclaration(surfaceName);
-  if (!surfaceModule || !proofModule || !proofNamespace || !proofConstant) {
+  if (!surfaceModule || !proofModule || !proofName) {
     errors.push(`could not infer proof check target for ${surfaceName}`);
     return;
   }
 
-  const proofName = `${proofNamespace}.${proofConstant}`;
   const tmp = mkdtempSync(join(tmpdir(), "lml-proof-type-"));
   const inspector = join(tmp, "ProofTypeCheck.lean");
 

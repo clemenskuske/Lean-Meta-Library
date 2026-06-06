@@ -80,7 +80,8 @@ declarations:
     folder: surface-package/MainStatement
     usedSurfaceFiles: []
 proofs:
-  - declaration: UserSlug.Surface.Statement.MainStatement.main_statement
+  - theorem: UserSlug.Surface.Statement.MainStatement.main_statement
+    proof: UserSlug.Proofs.Statement.MainStatement.main_statement
     type: proof
     proofFile: proofs/MainStatementProof.lean
 bibtex: []
@@ -98,7 +99,8 @@ Use `type: proof` for a fully formal proof, `type: conditional-proof` for a proo
 
 ```yaml
 proofs:
-  - declaration: UserSlug.Surface.Statement.EntryName.statement_name
+  - theorem: UserSlug.Surface.Statement.EntryName.statement_name
+    proof: UserSlug.Proofs.Statement.EntryName.statement_name
     type: reduction
     proofFile: proofs/EntryNameReduction.lean
 ```

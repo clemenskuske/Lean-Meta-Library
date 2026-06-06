@@ -151,18 +151,22 @@ export function declarationNamespaceForEntry(entry) {
   return entry.name;
 }
 
-export function proofNamespaceForDeclaration(declarationName) {
-  const parts = declarationName.split(".");
-  const root = parts[0];
-  const statementIndex = parts.indexOf("Statement");
-  if (statementIndex === -1 || statementIndex + 1 >= parts.length) {
-    return null;
-  }
-  return `${root}.Proofs.Statement.${parts[statementIndex + 1]}`;
+export function theoremNameForProofEntry(proof) {
+  return proof?.theorem ?? null;
 }
 
-export function proofConstantForDeclaration(declarationName) {
-  return declarationName.split(".").at(-1);
+export function proofNameForProofEntry(proof) {
+  return proof?.proof ?? null;
+}
+
+export function namespaceOfDeclaration(name) {
+  const value = String(name ?? "");
+  const index = value.lastIndexOf(".");
+  return index === -1 ? value : value.slice(0, index);
+}
+
+export function isLeanName(name) {
+  return /^[A-Za-z_][A-Za-z0-9_']*(\.[A-Za-z_][A-Za-z0-9_']*)*$/.test(String(name ?? ""));
 }
 
 export function fileSize(path) {

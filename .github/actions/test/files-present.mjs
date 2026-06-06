@@ -3,7 +3,7 @@
 // It follows the metadata entries to check every surface file, LaTeX file, and proof file.
 import { existsSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
-import { loadContext, proofConstantForDeclaration, report, requireMeta } from "./common.mjs";
+import { loadContext, report, requireMeta, theoremNameForProofEntry } from "./common.mjs";
 
 const context = loadContext();
 const { packageRoot, meta, namespaceRoot } = context;
@@ -49,11 +49,11 @@ if (namespaceRoot && existsSync(join(packageRoot, "surface-package", namespaceRo
 
 for (const proof of meta.proofs ?? []) {
   if (!proof.proofFile) {
-    errors.push(`proof for ${proof.declaration ?? "(unknown declaration)"} has no proofFile`);
+    errors.push(`proof for ${theoremNameForProofEntry(proof) ?? "(unknown theorem)"} has no proofFile`);
     continue;
   }
   if (!existsSync(join(packageRoot, proof.proofFile))) {
-    errors.push(`proof file missing for ${proof.declaration ?? proofConstantForDeclaration(proof.declaration)}: ${proof.proofFile}`);
+    errors.push(`proof file missing for ${theoremNameForProofEntry(proof) ?? "(unknown theorem)"}: ${proof.proofFile}`);
   }
 }
 

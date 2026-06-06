@@ -3,9 +3,9 @@
 // The metadata `namespaceSlug` is the source for `ChosenSlug.Surface...` and `ChosenSlug.Proofs...`.
 import { join } from "node:path";
 import {
+  isLeanName,
   loadContext,
-  proofConstantForDeclaration,
-  proofNamespaceForDeclaration,
+  proofNameForProofEntry,
   report,
   requireMeta
 } from "./common.mjs";
@@ -62,11 +62,9 @@ for (const proof of meta.proofs ?? []) {
   if (!proof.proofFile) {
     continue;
   }
-  const expectedNamespace = proofNamespaceForDeclaration(proof.declaration ?? "");
-  const expectedConstant = proofConstantForDeclaration(proof.declaration ?? "");
-  const proofPath = join(packageRoot, proof.proofFile ?? "");
-  if (!expectedNamespace) {
-    errors.push(`proof declaration target is not in a Surface.Statement namespace: ${proof.declaration}`);
+  const proofName = proofNameForProofEntry(proof);
+  if (!isLeanName(proofName)) {
+    errors.push(`proof metadata entry is missing a valid proof theorem name: ${proofName ?? "(missing)"}`);
     continue;
   }
   const moduleName = lakeModuleForFile(proofLakeConfig, packageRoot, proof.proofFile);
@@ -82,8 +80,8 @@ for (const proof of meta.proofs ?? []) {
     label: proof.proofFile,
     errors
   }) ?? [];
-  if (!declarations.some((declaration) => declaration.name === `${expectedNamespace}.${expectedConstant}` && declaration.kind === "theorem")) {
-    errors.push(`proof file ${proof.proofFile} missing theorem ${expectedConstant}`);
+  if (!declarations.some((declaration) => declaration.name === proofName && declaration.kind === "theorem")) {
+    errors.push(`proof file ${proof.proofFile} missing theorem ${proofName}`);
   }
 }
 

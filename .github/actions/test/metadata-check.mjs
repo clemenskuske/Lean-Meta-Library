@@ -3,7 +3,16 @@
 // It also applies a small character/token whitelist to catch suspicious metadata early.
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { isInside, loadContext, report, requireMeta } from "./common.mjs";
+import {
+  isInside,
+  isLeanName,
+  loadContext,
+  namespaceOfDeclaration,
+  proofNameForProofEntry,
+  report,
+  requireMeta,
+  theoremNameForProofEntry
+} from "./common.mjs";
 
 const context = loadContext();
 const { packageRoot, meta } = context;
@@ -67,29 +76,42 @@ for (const entry of meta.declarations ?? []) {
 }
 
 for (const proof of meta.proofs ?? []) {
-  if (!proof.declaration) {
-    errors.push("proof entry is missing declaration");
+  const theoremName = theoremNameForProofEntry(proof);
+  const proofName = proofNameForProofEntry(proof);
+
+  if (!theoremName) {
+    errors.push("proof entry is missing theorem");
     continue;
   }
 
   if (!["proof", "conditional-proof", "reduction"].includes(proof.type)) {
-    errors.push(`proof entry for ${proof.declaration} has invalid type ${proof.type}`);
+    errors.push(`proof entry for ${theoremName} has invalid type ${proof.type}`);
   }
-  if (!proof.declaration.includes(".Surface.Statement.")) {
-    errors.push(`proof entry must target a Surface.Statement declaration: ${proof.declaration}`);
+  if (!theoremName.includes(".Surface.Statement.")) {
+    errors.push(`proof entry theorem must target a Surface.Statement declaration: ${theoremName}`);
+  }
+  if (!isLeanName(theoremName)) {
+    errors.push(`proof entry theorem is not a valid Lean name: ${theoremName}`);
+  }
+  if (!proofName) {
+    errors.push(`proof entry is missing proof theorem: ${theoremName}`);
+  } else if (!isLeanName(proofName)) {
+    errors.push(`proof entry proof is not a valid Lean name: ${proofName}`);
+  } else if (!proofName.includes(".Proofs.Statement.")) {
+    errors.push(`proof entry proof must target a Proofs.Statement theorem: ${proofName}`);
   }
   if (!proof.proofFile) {
-    errors.push(`proof entry is missing proofFile: ${proof.declaration}`);
+    errors.push(`proof entry is missing proofFile: ${theoremName}`);
     continue;
   }
   checkRelativePath(proof.proofFile, `proof file ${proof.proofFile}`);
 
-  const declarationNamespace = namespaceOfDeclaration(proof.declaration);
+  const declarationNamespace = namespaceOfDeclaration(theoremName);
   const declarationEntry = declarationsByName.get(declarationNamespace);
   if (!declarationEntry) {
-    errors.push(`proof entry does not match a metadata declaration: ${proof.declaration}`);
+    errors.push(`proof entry does not match a metadata declaration: ${theoremName}`);
   } else if (declarationEntry.type !== "Statement") {
-    errors.push(`proof entry must target a Statement declaration, found ${declarationEntry.type}: ${proof.declaration}`);
+    errors.push(`proof entry must target a Statement declaration, found ${declarationEntry.type}: ${theoremName}`);
   }
 }
 
@@ -153,14 +175,6 @@ function collectStrings(value) {
     return Object.values(value).flatMap(collectStrings);
   }
   return [];
-}
-
-function namespaceOfDeclaration(name) {
-  if (!name || typeof name !== "string") {
-    return null;
-  }
-  const index = name.lastIndexOf(".");
-  return index === -1 ? name : name.slice(0, index);
 }
 
 report("metadata check", errors, warnings);

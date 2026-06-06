@@ -6,10 +6,10 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  isLeanName,
   loadContext,
   maxBuildOutputBytes,
-  proofConstantForDeclaration,
-  proofNamespaceForDeclaration,
+  proofNameForProofEntry,
   relativePath,
   report,
   walkFiles
@@ -61,22 +61,21 @@ function checkCompiledProofAxioms() {
 
   for (const proof of meta.proofs ?? []) {
     const proofModule = lakeModuleForFile(rootLakeConfig, packageRoot, proof.proofFile);
-    const proofNamespace = proofNamespaceForDeclaration(proof.declaration ?? "");
-    const proofConstant = proofConstantForDeclaration(proof.declaration ?? "");
+    const proofName = proofNameForProofEntry(proof);
 
     if (!proof.proofFile || !proofModule || !isLeanName(proofModule)) {
       errors.push(`could not infer proof module for ${proof.proofFile ?? "(missing proofFile)"}`);
       continue;
     }
-    if (!proofNamespace || !proofConstant) {
-      errors.push(`could not infer proof theorem name for ${proof.declaration ?? "(missing declaration)"}`);
+    if (!isLeanName(proofName)) {
+      errors.push(`proof metadata entry is missing a valid proof theorem name: ${proofName ?? "(missing)"}`);
       continue;
     }
 
     proofImports.add(proofModule);
     proofTargets.push({
       label: proof.proofFile,
-      name: `${proofNamespace}.${proofConstant}`
+      name: proofName
     });
   }
 
@@ -149,10 +148,6 @@ function leanNameArray(names) {
 
 function leanString(value) {
   return JSON.stringify(String(value ?? ""));
-}
-
-function isLeanName(name) {
-  return /^[A-Za-z_][A-Za-z0-9_']*(\.[A-Za-z_][A-Za-z0-9_']*)*$/.test(name);
 }
 
 function outputReportsSorry(output) {

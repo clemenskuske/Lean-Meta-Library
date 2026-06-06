@@ -12,6 +12,7 @@ import {
   relativePath,
   report,
   slugToPascal,
+  theoremNameForProofEntry,
 } from "./common.mjs";
 import { lakeDependencies, lakeModuleForFile, loadLakeConfig } from "./lake-config.mjs";
 import { isLeanName } from "./lean-inspect.mjs";
@@ -323,17 +324,18 @@ function authorizedSurfaceImportsBySurfaceFile() {
 function proofSurfacePolicyByProofFile() {
   const byFile = new Map();
   for (const proof of meta.proofs ?? []) {
-    if (!proof.proofFile || !proof.declaration) {
+    const theoremName = theoremNameForProofEntry(proof);
+    if (!proof.proofFile || !theoremName) {
       continue;
     }
 
-    const declarationNamespace = namespaceOfDeclaration(proof.declaration);
+    const declarationNamespace = namespaceOfDeclaration(theoremName);
     const entry = surfaceEntryByName.get(declarationNamespace);
     const ownModule = entry
       ? lakeModuleForFile(surfaceLakeConfig, surfaceRoot, join(packageRoot, entry.folder ?? "", "Surface.lean"))
       : null;
     byFile.set(normalizePath(proof.proofFile), {
-      declaration: proof.declaration,
+      declaration: theoremName,
       entry,
       ownModule,
       authorized: authorizedSurfaceImportsForEntry(entry)

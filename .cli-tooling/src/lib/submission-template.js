@@ -109,7 +109,8 @@ declarations:
     folder: surface-package/ConnectedIffReachable
     usedSurfaceFiles: []
 proofs:
-  - declaration: ${namespace}.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
+  - theorem: ${namespace}.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
+    proof: ${namespace}.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
     type: proof
     proofFile: proofs/ConnectedIffReachableProof.lean
 bibtex: []

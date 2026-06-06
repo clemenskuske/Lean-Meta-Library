@@ -14,7 +14,8 @@ declarations:
     folder: surface-package/ConnectedIffReachable
     usedSurfaceFiles: []
 proofs:
-  - declaration: SorryProof.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
+  - theorem: SorryProof.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
+    proof: SorryProof.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
     type: proof
     proofFile: proofs/ConnectedIffReachableProof.lean
 bibtex: []
