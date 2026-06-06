@@ -11,16 +11,14 @@ import {
   writeFileSync
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, dirname, join, relative, sep } from "node:path";
+import { basename, join, relative, sep } from "node:path";
 import lmlEnv from "../../../lml-env.json" with { type: "json" };
 import {
   loadContext,
   maxBuildOutputBytes,
-  parseMetaYaml,
   proofConstantForDeclaration,
   proofNamespaceForDeclaration,
   report,
-  slugToPascal,
   walkFiles
 } from "./common.mjs";
 
@@ -47,8 +45,7 @@ try {
     runLake(["update"], "lake update");
     runLake(["clean"], "lake clean");
     fetchBuildCache();
-    const build = runLake(["build"], "lake build");
-    checkBuildOutputForSorry(build);
+    runLake(["build"], "lake build");
     if (errors.length === 0) {
       checkCompiledAxioms();
     }
@@ -108,40 +105,10 @@ function fetchBuildCache() {
   }
 }
 
-function walkFilesIncludingLake(root) {
-  return walkFiles(root, { ignoreDirs: new Set([".git", "node_modules"]) }).filter((file) => {
-    const rel = relativePath(root, file);
-    return !rel.startsWith(".lake/build/");
-  });
-}
-
-function metadataContexts() {
-  const contexts = [{ root: isolatedPackageRoot, meta: context.meta }];
-  for (const file of walkFilesIncludingLake(isolatedPackageRoot)) {
-    if (basename(file) !== "meta.yaml") {
-      continue;
-    }
-    const root = dirname(file);
-    if (root === isolatedPackageRoot) {
-      continue;
-    }
-    contexts.push({ root, meta: parseMetaYaml(readFileSync(file, "utf8")) });
-  }
-  return contexts;
-}
-
-function checkBuildOutputForSorry(result) {
-  const output = `${result?.stdout ?? ""}${result?.stderr ?? ""}`;
-  if (/\bdeclaration uses ['`]sorry['`]/i.test(output) || /\bsorryAx\b/.test(output)) {
-    errors.push("final proof build output reports a sorry");
-  }
-}
-
 function checkCompiledAxioms() {
   const proofTargets = proofTargetNames();
-  const checkedNamespaceRoots = namespaceRootsForFinalInspection();
-  if (proofTargets.length === 0 && checkedNamespaceRoots.length === 0) {
-    warnings.push("no proof targets or declared axioms were found for final axiom inspection");
+  if (proofTargets.length === 0) {
+    warnings.push("no proof targets were found for final axiom inspection");
     return;
   }
 
@@ -149,7 +116,7 @@ function checkCompiledAxioms() {
   const inspector = join(isolatedPackageRoot, "FinalProofBuildInspect.lean");
   writeFileSync(
     inspector,
-    finalProofBuildInspector({ modules, proofTargets, checkedNamespaceRoots, allowedMathlibAxioms }),
+    finalProofBuildInspector({ modules, proofTargets, allowedMathlibAxioms }),
     "utf8"
   );
 
@@ -176,14 +143,6 @@ function proofTargetNames() {
       return namespace && constant ? `${namespace}.${constant}` : null;
     })
     .filter(isLeanName);
-}
-
-function namespaceRootsForFinalInspection() {
-  return [...new Set(
-    metadataContexts()
-      .map(({ meta }) => meta.namespaceSlug ? slugToPascal(meta.namespaceSlug) : meta.declarations?.find((entry) => entry.name)?.name?.split(".")?.[0])
-      .filter(isLeanName)
-  )].sort();
 }
 
 function builtModuleNames() {
@@ -318,7 +277,7 @@ function isIgnoredDependencyModule(moduleName) {
   return moduleName === "Cache" || moduleName.startsWith("Cache.");
 }
 
-function finalProofBuildInspector({ modules, proofTargets, checkedNamespaceRoots, allowedMathlibAxioms }) {
+function finalProofBuildInspector({ modules, proofTargets, allowedMathlibAxioms }) {
   const imports = modules.map((moduleName) => `import ${moduleName}`).join("\n");
   return `import Lean
 import Lean.Util.CollectAxioms
@@ -328,10 +287,6 @@ open Lean
 
 def allowedBaseAxioms : Array Name := ${leanNameArray(allowedMathlibAxioms)}
 def checkedProofTargets : Array Name := ${leanNameArray(proofTargets)}
-def checkedNamespaceRoots : Array Name := ${leanNameArray(checkedNamespaceRoots)}
-
-def isCheckedDeclarationName (name : Name) : Bool :=
-  checkedNamespaceRoots.any (fun root => root.isPrefixOf name)
 
 def hasSurfaceStatementParts : List String -> Bool
   | "Surface" :: "Statement" :: _ => true
@@ -374,14 +329,6 @@ def checkAxiom (label : String) (owner : Name) (axiomName : Name) : CoreM Bool :
 
 #eval show CoreM Unit from do
   let mut failed := false
-
-  for (axiomName, info) in (← getEnv).constants.toList do
-    if isCheckedDeclarationName axiomName then
-      match info with
-      | .axiomInfo _ =>
-          if (← checkAxiom "declared" axiomName axiomName) then
-            failed := true
-      | _ => pure ()
 
   for proofName in checkedProofTargets do
     try

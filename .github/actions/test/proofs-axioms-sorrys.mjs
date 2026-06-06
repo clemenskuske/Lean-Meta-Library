@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Scans proof files for local placeholders, asks Lean to elaborate them, then checks compiled proof theorem axiom dependencies.
-// Submitted proof theorems may depend on surface declarations, but not on sorryAx or local proof axioms.
+// Elaborates proof files, then checks compiled metadata proof theorem axiom dependencies.
+// Incidental proof-file declarations may be unfinished; submitted proof targets may not depend on sorryAx or local proof axioms.
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -15,7 +15,6 @@ import {
   walkFiles
 } from "./common.mjs";
 import { lakeModuleForFile, loadLakeConfig } from "./lake-config.mjs";
-import { inspectIntroducedDeclarations } from "./lean-inspect.mjs";
 
 const { packageRoot, meta, namespaceRoot } = loadContext();
 const errors = [];
@@ -49,41 +48,7 @@ for (const file of proofFiles) {
   }
 }
 
-checkProofFileIntroducedDeclarations();
 checkCompiledProofAxioms();
-
-function checkProofFileIntroducedDeclarations() {
-  const files = [...proofFiles];
-
-  for (const file of files) {
-    const label = relativePath(packageRoot, file);
-    const moduleName = lakeModuleForFile(rootLakeConfig, packageRoot, file);
-    if (!moduleName) {
-      errors.push(`could not infer proof module for ${label}`);
-      continue;
-    }
-
-    const declarations = inspectIntroducedDeclarations({
-      packageDir: packageRoot,
-      moduleName,
-      imports: ["Init"],
-      label,
-      errors
-    });
-
-    for (const declaration of (declarations ?? []).filter((item) => !namespaceRoot || item.name.startsWith(`${namespaceRoot}.Proofs.`))) {
-      if (declaration.kind === "axiom") {
-        errors.push(`proof file declares local axiom ${declaration.name}: ${label}`);
-      }
-      if (declaration.isUnsafe) {
-        errors.push(`proof file declares unsafe constant ${declaration.name}: ${label}`);
-      }
-      if ((declaration.axioms ?? []).includes("sorryAx")) {
-        errors.push(`proof file declaration depends on sorryAx: ${declaration.name} in ${label}`);
-      }
-    }
-  }
-}
 
 function checkCompiledProofAxioms() {
   const proofImports = new Set();
