@@ -59,6 +59,9 @@ function checkSurfaceEntry(entry) {
     errors.push(`Lean failed to build ${label}\n${build.stdout}${build.stderr}`.trim());
     return;
   }
+  if (outputReportsSorry(`${build.stdout ?? ""}${build.stderr ?? ""}`)) {
+    errors.push(`surface file ${label} reports a sorry`);
+  }
 
   const imports = ["Init", ...(importsByFile.get(surfacePath) ?? []).filter((imported) => imported !== moduleName)];
   const declarations = inspectIntroducedDeclarations({ packageDir: surfaceRoot, moduleName, imports, label, errors });
@@ -125,6 +128,10 @@ function formatCount(items) {
     return "none";
   }
   return items.map((item) => `${item.name} (${describeDeclaration(item)})`).join(", ");
+}
+
+function outputReportsSorry(output) {
+  return /\bdeclaration uses ['"`]sorry['"`]/i.test(output) || /\bsorryAx\b/.test(output);
 }
 
 report("surface declarations", errors);

@@ -43,10 +43,9 @@ Fixtures:
 - `sorry-proof-package`: the proof theorem uses `sorry`, so proof axiom
   inspection in `proofs-axioms-sorrys.mjs` should reject the `sorryAx`
   dependency.
-- `unused-sorry-proof-package`: a non-metadata proof module contains a theorem
-  proved with `sorry`, so `proofs-axioms-sorrys.mjs` should reject the proof
-  package and `final-proof-build.mjs` should reject the final build output even
-  though the submitted proof target does not depend on it.
+- `surface-sorry-statement-package`: the statement surface file contains a
+  theorem proved with `sorry`, so `surface-declarations.mjs` and
+  `final-proof-build.mjs` should reject the package.
 - `extra-surface-declaration-package`: a statement surface file introduces an
   extra helper declaration, so `surface-declarations.mjs` should reject it.
 - `final-proof-build-failure-package`: the final proof build finds a proof-side

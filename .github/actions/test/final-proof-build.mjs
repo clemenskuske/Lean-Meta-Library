@@ -18,6 +18,7 @@ import {
   maxBuildOutputBytes,
   proofNameForProofEntry,
   report,
+  theoremNameForProofEntry,
   walkFiles
 } from "./common.mjs";
 
@@ -44,8 +45,7 @@ try {
     runLake(["update"], "lake update");
     runLake(["clean"], "lake clean");
     fetchBuildCache();
-    const build = runLake(["build"], "lake build");
-    checkBuildOutputForSorry(build);
+    runLake(["build"], "lake build");
     if (errors.length === 0) {
       checkCompiledAxioms();
     }
@@ -105,17 +105,11 @@ function fetchBuildCache() {
   }
 }
 
-function checkBuildOutputForSorry(result) {
-  const output = `${result?.stdout ?? ""}${result?.stderr ?? ""}`;
-  if (outputReportsSorry(output)) {
-    errors.push("final proof build output reports a sorry");
-  }
-}
-
 function checkCompiledAxioms() {
   const proofTargets = proofTargetNames();
-  if (proofTargets.length === 0) {
-    warnings.push("no proof targets were found for final axiom inspection");
+  const surfaceTargets = surfaceTargetNames();
+  if (proofTargets.length === 0 && surfaceTargets.length === 0) {
+    warnings.push("no proof or surface targets were found for final axiom inspection");
     return;
   }
 
@@ -123,7 +117,7 @@ function checkCompiledAxioms() {
   const inspector = join(isolatedPackageRoot, "FinalProofBuildInspect.lean");
   writeFileSync(
     inspector,
-    finalProofBuildInspector({ modules, proofTargets, allowedMathlibAxioms }),
+    finalProofBuildInspector({ modules, proofTargets, surfaceTargets, allowedMathlibAxioms }),
     "utf8"
   );
 
@@ -145,6 +139,12 @@ function checkCompiledAxioms() {
 function proofTargetNames() {
   return (context.meta.proofs ?? [])
     .map(proofNameForProofEntry)
+    .filter(isLeanName);
+}
+
+function surfaceTargetNames() {
+  return (context.meta.proofs ?? [])
+    .map(theoremNameForProofEntry)
     .filter(isLeanName);
 }
 
@@ -280,7 +280,7 @@ function isIgnoredDependencyModule(moduleName) {
   return moduleName === "Cache" || moduleName.startsWith("Cache.");
 }
 
-function finalProofBuildInspector({ modules, proofTargets, allowedMathlibAxioms }) {
+function finalProofBuildInspector({ modules, proofTargets, surfaceTargets, allowedMathlibAxioms }) {
   const imports = modules.map((moduleName) => `import ${moduleName}`).join("\n");
   return `import Lean
 import Lean.Util.CollectAxioms
@@ -290,6 +290,7 @@ open Lean
 
 def allowedBaseAxioms : Array Name := ${leanNameArray(allowedMathlibAxioms)}
 def checkedProofTargets : Array Name := ${leanNameArray(proofTargets)}
+def checkedSurfaceTargets : Array Name := ${leanNameArray(surfaceTargets)}
 
 def hasSurfaceStatementParts : List String -> Bool
   | "Surface" :: "Statement" :: _ => true
@@ -345,6 +346,18 @@ def checkAxiom (label : String) (owner : Name) (axiomName : Name) : CoreM Bool :
       IO.eprintln s!"PROOF_TARGET_NOT_FOUND\\t{proofName}\\t{message}"
       failed := true
 
+  for surfaceName in checkedSurfaceTargets do
+    try
+      let _ <- getConstInfo surfaceName
+      let axioms <- collectAxioms surfaceName
+      for axiomName in axioms do
+        if (← checkAxiom "surface" surfaceName axiomName) then
+          failed := true
+    catch error =>
+      let message <- error.toMessageData.toString
+      IO.eprintln s!"SURFACE_TARGET_NOT_FOUND\\t{surfaceName}\\t{message}"
+      failed := true
+
   if failed then
     throwError "final proof build has forbidden axioms or missing proof targets"
 `;
@@ -360,8 +373,4 @@ function isLeanName(name) {
 
 function relativePath(root, path) {
   return relative(root, path).split(sep).join("/");
-}
-
-function outputReportsSorry(output) {
-  return /\bdeclaration uses ['"`]sorry['"`]/i.test(output) || /\bsorryAx\b/.test(output);
 }
