@@ -3,55 +3,1068 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Lean Meta Library</title>
+    <title>Lean Meta Library Submissions</title>
     <style>
       :root {
-        color-scheme: light dark;
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color-scheme: light;
+        --bg: #f4f2eb;
+        --panel: #fffdf7;
+        --panel-strong: #ffffff;
+        --text: #1d2526;
+        --muted: #607072;
+        --line: #d9d4c8;
+        --blue: #2767a5;
+        --green: #217a57;
+        --amber: #9a6700;
+        --rose: #b94f5f;
+        --violet: #6b5bc5;
+        --shadow: 0 18px 50px rgba(30, 34, 32, 0.1);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         line-height: 1.5;
+      }
+
+      * {
+        box-sizing: border-box;
       }
 
       body {
         margin: 0;
         min-height: 100vh;
-        display: grid;
-        place-items: center;
-        background: #f7f7f4;
-        color: #202124;
+        background:
+          linear-gradient(135deg, rgba(39, 103, 165, 0.1), transparent 34rem),
+          linear-gradient(315deg, rgba(33, 122, 87, 0.1), transparent 28rem),
+          var(--bg);
+        color: var(--text);
       }
 
-      main {
-        width: min(42rem, calc(100% - 2rem));
+      button,
+      input {
+        font: inherit;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      .app {
+        width: min(1180px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 28px 0 40px;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 10px 0 24px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        min-width: 0;
+      }
+
+      .mark {
+        width: 48px;
+        height: 48px;
+        border-radius: 8px;
+        display: grid;
+        place-items: center;
+        background: #1d2526;
+        color: #fffdf7;
+        font-weight: 800;
+        letter-spacing: 0;
+        box-shadow: 0 10px 28px rgba(29, 37, 38, 0.18);
+        flex: 0 0 auto;
+      }
+
+      h1,
+      h2,
+      h3,
+      p {
+        margin: 0;
       }
 
       h1 {
-        margin: 0 0 0.5rem;
-        font-size: clamp(2rem, 8vw, 4rem);
+        font-size: clamp(1.65rem, 2.8vw, 2.5rem);
+        line-height: 1.05;
+      }
+
+      .subtitle {
+        color: var(--muted);
+        margin-top: 4px;
+        max-width: 62ch;
+      }
+
+      .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+
+      .search {
+        width: min(320px, 100%);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: rgba(255, 253, 247, 0.86);
+        color: var(--text);
+        padding: 10px 12px;
+        outline: none;
+      }
+
+      .search:focus {
+        border-color: var(--blue);
+        box-shadow: 0 0 0 3px rgba(39, 103, 165, 0.15);
+      }
+
+      .button {
+        min-height: 42px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #ffffff;
+        color: var(--text);
+        padding: 9px 13px;
+        font-weight: 700;
+      }
+
+      .button:hover {
+        border-color: #b9b1a2;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(290px, 0.82fr) minmax(0, 1.18fr);
+        gap: 18px;
+        align-items: start;
+      }
+
+      .panel {
+        background: rgba(255, 253, 247, 0.88);
+        border: 1px solid rgba(217, 212, 200, 0.9);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+      }
+
+      .panel-head {
+        padding: 18px 18px 14px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .panel-head-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .panel-title {
+        font-size: 0.95rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #394648;
+      }
+
+      .count {
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .list {
+        display: grid;
+        gap: 1px;
+        background: var(--line);
+      }
+
+      .row {
+        width: 100%;
+        display: grid;
+        gap: 8px;
+        border: 0;
+        background: var(--panel-strong);
+        color: inherit;
+        text-align: left;
+        padding: 15px 16px;
+      }
+
+      .row:hover,
+      .row[aria-selected="true"] {
+        background: #f8fbfb;
+      }
+
+      .row[aria-selected="true"] {
+        box-shadow: inset 4px 0 0 var(--blue);
+      }
+
+      .row-main {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+      }
+
+      .name {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        font-weight: 800;
+        line-height: 1.25;
+      }
+
+      .meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 0.88rem;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 24px;
+        border-radius: 999px;
+        padding: 3px 9px;
+        font-size: 0.8rem;
+        font-weight: 800;
+        background: #eef1f0;
+        color: #3e4a4c;
+        white-space: nowrap;
+      }
+
+      .pill::before {
+        content: "";
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+        background: currentColor;
+      }
+
+      .pill.definition {
+        background: #e8f2fa;
+        color: var(--blue);
+      }
+
+      .pill.theorem {
+        background: #e5f4ed;
+        color: var(--green);
+      }
+
+      .pill.assumption {
+        background: #fff0d4;
+        color: var(--amber);
+      }
+
+      .pill.conjecture {
+        background: #fbe5e8;
+        color: var(--rose);
+      }
+
+      .pill.conditional {
+        background: #ece9fb;
+        color: var(--violet);
+      }
+
+      .detail {
+        min-height: 620px;
+      }
+
+      .detail-body {
+        padding: 18px;
+        display: grid;
+        gap: 18px;
+      }
+
+      .submission-header {
+        display: grid;
+        gap: 12px;
+      }
+
+      .submission-title-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 14px;
+      }
+
+      .submission-title {
+        font-size: clamp(1.55rem, 3vw, 2.45rem);
+        line-height: 1.08;
+        overflow-wrap: anywhere;
+      }
+
+      .back {
+        display: none;
+      }
+
+      .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+      }
+
+      .stat {
+        background: #ffffff;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px;
+        min-width: 0;
+      }
+
+      .stat strong {
+        display: block;
+        font-size: 1.6rem;
         line-height: 1;
       }
 
-      p {
-        margin: 0;
-        font-size: 1.125rem;
-        color: #4c4f54;
+      .stat span {
+        display: block;
+        margin-top: 5px;
+        color: var(--muted);
+        font-size: 0.82rem;
+        font-weight: 700;
       }
 
-      @media (prefers-color-scheme: dark) {
-        body {
-          background: #171819;
-          color: #f4f4ef;
+      .statement-layout {
+        display: grid;
+        grid-template-columns: minmax(240px, 0.95fr) minmax(0, 1.05fr);
+        gap: 14px;
+        align-items: start;
+      }
+
+      .statement-list {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .statement-button {
+        display: grid;
+        gap: 6px;
+        width: 100%;
+        border: 0;
+        border-bottom: 1px solid var(--line);
+        background: #ffffff;
+        color: var(--text);
+        text-align: left;
+        padding: 13px;
+      }
+
+      .statement-button:last-child {
+        border-bottom: 0;
+      }
+
+      .statement-button:hover,
+      .statement-button[aria-selected="true"] {
+        background: #f8fbfb;
+      }
+
+      .statement-button[aria-selected="true"] {
+        box-shadow: inset 4px 0 0 var(--green);
+      }
+
+      .reference-panel {
+        background: #ffffff;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        min-width: 0;
+        overflow: hidden;
+      }
+
+      .reference-head {
+        padding: 15px;
+        border-bottom: 1px solid var(--line);
+        display: grid;
+        gap: 8px;
+      }
+
+      .reference-body {
+        padding: 15px;
+        display: grid;
+        gap: 14px;
+      }
+
+      .field-grid {
+        display: grid;
+        gap: 10px;
+      }
+
+      .field {
+        display: grid;
+        gap: 4px;
+      }
+
+      .label {
+        color: var(--muted);
+        font-size: 0.78rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      code {
+        display: inline-block;
+        max-width: 100%;
+        overflow-wrap: anywhere;
+        border-radius: 6px;
+        background: #f0eee7;
+        padding: 2px 5px;
+        font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        font-size: 0.88em;
+      }
+
+      .reference-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .reference-item {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 11px;
+        display: grid;
+        gap: 8px;
+        background: #fffdf7;
+      }
+
+      .link {
+        color: var(--blue);
+        font-weight: 800;
+        text-decoration: none;
+      }
+
+      .link:hover {
+        text-decoration: underline;
+      }
+
+      .empty {
+        padding: 42px 24px;
+        display: grid;
+        gap: 10px;
+        place-items: center;
+        text-align: center;
+        color: var(--muted);
+      }
+
+      .empty strong {
+        color: var(--text);
+        font-size: 1.1rem;
+      }
+
+      .error {
+        border: 1px solid #e6a6ae;
+        background: #fff1f3;
+        color: #7f2535;
+        border-radius: 8px;
+        padding: 12px;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      @media (max-width: 900px) {
+        .topbar {
+          align-items: stretch;
+          flex-direction: column;
         }
 
-        p {
-          color: #c7c8c3;
+        .toolbar {
+          justify-content: stretch;
+        }
+
+        .search,
+        .button {
+          flex: 1 1 220px;
+        }
+
+        .layout,
+        .statement-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .detail {
+          min-height: 0;
+        }
+
+        .stat-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .back {
+          display: inline-flex;
+        }
+      }
+
+      @media (max-width: 560px) {
+        .app {
+          width: min(100% - 20px, 1180px);
+          padding-top: 16px;
+        }
+
+        .brand {
+          align-items: flex-start;
+        }
+
+        .mark {
+          width: 40px;
+          height: 40px;
+        }
+
+        .panel-head,
+        .detail-body {
+          padding: 14px;
+        }
+
+        .submission-title-row {
+          flex-direction: column;
+        }
+
+        .stat-grid {
+          grid-template-columns: 1fr;
         }
       }
     </style>
   </head>
   <body>
-    <main>
-      <h1>Lean Meta Library</h1>
-      <p>A placeholder GitHub Pages site for the Lean Meta Library.</p>
+    <main class="app">
+      <header class="topbar">
+        <div class="brand">
+          <div class="mark" aria-hidden="true">LML</div>
+          <div>
+            <h1>Lean Meta Library</h1>
+            <p class="subtitle">Browse imported submissions, inspect surface statements, and see the proof references recorded in metadata.</p>
+          </div>
+        </div>
+        <div class="toolbar" aria-label="Submission tools">
+          <input id="search" class="search" type="search" placeholder="Search submissions" aria-label="Search submissions">
+          <button id="reload" class="button" type="button">Reload</button>
+        </div>
+      </header>
+
+      <section id="load-error" class="error hidden" role="alert"></section>
+
+      <div class="layout">
+        <section class="panel" aria-labelledby="submission-list-title">
+          <div class="panel-head">
+            <div class="panel-head-row">
+              <h2 id="submission-list-title" class="panel-title">Submissions</h2>
+              <span id="submission-count" class="count">Loading</span>
+            </div>
+          </div>
+          <div id="submission-list" class="list" aria-live="polite"></div>
+        </section>
+
+        <section class="panel detail" aria-labelledby="detail-title">
+          <div id="detail" class="detail-body"></div>
+        </section>
+      </div>
     </main>
+
+    <script>
+      const state = {
+        submissions: [],
+        filtered: [],
+        activeSubmissionId: null,
+        activeStatementId: null,
+        loadedFrom: null
+      };
+
+      const dataPaths = [
+        "./submissions.jsonl",
+        "../submissions.jsonl",
+        "/submissions.jsonl"
+      ];
+
+      const els = {
+        error: document.querySelector("#load-error"),
+        list: document.querySelector("#submission-list"),
+        count: document.querySelector("#submission-count"),
+        detail: document.querySelector("#detail"),
+        search: document.querySelector("#search"),
+        reload: document.querySelector("#reload")
+      };
+
+      els.search.addEventListener("input", () => {
+        filterSubmissions();
+        render();
+      });
+
+      els.reload.addEventListener("click", () => loadSubmissions());
+      window.addEventListener("hashchange", () => {
+        readHash();
+        render();
+      });
+
+      loadSubmissions();
+
+      async function loadSubmissions() {
+        setError("");
+        els.count.textContent = "Loading";
+        els.list.innerHTML = "";
+        els.detail.innerHTML = emptyMessage("Loading submissions", "Reading submissions.jsonl from the site or repository root.");
+
+        try {
+          const result = await fetchJsonl();
+          state.submissions = result.rows.map(normalizeSubmission);
+          state.loadedFrom = result.path;
+          filterSubmissions();
+          readHash();
+          render();
+        } catch (error) {
+          state.submissions = [];
+          state.filtered = [];
+          setError(error.message);
+          render();
+        }
+      }
+
+      async function fetchJsonl() {
+        const errors = [];
+        for (const path of dataPaths) {
+          try {
+            const response = await fetch(`${path}?v=${Date.now()}`, { cache: "no-store" });
+            if (!response.ok) {
+              errors.push(`${path}: ${response.status}`);
+              continue;
+            }
+            const text = await response.text();
+            return { path, rows: parseJsonl(text) };
+          } catch (error) {
+            errors.push(`${path}: ${error.message}`);
+          }
+        }
+        throw new Error(`Could not load submissions.jsonl. Tried ${errors.join(", ")}.`);
+      }
+
+      function parseJsonl(text) {
+        return text
+          .split(/\r?\n/)
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .map((line, index) => {
+            try {
+              return JSON.parse(line);
+            } catch (error) {
+              throw new Error(`submissions.jsonl line ${index + 1} is not valid JSON: ${error.message}`);
+            }
+          });
+      }
+
+      function normalizeSubmission(row, index) {
+        const declarations = Array.isArray(row.declarations) ? row.declarations : [];
+        const proofs = Array.isArray(row.proofs) ? row.proofs : [];
+        const id = stableId(row, index);
+        const normalized = {
+          id,
+          raw: row,
+          title: row.paperTitle || row.paper?.paperTitle || row.title || `Submission ${index + 1}`,
+          slug: row.namespaceSlug || "",
+          repo: row["Repo Url"] || row["Git Repo"] || "",
+          branch: row["Source Branch"] || "",
+          commit: row["Source Commit"] || "",
+          metadataFile: row["Metadata File"] || "",
+          surfaceFolder: row["Surface Folder"] || "",
+          issueUrl: row["Issue Url"] || "",
+          issueNumber: row["Issue Number"] || "",
+          user: row["User Login"] || "",
+          importedAt: row["Imported At"] || "",
+          declarations,
+          proofs
+        };
+        normalized.entries = declarations.map((entry, entryIndex) => normalizeEntry(normalized, entry, entryIndex));
+        normalized.stats = summarize(normalized.entries);
+        return normalized;
+      }
+
+      function normalizeEntry(submission, entry, index) {
+        const proof = proofForEntry(submission.proofs, entry);
+        const kind = classifyEntry(entry, proof);
+        const folder = cleanPath(entry.folder || "");
+        const surfaceFile = folder ? `${folder}/Surface.lean` : "";
+        return {
+          id: `${submission.id}:${index}`,
+          name: entry.name || `Surface entry ${index + 1}`,
+          shortName: shortName(entry.name || `Surface entry ${index + 1}`),
+          type: entry.type || "Statement",
+          folder,
+          surfaceFile,
+          proof,
+          kind,
+          usedSurfaceFiles: Array.isArray(entry.usedSurfaceFiles) ? entry.usedSurfaceFiles : [],
+          raw: entry
+        };
+      }
+
+      function proofForEntry(proofs, entry) {
+        const namespace = entry.name || "";
+        return proofs.find((proof) => {
+          const theorem = proof.theorem || "";
+          return theorem === namespace || theorem.startsWith(`${namespace}.`);
+        }) || null;
+      }
+
+      function classifyEntry(entry, proof) {
+        const labels = [
+          entry.kind,
+          entry.status,
+          entry.category,
+          entry.role,
+          entry.type,
+          proof?.type
+        ].filter(Boolean).map((value) => String(value).toLowerCase());
+
+        if (entry.type === "Definition") {
+          return "definition";
+        }
+        if (entry.assumption === true || labels.some((value) => value.includes("assumption"))) {
+          return "assumption";
+        }
+        if (proof?.type === "reduction" || labels.some((value) => value.includes("conjecture"))) {
+          return "conjecture";
+        }
+        return "theorem";
+      }
+
+      function summarize(entries) {
+        return entries.reduce((stats, entry) => {
+          stats.total += 1;
+          stats[entry.kind] = (stats[entry.kind] || 0) + 1;
+          return stats;
+        }, { total: 0, definition: 0, theorem: 0, assumption: 0, conjecture: 0 });
+      }
+
+      function stableId(row, index) {
+        return encodeURIComponent([
+          row["Issue Number"],
+          row["Repo Url"] || row["Git Repo"],
+          row["Metadata File"],
+          row.namespaceSlug,
+          index
+        ].filter(Boolean).join("|") || `submission-${index}`);
+      }
+
+      function filterSubmissions() {
+        const query = els.search.value.trim().toLowerCase();
+        state.filtered = state.submissions.filter((submission) => {
+          if (!query) {
+            return true;
+          }
+          return [
+            submission.title,
+            submission.slug,
+            submission.repo,
+            submission.user,
+            submission.metadataFile,
+            ...submission.entries.map((entry) => entry.name)
+          ].join(" ").toLowerCase().includes(query);
+        });
+      }
+
+      function readHash() {
+        const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+        state.activeSubmissionId = params.get("submission");
+        state.activeStatementId = params.get("statement");
+
+        if (!state.activeSubmissionId && state.filtered[0]) {
+          state.activeSubmissionId = state.filtered[0].id;
+        }
+
+        const active = activeSubmission();
+        if (!active) {
+          state.activeStatementId = null;
+          return;
+        }
+        if (!active.entries.some((entry) => entry.id === state.activeStatementId)) {
+          const firstStatement = active.entries.find((entry) => entry.type === "Statement") || active.entries[0];
+          state.activeStatementId = firstStatement?.id || null;
+        }
+      }
+
+      function setHash(submissionId, statementId) {
+        const params = new URLSearchParams();
+        if (submissionId) {
+          params.set("submission", submissionId);
+        }
+        if (statementId) {
+          params.set("statement", statementId);
+        }
+        history.replaceState(null, "", `#${params.toString()}`);
+        readHash();
+        render();
+      }
+
+      function render() {
+        renderSubmissionList();
+        renderDetail();
+      }
+
+      function renderSubmissionList() {
+        els.count.textContent = `${state.filtered.length} shown`;
+        if (state.submissions.length === 0) {
+          els.count.textContent = "0 shown";
+          els.list.innerHTML = emptyMessage("No imported submissions yet", state.loadedFrom ? `Loaded ${state.loadedFrom}, but it has no rows.` : "Once submissions.jsonl has rows, they will appear here.");
+          return;
+        }
+        if (state.filtered.length === 0) {
+          els.list.innerHTML = emptyMessage("No matches", "Try a different title, slug, author, or Lean namespace.");
+          return;
+        }
+        els.list.innerHTML = state.filtered.map((submission) => `
+          <button class="row" type="button" data-submission="${escapeAttr(submission.id)}" aria-selected="${submission.id === state.activeSubmissionId}">
+            <span class="row-main">
+              <span class="name">${escapeHtml(submission.title)}</span>
+              <span class="pill theorem">${submission.stats.total}</span>
+            </span>
+            <span class="meta">
+              ${submission.slug ? `<span>${escapeHtml(submission.slug)}</span>` : ""}
+              ${submission.user ? `<span>by ${escapeHtml(submission.user)}</span>` : ""}
+              ${submission.issueNumber ? `<span>issue #${escapeHtml(String(submission.issueNumber))}</span>` : ""}
+            </span>
+            <span class="meta">${summaryPills(submission.stats)}</span>
+          </button>
+        `).join("");
+        els.list.querySelectorAll("[data-submission]").forEach((button) => {
+          button.addEventListener("click", () => {
+            const submission = state.submissions.find((item) => item.id === button.dataset.submission);
+            const firstStatement = submission?.entries.find((entry) => entry.type === "Statement") || submission?.entries[0];
+            setHash(button.dataset.submission, firstStatement?.id || null);
+          });
+        });
+      }
+
+      function renderDetail() {
+        const submission = activeSubmission();
+        if (!submission) {
+          els.detail.innerHTML = emptyMessage("Select a submission", "Imported papers will open here with their surface statements and proof references.");
+          return;
+        }
+
+        const activeEntry = activeStatement(submission);
+        els.detail.innerHTML = `
+          <section class="submission-header" aria-labelledby="detail-title">
+            <div class="submission-title-row">
+              <div>
+                <h2 id="detail-title" class="submission-title">${escapeHtml(submission.title)}</h2>
+                <p class="subtitle">${submissionMeta(submission)}</p>
+              </div>
+              <button class="button back" id="clear-selection" type="button">List</button>
+            </div>
+            <div class="stat-grid" aria-label="Submission declaration counts">
+              ${statBlock("Definitions", submission.stats.definition)}
+              ${statBlock("Theorems", submission.stats.theorem)}
+              ${statBlock("Assumptions", submission.stats.assumption)}
+              ${statBlock("Conjectures", submission.stats.conjecture)}
+            </div>
+          </section>
+
+          <section class="statement-layout">
+            <div>
+              <div class="panel-head-row" style="margin-bottom: 10px;">
+                <h3 class="panel-title">Surface Statements</h3>
+                <span class="count">${submission.entries.length} entries</span>
+              </div>
+              <div class="statement-list">
+                ${submission.entries.length === 0 ? emptyMessage("No declarations", "This submission row has no declarations metadata.") : submission.entries.map((entry) => statementButton(entry, activeEntry)).join("")}
+              </div>
+            </div>
+            ${referencePanel(activeEntry)}
+          </section>
+        `;
+
+        els.detail.querySelector("#clear-selection")?.addEventListener("click", () => {
+          history.replaceState(null, "", window.location.pathname + window.location.search);
+          state.activeSubmissionId = null;
+          state.activeStatementId = null;
+          render();
+        });
+
+        els.detail.querySelectorAll("[data-statement]").forEach((button) => {
+          button.addEventListener("click", () => setHash(submission.id, button.dataset.statement));
+        });
+      }
+
+      function statementButton(entry, activeEntry) {
+        return `
+          <button class="statement-button" type="button" data-statement="${escapeAttr(entry.id)}" aria-selected="${activeEntry?.id === entry.id}">
+            <span class="row-main">
+              <span class="name">${escapeHtml(entry.shortName)}</span>
+              <span class="pill ${entry.kind}">${kindLabel(entry.kind)}</span>
+            </span>
+            <span class="meta">
+              ${entry.surfaceFile ? `<span>${escapeHtml(entry.surfaceFile)}</span>` : ""}
+              ${entry.proof?.proofFile ? `<span>${escapeHtml(entry.proof.proofFile)}</span>` : ""}
+            </span>
+          </button>
+        `;
+      }
+
+      function referencePanel(entry) {
+        if (!entry) {
+          return `<div class="reference-panel">${emptyMessage("No surface entry selected", "Choose a statement to inspect its proof metadata.")}</div>`;
+        }
+        const proof = entry.proof;
+        return `
+          <article class="reference-panel" aria-label="Proof references for ${escapeAttr(entry.shortName)}">
+            <div class="reference-head">
+              <span class="pill ${entry.kind}">${kindLabel(entry.kind)}</span>
+              <h3>${escapeHtml(entry.shortName)}</h3>
+              <code>${escapeHtml(entry.name)}</code>
+            </div>
+            <div class="reference-body">
+              <div class="field-grid">
+                <div class="field">
+                  <span class="label">Surface file</span>
+                  <code>${escapeHtml(entry.surfaceFile || "Not recorded")}</code>
+                </div>
+                <div class="field">
+                  <span class="label">Proof file</span>
+                  <code>${escapeHtml(proof?.proofFile || "No proof metadata")}</code>
+                </div>
+                <div class="field">
+                  <span class="label">Proof type</span>
+                  <code>${escapeHtml(proof?.type || "No proof metadata")}</code>
+                </div>
+                <div class="field">
+                  <span class="label">Surface theorem</span>
+                  <code>${escapeHtml(proof?.theorem || "No theorem target")}</code>
+                </div>
+                <div class="field">
+                  <span class="label">Proof theorem</span>
+                  <code>${escapeHtml(proof?.proof || "No proof target")}</code>
+                </div>
+              </div>
+
+              <div>
+                <div class="panel-head-row" style="margin-bottom: 10px;">
+                  <h3 class="panel-title">Referenced Surface Files</h3>
+                  <span class="count">${entry.usedSurfaceFiles.length}</span>
+                </div>
+                ${references(entry)}
+              </div>
+            </div>
+          </article>
+        `;
+      }
+
+      function references(entry) {
+        if (entry.usedSurfaceFiles.length === 0) {
+          return emptyMessage("No external surface references", "The metadata does not list any usedSurfaceFiles for this entry.");
+        }
+        return `
+          <div class="reference-list">
+            ${entry.usedSurfaceFiles.map((reference) => `
+              <div class="reference-item">
+                <div class="field">
+                  <span class="label">Referenced declaration</span>
+                  <code>${escapeHtml(reference.definition || "Not recorded")}</code>
+                </div>
+                <div class="field">
+                  <span class="label">Surface file</span>
+                  <code>${escapeHtml(reference.surfaceFile || "Not recorded")}</code>
+                </div>
+                <div class="meta">
+                  ${reference.slug ? `<span>slug: ${escapeHtml(reference.slug)}</span>` : ""}
+                  ${reference.githubRepo ? `<span>repo: ${escapeHtml(reference.githubRepo)}</span>` : ""}
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        `;
+      }
+
+      function activeSubmission() {
+        return state.submissions.find((submission) => submission.id === state.activeSubmissionId)
+          || state.filtered[0]
+          || null;
+      }
+
+      function activeStatement(submission) {
+        return submission.entries.find((entry) => entry.id === state.activeStatementId)
+          || submission.entries.find((entry) => entry.type === "Statement")
+          || submission.entries[0]
+          || null;
+      }
+
+      function summaryPills(stats) {
+        return [
+          ["definition", stats.definition],
+          ["theorem", stats.theorem],
+          ["assumption", stats.assumption],
+          ["conjecture", stats.conjecture]
+        ].filter(([, value]) => value > 0)
+          .map(([kind, value]) => `<span class="pill ${kind}">${value} ${kindLabel(kind)}</span>`)
+          .join("");
+      }
+
+      function statBlock(label, value) {
+        return `<div class="stat"><strong>${Number(value || 0)}</strong><span>${escapeHtml(label)}</span></div>`;
+      }
+
+      function submissionMeta(submission) {
+        const pieces = [
+          submission.slug,
+          submission.user ? `submitted by ${submission.user}` : "",
+          submission.importedAt ? `imported ${formatDate(submission.importedAt)}` : "",
+          state.loadedFrom ? `data: ${state.loadedFrom}` : ""
+        ].filter(Boolean);
+        return pieces.map(escapeHtml).join(" | ");
+      }
+
+      function emptyMessage(title, detail) {
+        return `<div class="empty"><strong>${escapeHtml(title)}</strong><span>${escapeHtml(detail)}</span></div>`;
+      }
+
+      function setError(message) {
+        els.error.textContent = message;
+        els.error.classList.toggle("hidden", !message);
+      }
+
+      function shortName(name) {
+        const parts = String(name || "").split(".");
+        return parts.slice(-2).join(".") || name;
+      }
+
+      function cleanPath(value) {
+        return String(value || "").replace(/\\/g, "/").replace(/^\.\/+/, "").replace(/\/+/g, "/").replace(/\/$/, "");
+      }
+
+      function kindLabel(kind) {
+        return ({
+          definition: "Definition",
+          theorem: "Theorem",
+          assumption: "Assumption",
+          conjecture: "Conjecture",
+          conditional: "Conditional"
+        })[kind] || "Entry";
+      }
+
+      function formatDate(value) {
+        const date = new Date(value);
+        if (Number.isNaN(date.valueOf())) {
+          return value;
+        }
+        return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      function escapeAttr(value) {
+        return escapeHtml(value);
+      }
+    </script>
   </body>
 </html>
