@@ -68,13 +68,13 @@ const fixtures = [
   {
     name: "sorry-proof-package",
     checker: "proofs-axioms-sorrys.mjs",
-    expected: /compiled proof theorem depends on forbidden axioms|FORBIDDEN_AXIOM/,
+    expected: /proof file proofs\/ConnectedIffReachableProof\.lean reports a sorry/,
     stripMathlibDependencyForCheck: true
   },
   {
-    name: "surface-sorry-statement-package",
-    checker: "surface-declarations.mjs",
-    expected: /surface file surface-package\/ConnectedIffReachable\/Surface\.lean reports a sorry/,
+    name: "unused-sorry-proof-package",
+    checker: "proofs-axioms-sorrys.mjs",
+    expected: /proof file proofs\/UnusedSorry\.lean reports a sorry/,
     stripMathlibDependencyForCheck: true
   },
   {
@@ -90,9 +90,9 @@ const fixtures = [
     stripMathlibDependencyForCheck: true
   },
   {
-    name: "surface-sorry-statement-package",
+    name: "unused-sorry-proof-package",
     checker: "final-proof-build.mjs",
-    expected: /FORBIDDEN_AXIOM\t+surface\t+SurfaceSorryStatement\.Surface\.Statement\.ConnectedIffReachable\.connected_iff_reachable\t+sorryAx/,
+    expected: /final proof build output reports a sorry/,
     stripMathlibDependencyForCheck: true
   },
   {

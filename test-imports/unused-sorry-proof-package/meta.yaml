@@ -1,26 +1,26 @@
 pinnedLeanToolchain: leanprover/lean4:v4.30.0
 proofLakefilePath: lakefile.lean
-paperTitle: Surface Sorry Statement Fixture
-namespaceSlug: surface-sorry-statement
+paperTitle: Unused Sorry Proof Fixture
+namespaceSlug: unused-sorry-proof
 surfaceLakefilePath: surface-package/lakefile.lean
 abstractPath: abstract.tex
 declarations:
   - type: Definition
-    name: SurfaceSorryStatement.Surface.Definition.ConnectedGraph
+    name: UnusedSorryProof.Surface.Definition.ConnectedGraph
     folder: surface-package/ConnectedGraph
     usedSurfaceFiles: []
   - type: Statement
-    name: SurfaceSorryStatement.Surface.Statement.ConnectedIffReachable
+    name: UnusedSorryProof.Surface.Statement.ConnectedIffReachable
     folder: surface-package/ConnectedIffReachable
     usedSurfaceFiles: []
 proofs:
-  - theorem: SurfaceSorryStatement.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
-    proof: SurfaceSorryStatement.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
+  - theorem: UnusedSorryProof.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
+    proof: UnusedSorryProof.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
     type: proof
     proofFile: proofs/ConnectedIffReachableProof.lean
 bibtex: []
 paper:
-  paperTitle: Surface Sorry Statement Fixture
+  paperTitle: Unused Sorry Proof Fixture
   arxivUrl: ""
   onlineSource: ""
   doi: ""

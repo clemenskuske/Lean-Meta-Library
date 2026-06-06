@@ -46,6 +46,11 @@ for (const file of proofFiles) {
   if (result.status !== 0) {
     errors.push(`Lean failed to elaborate proof file ${label}\n${result.stdout}${result.stderr}`.trim());
   }
+
+  const output = `${result.stdout ?? ""}${result.stderr ?? ""}`;
+  if (outputReportsSorry(output)) {
+    errors.push(`proof file ${label} reports a sorry\n${output}`.trim());
+  }
 }
 
 checkCompiledProofAxioms();
@@ -143,6 +148,10 @@ function leanNameArray(names) {
 
 function leanString(value) {
   return JSON.stringify(String(value ?? ""));
+}
+
+function outputReportsSorry(output) {
+  return /\bdeclaration uses ['"`]sorry['"`]/i.test(output) || /\bsorryAx\b/.test(output);
 }
 
 report("proof axioms and sorrys", errors);

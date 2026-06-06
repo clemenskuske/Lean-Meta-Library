@@ -1,14 +1,14 @@
 import Lake
 open Lake DSL
 
-package SurfaceSorryStatement.Proofs where
+package UnusedSorryProof.Proofs where
 
 require mathlib from git
   "https://github.com/leanprover-community/mathlib4.git" @ "c5ea00351c28e24afc9f0f84379aa41082b1188f"
 
-require SurfaceSorryStatement.Surface from "./surface-package"
+require UnusedSorryProof.Surface from "./surface-package"
 
 @[default_target]
-lean_lib SurfaceSorryStatement.Proofs where
+lean_lib UnusedSorryProof.Proofs where
   srcDir := "proofs"
-  roots := #[`ConnectedIffReachableProof]
+  roots := #[`ConnectedIffReachableProof, `UnusedSorry]
