@@ -75,6 +75,10 @@ The CLI `agent-introduction` command prints `agent-info/README.md`, the general 
 
 The CLI `agent-submission-guide` command prints `agent-info/paper-submission-readiness-agent-guide.md`, the guide for agents preparing an arbitrary Lean project as a Lean Meta Library paper submission with user-approved metadata, surface files, and proofs that should pass the local checks.
 
+## Submission API structure rework
+
+`agent-info/submission-api-structure-agent-readme.md` records the target submission file structure for the upcoming API-module rework before checker and CLI code changes are made. In that target structure, both the surface package and proof package contain an `API.lean` file, external repository imports go through `Repo.API`, surface axioms and proof theorems use the same declaration leaf name, and the final proof build uses proof-package dependencies for all used repositories before checking for forbidden axioms or sorries.
+
 ## Import submission workflow
 
 The `.github/workflows/import-submission.yml` workflow runs when an issue labeled `submission` is opened, labeled, edited, or reopened. It reads the repository URL, source branch, source commit, metadata file path, and submitted-by login from the issue body, checks out that exact commit, runs the first-run checks from `.github/actions/test/` against the metadata file at that path, then adds or updates the matching row in `submissions.jsonl`. Imported rows include the parsed metadata plus repository, branch, commit, metadata path, repository-relative surface folder, issue id/number/url, and submitting user id/login. After a successful import, the workflow comments on and closes the issue.

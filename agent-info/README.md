@@ -52,6 +52,8 @@ lml agent-submission-guide
 
 That command prints the guide for turning a Lean project into a checked Lean Meta Library submission. Use `lml create-paper <slug>` for the starter package, then replace the starter content with the user's actual title, abstract, surface declarations, proof files, and bibliographic metadata.
 
+For the upcoming API-module submission-structure rework, also read `agent-info/submission-api-structure-agent-readme.md`. That README is the target design for the new layout before the checker and CLI scaffold are updated.
+
 
 ## How To Use `submissions.jsonl`
 
