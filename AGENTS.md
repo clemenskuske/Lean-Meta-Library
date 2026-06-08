@@ -77,7 +77,7 @@ The CLI `agent-submission-guide` command prints `agent-info/paper-submission-rea
 
 ## Submission API structure rework
 
-`agent-info/submission-api-structure-agent-readme.md` records the target submission file structure for the upcoming API-module rework before checker and CLI code changes are made. In that target structure, both the surface package and proof package contain an `API.lean` file, external repository imports go through `Repo.API`, surface axioms and proof theorems use the same Lean declaration name, and the final proof build uses proof-package dependencies for all used repositories before checking for forbidden axioms or sorries.
+`agent-info/submission-api-structure-agent-readme.md` records the target submission file structure for the upcoming API-module rework before checker and CLI code changes are made. In that target structure, both the surface package and proof package contain an `API.lean` file, external repository imports go through `Repo.API`, surface axioms and proof theorems use the same Lean declaration name, proof packages may import local surface definitions but not local surface axioms, and the final proof build uses proof-package dependencies for all used repositories before checking for forbidden axioms or sorries.
 
 ## Import submission workflow
 

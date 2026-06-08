@@ -35,6 +35,7 @@ These rules carry forward from the startup guide and the paper-submission readin
 - A `Definition` entry introduces one `def`. A `Statement` entry may introduce one `axiom` or one `theorem`.
 - Every surface statement needs exactly one matching metadata proof entry and proof file. Proof entry type is `proof`, `conditional-proof`, or `reduction`.
 - Surface statement axioms and proof-package theorems must expose the same Lean declaration name. The package mode changes; the declaration name does not.
+- The proof package may import definitions from the local surface package, but it must not import or depend on axioms from the local surface package. A submitted proof must establish the same theorem name without using its surface axiom as an assumption.
 - Proof files must not contain `axiom`, `sorry`, `admit`, or `unsafe`, and compiled proof targets must not depend on `sorryAx` or local proof-side axioms.
 - Imports may use `Mathlib.*`, `Std.*`, local modules from the same submission, and authorized external repository APIs. Cross-repository imports must go through `OtherRepo.API`.
 - `usedSurfaceFiles` remains the authorization source for external repository references. Any external dependency must be backed by the matching row in `submissions.jsonl`.
@@ -150,12 +151,15 @@ import OtherStatementProof
 import Repo.Proofs
 ```
 
-Each proof file imports Mathlib, Std, local proof helpers, local modules that do not define the same constant being replaced, and any authorized external repository APIs. A proof file must not import the local surface module that defines the exact same constant it is proving, because the proof package exposes that constant name itself:
+Each proof file imports Mathlib, Std, local proof helpers, local modules that do not define the same constant being replaced, local surface definitions, and any authorized external repository APIs. A proof file must not import the local surface module that defines the exact same constant it is proving, because the proof package exposes that constant name itself:
 
 ```lean
 import Mathlib.SomeModule
+import DefinitionEntry.Surface
 import OtherRepo.API
 ```
+
+The proof package is allowed to use local surface definitions. It is not allowed to use local surface axioms, including statement axioms from the same submission. The checker should reject proof targets whose compiled axiom dependencies include local surface-package statement axioms.
 
 The local surface package and local proof package both expose a `Repo.API` module as alternate modes for downstream users. Implementation work must make sure the current repository's proof build does not accidentally create a duplicate-module or duplicate-constant conflict between its local surface mode and proof mode.
 
@@ -285,6 +289,7 @@ Update metadata and namespace checks:
 - Check that the surface API imports exactly `Repo.Surface`.
 - Check that the proof API imports exactly `Repo.Proofs`.
 - Check that every proof theorem name is exactly the same Lean name as the corresponding surface theorem name.
+- Check that proof-package imports and compiled proof dependencies may use local surface definitions but not local surface axioms.
 
 Update dependency checks:
 
@@ -301,6 +306,7 @@ Update final proof build:
 - Remove the special surface-to-proof regex-style replacement from the final checker.
 - Keep the existing build-output sorry detection.
 - Keep the Lean-level axiom inspection, but make it inspect the modules built through the API/proof-package dependency graph.
+- Ensure the Lean-level axiom inspection rejects local surface-package axioms used by proof-package theorems while allowing local surface definitions.
 
 Update import registry handling:
 
@@ -315,6 +321,7 @@ Update tests and fixtures:
 - Add a fixture that rejects a missing proof `Repo/API.lean`.
 - Add a fixture that rejects external direct imports bypassing `OtherRepo.API`.
 - Add a fixture that rejects mismatched surface/proof Lean declaration names.
+- Add a fixture that rejects a proof theorem depending on its local surface axiom, while accepting proof code that imports local surface definitions.
 - Update the final-proof-build failure fixture so the failure comes from a real proof-package dependency build, not from name rewriting.
 
 ## Migration Notes For Agents
