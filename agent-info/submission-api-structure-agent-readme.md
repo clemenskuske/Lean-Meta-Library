@@ -20,6 +20,27 @@ All references from one submission repository to another must import the other r
 
 The final import-stage proof build should stop relying on a namespace rewrite or regex-like surface-to-proof substitution. Instead, it should build the current submission together with the proof packages of every used repository and then reject any forbidden axioms or sorries found by Lean.
 
+## rules-block
+
+These rules carry forward from the startup guide and the paper-submission readiness guide, adjusted for the API-module structure:
+
+- Treat `meta.yaml` as the submission source of truth. Lean files, package files, abstracts, proof entries, and dependency metadata must match it.
+- Build the submission with the user. Do not infer the public mathematical surface from a source project alone; get user approval for the title, namespace slug, abstract, public declarations, proof entry types, assumptions, and bibliography.
+- Keep the submission small and reviewable. Copy or adapt only the surface and proof code needed for the user-approved submission.
+- Start from `lml create-paper <slug>` once the CLI scaffold supports this layout, so Lean toolchain and mathlib pins come from current policy.
+- Keep both `lean-toolchain` files and both Lake files pinned to the toolchain and mathlib revision required by `lml-env.json`.
+- Metadata strings should stay simple ASCII accepted by the checker. Avoid shell syntax, angle brackets, backticks, semicolons, and nonessential punctuation.
+- Every `Definition` and `Statement` needs a matching declaration folder, `Surface.lean`, and `latex-file.tex`.
+- Each surface declaration file introduces exactly one direct public declaration. Do not add helper declarations, private declarations, instances, structures, classes, inductives, extra axioms, macros, custom syntax, `unsafe`, `run_cmd`, `#eval`, `#print`, `extern`, or `IO`.
+- A `Definition` entry introduces one `def`. A `Statement` entry may introduce one `axiom` or one `theorem`.
+- Every surface statement needs exactly one matching metadata proof entry and proof file. Proof entry type is `proof`, `conditional-proof`, or `reduction`.
+- Surface statement axioms and proof-package theorems must expose the same Lean declaration name. The package mode changes; the declaration name does not.
+- Proof files must not contain `axiom`, `sorry`, `admit`, or `unsafe`, and compiled proof targets must not depend on `sorryAx` or local proof-side axioms.
+- Imports may use `Mathlib.*`, `Std.*`, local modules from the same submission, and authorized external repository APIs. Cross-repository imports must go through `OtherRepo.API`.
+- `usedSurfaceFiles` remains the authorization source for external repository references. Any external dependency must be backed by the matching row in `submissions.jsonl`.
+- Run `lml update` before dependency work, and do not edit `submissions.jsonl` by hand.
+- Run `lml test --meta=path/to/meta.yaml` before calling a submission package done. Treat warnings as review items.
+
 ## Target Package Shape
 
 Create one submission package folder, normally named `<slug>-package/`:
@@ -85,14 +106,14 @@ surface-package/<EntryName>/Surface.lean
 surface-package/<EntryName>/latex-file.tex
 ```
 
-Each declaration file still introduces exactly one direct public declaration under the metadata namespace:
+Each declaration file still introduces exactly one direct public declaration under the metadata namespace. The declaration namespace should not include the package-mode marker `Surface`, because the proof package must expose the same Lean declaration name:
 
 ```lean
-namespace Repo.Surface.Statement.MainStatement
+namespace Repo.Statement.MainStatement
 
 axiom main_statement : SomeStatement
 
-end Repo.Surface.Statement.MainStatement
+end Repo.Statement.MainStatement
 ```
 
 Local imports inside the same submission may still use local declaration modules. Imports from another submission repository must go through that repository's API module, for example:
@@ -129,47 +150,76 @@ import OtherStatementProof
 import Repo.Proofs
 ```
 
-Each proof file imports its own local surface statement module when needed, plus any authorized external repository APIs:
+Each proof file imports Mathlib, Std, local proof helpers, local modules that do not define the same constant being replaced, and any authorized external repository APIs. A proof file must not import the local surface module that defines the exact same constant it is proving, because the proof package exposes that constant name itself:
 
 ```lean
-import MainStatement.Surface
+import Mathlib.SomeModule
 import OtherRepo.API
 ```
 
-The local surface package and local proof package both expose a `Repo.API` module as alternate modes for downstream users. Implementation work must make sure the current repository's proof build does not accidentally create a duplicate-module conflict between its local surface API and proof API.
+The local surface package and local proof package both expose a `Repo.API` module as alternate modes for downstream users. Implementation work must make sure the current repository's proof build does not accidentally create a duplicate-module or duplicate-constant conflict between its local surface mode and proof mode.
 
-Proof declarations use the same declaration leaf name as their matching surface axiom:
+Proof declarations use exactly the same Lean declaration name as their matching surface axiom:
 
 ```lean
-namespace Repo.Proofs.Statement.MainStatement
+namespace Repo.Statement.MainStatement
 
 theorem main_statement : SomeStatement := by
   ...
 
-end Repo.Proofs.Statement.MainStatement
+end Repo.Statement.MainStatement
 ```
 
 ## Name Matching Rule
 
-For every metadata proof entry, the surface axiom and proof theorem must have exactly the same declaration leaf name.
+For every metadata proof entry, the surface axiom and proof theorem must have exactly the same Lean declaration name. They live in different package modes, so Lean sees only the surface version or only the proof version in a given external dependency, but the exported constant name is identical.
 
 Allowed:
 
 ```yaml
 proofs:
-  - theorem: Repo.Surface.Statement.MainStatement.main_statement
-    proof: Repo.Proofs.Statement.MainStatement.main_statement
+  - theorem: Repo.Statement.MainStatement.main_statement
+    proof: Repo.Statement.MainStatement.main_statement
 ```
 
 Not allowed:
 
 ```yaml
 proofs:
-  - theorem: Repo.Surface.Statement.MainStatement.main_statement
-    proof: Repo.Proofs.Statement.MainStatement.main_statement_proof
+  - theorem: Repo.Statement.MainStatement.main_statement
+    proof: Repo.Proofs.Statement.MainStatement.main_statement
 ```
 
-The namespace still changes from `Repo.Surface...` to `Repo.Proofs...`, but the final identifier must match exactly. This makes proof replacement predictable without rewriting arbitrary names.
+Also not allowed:
+
+```yaml
+proofs:
+  - theorem: Repo.Statement.MainStatement.main_statement
+    proof: Repo.Statement.MainStatement.main_statement_proof
+```
+
+The surface package exposes:
+
+```lean
+namespace B
+
+axiom main_theorem : SomeStatement
+
+end B
+```
+
+The proof package exposes the same name:
+
+```lean
+namespace B
+
+theorem main_theorem : SomeStatement := by
+  ...
+
+end B
+```
+
+The type must still elaborate to the same compiled Lean type. Textual similarity is not enough.
 
 ## Cross-Repository Dependency Policy
 
@@ -213,7 +263,7 @@ The important behavioral change is that final proof checking should use actual p
 - Each package mode now has an `API.lean` file.
 - Each package mode now has an aggregate module: `Repo.Surface` and `Repo.Proofs`.
 - Cross-repository Lean imports go through `OtherRepo.API`.
-- Surface statement axioms and proof theorems must have exactly the same leaf name.
+- Surface statement axioms and proof theorems must have exactly the same Lean declaration name.
 - The final proof build uses proof packages for all used repositories.
 - The final proof build checks the compiled result for axioms and sorries after normal Lean elaboration and build.
 
@@ -225,7 +275,7 @@ Update the CLI scaffold:
 - `create-paper` should generate `surface-package/Repo/Surface.lean`.
 - `create-paper` should generate `Repo/Proofs.lean`.
 - Generated Lake files should include the aggregate and API modules in their `lean_lib` roots or globs.
-- Generated proof names should already satisfy the same-leaf-name rule.
+- Generated proof names should already satisfy the same-Lean-declaration-name rule.
 
 Update metadata and namespace checks:
 
@@ -234,7 +284,7 @@ Update metadata and namespace checks:
 - Require the aggregate modules `surface-package/Repo/Surface.lean` and `Repo/Proofs.lean`.
 - Check that the surface API imports exactly `Repo.Surface`.
 - Check that the proof API imports exactly `Repo.Proofs`.
-- Check that every proof theorem leaf name matches the corresponding surface theorem leaf name.
+- Check that every proof theorem name is exactly the same Lean name as the corresponding surface theorem name.
 
 Update dependency checks:
 
@@ -264,7 +314,7 @@ Update tests and fixtures:
 - Add a fixture that rejects a missing surface `Repo/API.lean`.
 - Add a fixture that rejects a missing proof `Repo/API.lean`.
 - Add a fixture that rejects external direct imports bypassing `OtherRepo.API`.
-- Add a fixture that rejects mismatched surface/proof leaf names.
+- Add a fixture that rejects mismatched surface/proof Lean declaration names.
 - Update the final-proof-build failure fixture so the failure comes from a real proof-package dependency build, not from name rewriting.
 
 ## Migration Notes For Agents
