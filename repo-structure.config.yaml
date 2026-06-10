@@ -2,186 +2,168 @@ version: 1
 $id: "https://lean-meta-library.local/config/repo-structure.config.yaml"
 title: "Lean Meta Library import repository structure"
 description: >
-  Declarative first version of the repository-structure contract for a source
-  repository submitted to the Lean Meta Library import workflow. Metadata shape
-  is still defined by meta.config.yaml; this file records the repository files,
-  package presence rules, and content expectations that checkers should enforce
-  around that metadata.
+  Self-contained description of the expected file layout for a source
+  repository submitted to the Lean Meta Library import workflow. The structure
+  is rooted at the directory containing the submission metadata file.
 
-sourcesOfTruth:
-  metadataSchema: meta.config.yaml
-  environmentPolicy: lml-env.json
-  metadataDefaultPath: "lml-env.json#/submission/defaultMetadataPath"
-  allowedFileExtensions: "lml-env.json#/submission/allowedFileExtensions"
-  allowedExtensionlessFiles: "lml-env.json#/submission/allowedExtensionlessFiles"
-  allowedDirectImportPrefixes: "lml-env.json#/submission/allowedImportPrefixes"
+root:
+  role: import-repository-root
+  description: "Directory containing the submission metadata file."
+  files:
+    metadata:
+      fileName: meta.yaml
+      required: true
+      mayAlsoBeNamed:
+        - meta.yml
+      schema: meta.config.yaml
+      description: >
+        Submission metadata. The import workflow may receive a different
+        repository-relative metadata path, but the default root metadata file is
+        meta.yaml.
 
-repository:
-  kind: source-repository
-  metadataFile:
-    defaultPath: meta.yaml
-    acceptedExtensions:
-      - .yaml
-      - .yml
-    pathRule: repo-relative-file
-    schemaFrom: meta.config.yaml
-  abstractFile:
-    pathFrom: abstractPath
-    required: true
-    pathRule: repo-relative-file
-    expectedContent:
-      - "Short TeX abstract for the submission."
-      - "Stored as repository-local content, not as a generated GitHub source URL."
-  rootFilePolicy:
-    appliesTo: whole-repository-subtree-below-metadata-file
-    allowedExtensionsFrom: "lml-env.json#/submission/allowedFileExtensions"
-    allowedExtensionlessFilesFrom: "lml-env.json#/submission/allowedExtensionlessFiles"
-    disallowedFiles:
-      - .DS_Store
-    ignoredDirectories:
-      - .git
-      - .lake
-      - node_modules
+    abstract:
+      pathFromMetadata: abstractPath
+      required: true
+      description: "Short TeX abstract for the submission."
+      expectedContent:
+        - "Paper-facing summary of the submission's results."
+        - "Local repository file, not a generated GitHub source URL."
 
-metadataPathFields:
-  statementLakefilePath:
-    role: statement-package-lakefile
-    pathRule: repo-relative-file
-  proofLakefilePath:
-    role: proof-package-lakefile
-    pathRule: repo-relative-file
-  abstractPath:
-    role: submission-abstract
-    pathRule: repo-relative-file
-  statements[].Statement.LeanStatement:
-    role: public-statement-lean-file
-    pathRule: repo-relative-file
-  statements[].Statement.LatexDefinition:
-    role: public-statement-latex-file
-    pathRule: repo-relative-file
-  statements[].DeclarationReferences[].LeanStatement:
-    role: referenced-statement-lean-file
-    pathRule: repo-relative-file-within-referenced-submission
-  statements[].DeclarationReferences[].LatexDefinition:
-    role: referenced-statement-latex-file
-    pathRule: repo-relative-file-within-referenced-submission
-  proofs[].Theorem.File:
-    role: theorem-target-statement-file
-    pathRule: repo-relative-file-within-theorem-submission
-  proofs[].Proof.File:
-    role: proof-lean-file
-    pathRule: repo-relative-file
-  proofs[].DeclarationReferences[].LeanStatement:
-    role: proof-referenced-statement-lean-file
-    pathRule: repo-relative-file-within-referenced-submission
-  proofs[].DeclarationReferences[].LatexDefinition:
-    role: proof-referenced-statement-latex-file
-    pathRule: repo-relative-file-within-referenced-submission
+    leanToolchain:
+      fileName: lean-toolchain
+      required: false
+      description: >
+        Optional root Lake package toolchain file. If present, it should agree
+        with the metadata pinnedLeanToolchain value.
 
-packages:
-  statementPackage:
-    terminology: statement-package
-    presentWhen:
-      anyMetadataFieldPresent:
+  folders:
+    statementFolder:
+      requiredWhenMetadataHas:
         - statementLakefilePath
         - statements
-    packageRoot: "dirname(statementLakefilePath)"
-    lakefilePathFrom: statementLakefilePath
-    requiredWhenPresent:
-      - pathFrom: statementLakefilePath
-        kind: file
-      - pathFrom: "statements[].Statement.LeanStatement"
-        kind: file
-      - pathFrom: "statements[].Statement.LatexDefinition"
-        kind: file
-    optionalWhenPresent:
-      - path: lean-toolchain
-        relativeTo: packageRoot
-      - path: lake-manifest.json
-        relativeTo: packageRoot
-    expectedContent:
-      lakefile.lean:
-        - "Defines the statement-side Lake package/library for this submission."
-        - "Pins mathlib to lml-env.json mathlib.revision when declaring mathlib."
-        - "Includes every Lean statement file listed in metadata in the shared statement library."
-      lean-toolchain:
-        - "If present, contains exactly the Lean toolchain from lml-env.json lean.toolchain."
-      statementLeanFiles:
-        - "Each Definition entry introduces the metadata declaration as a Lean def."
-        - "Each Axiom entry introduces the metadata declaration as a Lean axiom."
-        - "Axiom statement files must not introduce theorem declarations as submitted statement content."
-        - "Statement content must not introduce extra public declarations beyond the metadata-listed declaration and its declared references."
-        - "Direct imports may use Mathlib modules, Std modules, local statement modules, and authorized imported packages only."
-      statementLatexFiles:
-        - "Each metadata statement has a matching LaTeX definition file."
-        - "The LeanStatement and LatexDefinition for a declaration reference should be in the same folder."
-    allowedFilesWhenPresent:
-      - pathFrom: statementLakefilePath
-      - path: lean-toolchain
-        relativeTo: packageRoot
-      - path: lake-manifest.json
-        relativeTo: packageRoot
-      - pathFrom: "statements[].Statement.LeanStatement"
-      - pathFrom: "statements[].Statement.LatexDefinition"
-    packageContentRule: >
-      The statement package should contain only expected statement-package files:
-      its lakefile, optional package support files, and the Lean/LaTeX files
-      listed by metadata.
+      folderPath: "dirname(statementLakefilePath)"
+      description: >
+        Statement package folder. This package publishes public Definition and
+        Axiom entries for the submission.
+      files:
+        lakefile:
+          pathFromMetadata: statementLakefilePath
+          required: true
+          description: "Lake file for the statement package."
+          expectedContent:
+            - "Defines the statement-side Lake package or library."
+            - "Builds every statement Lean file listed in metadata."
+            - "Includes all listed statement files in one shared statement library."
 
-  proofPackage:
-    terminology: proof-package
-    presentWhen:
-      anyMetadataFieldPresent:
+        leanToolchain:
+          fileName: lean-toolchain
+          required: false
+          description: "Optional statement package Lean toolchain file."
+
+        lakeManifest:
+          fileName: lake-manifest.json
+          required: false
+          description: "Optional Lake manifest for the statement package."
+
+      declarationFolders:
+        arrayFromMetadata: statements
+        folderPath: "dirname(statements[].Statement.LeanStatement)"
+        description: >
+          One folder per public Definition or Axiom entry. The Lean and LaTeX
+          files for the same statement entry should be in this folder.
+        files:
+          leanFile:
+            pathFromMetadata: statements[].Statement.LeanStatement
+            required: true
+            description: "Lean file containing the public statement declaration."
+            expectedContent:
+              - "For Type: Definition, introduces the metadata declaration as one Lean def."
+              - "For Type: Axiom, introduces the metadata declaration as one Lean axiom."
+              - "Axiom entries must not be theorem declarations."
+              - "Statement files should not introduce extra public declarations beyond the metadata-listed declaration."
+              - "Imports should be limited to Mathlib modules, Std modules, local statement modules, and authorized imported packages."
+
+          latexFile:
+            pathFromMetadata: statements[].Statement.LatexDefinition
+            required: true
+            description: "LaTeX file explaining the public statement declaration."
+            expectedContent:
+              - "Paper-facing definition or statement text for the matching Lean declaration."
+
+    proofFolder:
+      requiredWhenMetadataHas:
         - proofLakefilePath
         - proofs
-    packageRoot: "dirname(proofLakefilePath)"
-    lakefilePathFrom: proofLakefilePath
-    requiredWhenPresent:
-      - pathFrom: proofLakefilePath
-        kind: file
-      - pathFrom: "proofs[].Proof.File"
-        kind: file
-    optionalWhenPresent:
-      - path: lean-toolchain
-        relativeTo: packageRoot
-      - path: lake-manifest.json
-        relativeTo: packageRoot
-    expectedContent:
-      lakefile.lean:
-        - "Defines the proof-side Lake package/library for this submission."
-        - "Pins mathlib to lml-env.json mathlib.revision when declaring mathlib."
-        - "Builds every proof file listed in metadata."
-        - "May depend locally on a present statement package, but that split is not required."
-      lean-toolchain:
-        - "If present, contains exactly the Lean toolchain from lml-env.json lean.toolchain."
-      proofLeanFiles:
-        - "Each proof metadata entry has a proof theorem named by Proof.Name in Proof.File."
-        - "The proof theorem's compiled type must be definitionally equal to the target statement named by Theorem.Name."
-        - "Proof entry Type is one of proof, conditional-proof, or reduction."
-        - "Proof files may rely on definitions, declared dependencies, Std, and Mathlib."
-        - "Proof files must not leave submitted proof targets depending on sorryAx or local proof-namespace axioms."
-        - "Direct imports may use Mathlib modules, Std modules, local statement/proof modules, and authorized imported packages only."
+      folderPath: "dirname(proofLakefilePath)"
+      description: >
+        Proof package folder. This package contains proof, conditional-proof,
+        or reduction declarations that discharge Axiom entries.
+      files:
+        lakefile:
+          pathFromMetadata: proofLakefilePath
+          required: true
+          description: "Lake file for the proof package."
+          expectedContent:
+            - "Defines the proof-side Lake package or library."
+            - "Builds every proof Lean file listed in metadata."
+            - "May depend locally on a present statement package, but that split is not required."
 
-declarationReferences:
-  recordShapeFrom: "meta.config.yaml#/$defs/declarationReference"
-  expectedContent:
-    - "Use CurrentSubmission: true for declarations inside the current submission."
-    - "Use SubmissionSlug for declarations from another imported submission."
-    - "Each reference records LeanStatement, LatexDefinition, and Name."
-    - "LeanStatement and LatexDefinition should be in the same folder."
-    - "Declaration references on proof entries are supported and checked independently from statement entries."
-    - "Declared dependencies must include the actual Lean axiom dependencies found in proof terms."
+        leanToolchain:
+          fileName: lean-toolchain
+          required: false
+          description: "Optional proof package Lean toolchain file."
 
-submissionClassification:
-  theorem:
-    when: "An Axiom statement has a matching proof entry with Type proof or conditional-proof."
-  conjecture:
-    when: "An Axiom statement has a matching proof entry with Type reduction."
-  definition:
-    when: "A statement entry has Type Definition."
-  proofTargetRule:
-    - "Every proof entry Theorem.Name must match a metadata statement declaration."
-    - "Proof entries discharge Axiom statements, not Definition statements."
+        lakeManifest:
+          fileName: lake-manifest.json
+          required: false
+          description: "Optional Lake manifest for the proof package."
+
+      proofFiles:
+        arrayFromMetadata: proofs
+        pathFromMetadata: proofs[].Proof.File
+        required: true
+        description: "Lean proof file containing the proof declaration named by proofs[].Proof.Name."
+        expectedContent:
+          - "Contains a theorem or declaration whose name is proofs[].Proof.Name."
+          - "The proof declaration's type must be definitionally equal to proofs[].Theorem.Name."
+          - "The proof entry Type is proof, conditional-proof, or reduction."
+          - "Submitted proof targets must not depend on sorryAx or local proof-namespace axioms."
+          - "Imports should be limited to Mathlib modules, Std modules, local submission modules, and authorized imported packages."
+
+relationships:
+  metadataControlsLayout:
+    - "The metadata file is the source of all non-default repository-relative paths."
+    - "abstractPath locates the abstract file from the root."
+    - "statementLakefilePath locates the statement folder lakefile from the root."
+    - "proofLakefilePath locates the proof folder lakefile from the root."
+    - "Each statements[].Statement.LeanStatement locates one statement Lean file from the root."
+    - "Each statements[].Statement.LatexDefinition locates the matching statement LaTeX file from the root."
+    - "Each proofs[].Proof.File locates one proof Lean file from the root."
+  statementEntries:
+    - "Each statement entry has Type Definition or Axiom."
+    - "Definition entries publish definitions."
+    - "Axiom entries publish statement axioms."
+    - "Statement Lean and LaTeX files for the same entry should share a folder."
+  proofEntries:
+    - "Each proof entry targets an Axiom statement through proofs[].Theorem."
+    - "proof and conditional-proof entries classify the target statement as a theorem."
+    - "reduction entries classify the target statement as a conjecture."
+  declarationReferences:
+    - "DeclarationReferences use CurrentSubmission or SubmissionSlug, plus LeanStatement, LatexDefinition, and Name."
+    - "Referenced LeanStatement and LatexDefinition files should be in the same folder."
+    - "Proof-level DeclarationReferences are supported independently of statement-level DeclarationReferences."
+    - "Declared dependencies must include actual Lean axiom dependencies found in proof terms."
+
+filePolicy:
+  appliesTo: whole-repository-subtree-below-metadata-file
+  allowedExtensionsFrom: "lml-env.json#/submission/allowedFileExtensions"
+  allowedExtensionlessFilesFrom: "lml-env.json#/submission/allowedExtensionlessFiles"
+  disallowedFiles:
+    - .DS_Store
+  ignoredDirectories:
+    - .git
+    - .lake
+    - node_modules
 
 buildAndCheckPolicy:
   packagePreparation:
@@ -202,30 +184,3 @@ buildAndCheckPolicy:
     - "Use resulting .olean files for axiom testing."
     - "Compare computed dependency and conjecture information to metadata."
     - "Accepted composed proofs bottom out only in trusted base axioms and declared conjectures."
-
-trustedBasePolicy:
-  allowedMathlibAxiomsFrom: "lml-env.json#/checks/allowedMathlibAxioms"
-  axiomMatching:
-    - name
-    - type
-    - sourceModule
-  expectedContent:
-    - "Trusted base axiom signatures are pinned outside the submitted repository."
-    - "A submitted repository must not be able to spoof a trusted axiom name with a different type or source module."
-
-pathRules:
-  repo-relative-file:
-    type: string
-    mustNotStartWith: /
-    mustNotContainPathComponent: ..
-    mustResolveInside: sourceRepositoryRoot
-  repo-relative-file-within-referenced-submission:
-    type: string
-    mustNotStartWith: /
-    mustNotContainPathComponent: ..
-    resolvedBy: "CurrentSubmission or SubmissionSlug"
-  repo-relative-file-within-theorem-submission:
-    type: string
-    mustNotStartWith: /
-    mustNotContainPathComponent: ..
-    resolvedBy: "proofs[].Theorem.SubmissionSlug"
