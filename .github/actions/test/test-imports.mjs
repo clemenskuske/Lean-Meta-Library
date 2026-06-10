@@ -29,6 +29,11 @@ const fixtures = [
     expected: /proof file missing/
   },
   {
+    name: "metadata-disk-state-failure-package",
+    checker: "files-present.mjs",
+    expected: /declaration folder is present on disk but not listed in metadata/
+  },
+  {
     name: "metadata-check-failure-package",
     checker: "metadata-check.mjs",
     expected: /bibtex must be a list/
