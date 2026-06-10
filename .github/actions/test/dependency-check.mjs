@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Checks the two lakefiles and Lean imports for the first allowed dependency policy.
-// It allows mathlib plus surface-package dependencies recorded in submissions.jsonl.
+// Checks Lake dependencies and Lean imports against the declared dependency policy.
+// New metadata uses Package/File/Name records; old local Slug.Surface dependencies remain tolerated during migration.
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import lmlEnv from "../../../lml-env.json" with { type: "json" };
@@ -8,14 +8,21 @@ import { validateSubmissionRow } from "../submission-schema.mjs";
 import {
   leanFiles,
   loadContext,
+  metadataProofs,
+  metadataStatements,
+  namespaceOfDeclaration,
+  packageRootForLakefile,
+  proofFileForProofEntry,
+  proofLakefilePath,
   readIfExists,
   relativePath,
   report,
-  slugToPascal,
-  theoremNameForProofEntry,
+  statementLakefilePath,
+  statementLeanFileForEntry,
+  theoremFileForProofEntry,
+  theoremNameForProofEntry
 } from "./common.mjs";
 import { lakeDependencies, lakeModuleForFile, loadLakeConfig } from "./lake-config.mjs";
-import { isLeanName } from "./lean-inspect.mjs";
 import { parseLeanImports } from "./lean-imports.mjs";
 
 const { packageRoot, meta, namespaceRoot } = loadContext();
@@ -23,35 +30,33 @@ const errors = [];
 const warnings = [];
 const submissionDependencies = loadSubmissionDependencies();
 const allowedImportPrefixes = lmlEnv.submission?.allowedImportPrefixes ?? [];
-const allowedImportsByLakefile = {
-  root: new Set(),
-  surface: new Set()
-};
-const rootLakeConfig = loadLakeConfig(packageRoot, "root lakefile", errors);
-const surfaceRoot = join(packageRoot, "surface-package");
-const surfaceLakeConfig = loadLakeConfig(surfaceRoot, "surface lakefile", errors);
-const localSurfaceModules = new Set(
-  (meta.declarations ?? [])
-    .map((entry) => lakeModuleForFile(surfaceLakeConfig, surfaceRoot, join(packageRoot, entry.folder ?? "", "Surface.lean")))
-    .filter(Boolean)
+const statementRoot = statementLakefilePath(meta) ? packageRootForLakefile(packageRoot, statementLakefilePath(meta)) : null;
+const proofRoot = proofLakefilePath(meta) ? packageRootForLakefile(packageRoot, proofLakefilePath(meta)) : null;
+const statementLakeConfig = statementRoot ? loadLakeConfig(statementRoot, "statement/declaration lakefile", errors) : null;
+const proofLakeConfig = proofRoot ? loadLakeConfig(proofRoot, "proof lakefile", errors) : null;
+const statements = metadataStatements(meta);
+const proofs = metadataProofs(meta);
+const statementModuleByName = statementModulesByName();
+const localStatementModules = new Set(
+  [...statementModuleByName.values()]
 );
-const surfaceEntryByFile = new Map(
-  (meta.declarations ?? []).map((entry) => [normalizePath(`${entry.folder ?? ""}/Surface.lean`), entry])
-);
-const surfaceEntryByName = new Map(
-  (meta.declarations ?? []).map((entry) => [stringValue(entry.name), entry]).filter(([name]) => name)
-);
-const authorizedSurfaceImportsByFile = authorizedSurfaceImportsBySurfaceFile();
-const proofSurfacePolicyByFile = proofSurfacePolicyByProofFile();
-const authorizedSurfaceDependencyNamespaces = authorizedSurfaceNamespaces();
 const localProofModules = new Set(
-  (meta.proofs ?? [])
-    .map((proof) => lakeModuleForFile(rootLakeConfig, packageRoot, proof.proofFile))
+  proofs
+    .map(proofFileForProofEntry)
+    .filter(Boolean)
+    .map((file) => lakeModuleForFile(proofLakeConfig, proofRoot, join(packageRoot, file)))
     .filter(Boolean)
 );
+const statementPolicyByFile = policyByStatementFile();
+const proofPolicyByFile = policyByProofFile();
+const allowedExternalPackages = declaredExternalPackages();
+const allowedImportsByLakefile = {
+  statement: new Set(),
+  proof: new Set()
+};
 
-checkLakefile(rootLakeConfig, "root lakefile", allowedImportsByLakefile.root);
-checkLakefile(surfaceLakeConfig, "surface lakefile", allowedImportsByLakefile.surface);
+checkLakefile(statementLakeConfig, "statement/declaration lakefile", allowedImportsByLakefile.statement);
+checkLakefile(proofLakeConfig, "proof lakefile", allowedImportsByLakefile.proof);
 
 const files = leanFiles(packageRoot);
 const importsByFile = parseLeanImports(files, errors);
@@ -94,29 +99,13 @@ function checkLakefile(config, label, allowedExternalImports) {
     }
 
     const submission = findMatchingSubmissionDependency(dependency);
-    if (!submission) {
+    if (submissionDependencies.length > 0 && !submission) {
       errors.push(`${label} dependency is not allowed by submissions.jsonl: ${formatDependency(dependency)}`);
       continue;
     }
 
-    if (dependency.name.endsWith(".Proofs")) {
-      warnings.push(`${label} imports proof package dependency ${dependency.name}; proof dependencies are accepted with a warning`);
-      allowedExternalImports.add(dependency.name);
-      continue;
-    }
-
-    if (!dependency.name.endsWith(".Surface")) {
-      errors.push(`${label} dependency must require a surface package, found ${dependency.name}`);
-      continue;
-    }
-
-    const dependencyNamespace = dependency.name.replace(/\.Surface$/, "");
-    if (dependencyNamespace === namespaceRoot) {
-      errors.push(`${label} surface dependency must use a different namespace: ${dependency.name}`);
-      continue;
-    }
-    if (!authorizedSurfaceDependencyNamespaces.has(dependencyNamespace)) {
-      errors.push(`${label} surface dependency ${dependency.name} is not listed in metadata usedSurfaceFiles`);
+    if (!packageSetAllows(allowedExternalPackages, dependency.name)) {
+      errors.push(`${label} dependency ${dependency.name} is not listed in metadata Used Surface Files`);
       continue;
     }
 
@@ -137,141 +126,176 @@ function checkMathlibDependency(dependency, label) {
 }
 
 function checkLocalDependency(dependency, label) {
-  if (label !== "root lakefile" || dependency.name !== `${namespaceRoot}.Surface` || normalizePath(dependency.path) !== "surface-package") {
-    errors.push(`${label} local dependency is not allowed: ${formatDependency(dependency)}`);
+  const legacySurface = namespaceRoot && dependency.name === `${namespaceRoot}.Surface` && normalizePath(dependency.path) === "surface-package";
+  const localStatements = namespaceRoot && dependency.name === `${namespaceRoot}.Statements`;
+  if (legacySurface || localStatements) {
+    return;
   }
-}
-
-function findMatchingSubmissionDependency(dependency) {
-  return submissionDependencies.find((submission) => {
-    const expectedRef = submission.sourceCommit || submission.sourceBranch;
-    return (
-      normalizeGitUrl(dependency.url) === normalizeGitUrl(submission.repoUrl) &&
-      dependency.ref === expectedRef &&
-      normalizePath(dependency.subDir) === normalizePath(submission.surfaceFolder)
-    );
-  });
+  errors.push(`${label} local dependency is not allowed: ${formatDependency(dependency)}`);
 }
 
 function allowedExternalImportsFor(file) {
-  const rel = relativePath(packageRoot, file);
-  return rel.startsWith("surface-package/") ? allowedImportsByLakefile.surface : allowedImportsByLakefile.root;
+  return isInStatementPackage(file) ? allowedImportsByLakefile.statement : allowedImportsByLakefile.proof;
 }
 
 function importVerdict(imported, file, allowedExternalImports) {
   const rel = relativePath(packageRoot, file);
-  if ((rel === "lakefile.lean" || rel === "surface-package/lakefile.lean") && imported === "Lake") {
+  if (isLakefile(rel) && imported === "Lake") {
     return { allowed: true };
   }
-  const isSurfacePackageFile = rel.startsWith("surface-package/");
-  const isProofPackageFile = rel.startsWith("proofs/");
-  const isOwnSurfaceImport =
-    namespaceRoot && (imported === `${namespaceRoot}.Surface` || imported.startsWith(`${namespaceRoot}.Surface.`));
-  const isOwnSurfaceEntryImport = localSurfaceModules.has(imported);
-  const isOwnProofModuleImport = !isSurfacePackageFile && localProofModules.has(imported);
-  const isAllowedExternalImport = [...allowedExternalImports].some((prefix) => imported === prefix || imported.startsWith(`${prefix}.`));
-
   if (hasAllowedImportPrefix(imported)) {
     return { allowed: true };
   }
 
-  if (isSurfacePackageFile) {
-    return surfaceFileImportVerdict({ imported, rel, isOwnSurfaceEntryImport, isOwnSurfaceImport, isAllowedExternalImport });
+  const isStatementFile = statementPolicyByFile.has(normalizePath(rel));
+  const isProofFile = proofPolicyByFile.has(normalizePath(rel));
+  const proofPolicy = proofPolicyByFile.get(normalizePath(rel));
+  const isOwnStatementImport = localStatementModules.has(imported) || isOwnPackageImport(imported, "Statements") || isOwnLegacySurfaceImport(imported);
+  const isOwnProofImport = localProofModules.has(imported) || isOwnPackageImport(imported, "Proofs");
+  const isAllowedExternalImport = [...allowedExternalImports].some((prefix) => imported === prefix || imported.startsWith(`${prefix}.`));
+
+  if (isStatementFile) {
+    return metadataAuthorizedImportVerdict({
+      imported,
+      rel,
+      policy: statementPolicyByFile.get(normalizePath(rel)),
+      kind: "statement/declaration",
+      isOwnImport: isOwnStatementImport,
+      isAllowedExternalImport
+    });
   }
 
-  if (isProofPackageFile && isAllowedExternalImport && isProofImport(imported)) {
-    return {
-      allowed: true,
-      warning: `${rel} imports proof dependency ${imported}; proof dependencies are accepted with a warning`
-    };
+  if (isProofFile) {
+    return metadataAuthorizedImportVerdict({
+      imported,
+      rel,
+      policy: proofPolicy,
+      kind: "proof",
+      isOwnImport: isOwnProofImport || proofPolicy?.ownModules.has(imported),
+      isAllowedExternalImport: isAllowedExternalImport || localStatementModules.has(imported)
+    });
   }
 
-  if (isProofPackageFile && (isOwnSurfaceEntryImport || isOwnSurfaceImport || isAllowedExternalImport)) {
-    return proofFileSurfaceImportVerdict({ imported, rel });
-  }
-
-  if (!isSurfacePackageFile && isOwnSurfaceEntryImport) {
-    return { allowed: true };
-  }
-  if (isOwnProofModuleImport) {
-    return { allowed: true };
-  }
-  if (isOwnSurfaceImport) {
-    return { allowed: true };
-  }
-  if (isAllowedExternalImport) {
+  if (isOwnStatementImport || isOwnProofImport || isAllowedExternalImport) {
     return { allowed: true };
   }
 
   return { allowed: false };
 }
 
-function surfaceFileImportVerdict({ imported, rel, isOwnSurfaceEntryImport, isOwnSurfaceImport, isAllowedExternalImport }) {
-  if (!isOwnSurfaceEntryImport && !isOwnSurfaceImport && !isAllowedExternalImport) {
-    return { allowed: false };
-  }
-  if (isOwnSurfaceEntryImport || isOwnSurfaceImport) {
+function metadataAuthorizedImportVerdict({ imported, rel, policy, kind, isOwnImport, isAllowedExternalImport }) {
+  if (isOwnImport) {
     return { allowed: true };
   }
-
-  const entry = surfaceEntryByFile.get(rel);
-  const authorized = authorizedSurfaceImportsByFile.get(rel);
-  if (!entry || !authorized) {
-    return {
-      allowed: false,
-      error: `${rel} imports surface module ${imported}, but this declaration has no usedSurfaceFiles metadata`
-    };
+  if (!isAllowedExternalImport) {
+    return { allowed: false };
   }
-
-  if (!authorized.modules.has(imported) && ![...authorized.prefixes].some((prefix) => imported === prefix || imported.startsWith(`${prefix}.`))) {
-    return {
-      allowed: false,
-      error: `${rel} imports surface module ${imported}, but it is not listed in that entry's usedSurfaceFiles metadata`
-    };
-  }
-
-  const sameNamespaceUse = [...authorized.definitions].some((definition) => namespaceOfDeclaration(definition) === entry.name);
-  if (sameNamespaceUse) {
-    return {
-      allowed: false,
-      error: `${rel} usedSurfaceFiles must point to a different namespace than ${entry.name}`
-    };
-  }
-
-  return { allowed: true };
-}
-
-function proofSurfaceImportWarning({ imported, rel }) {
-  return `${rel} imports surface module ${imported}; proof surface dependencies are accepted with a warning`;
-}
-
-function proofFileSurfaceImportVerdict({ imported, rel }) {
-  const policy = proofSurfacePolicyByFile.get(rel);
   if (!policy) {
     return {
       allowed: false,
-      error: `${rel} imports surface module ${imported}, but this proof file is not linked to proof metadata`
+      error: `${rel} imports ${imported}, but this ${kind} file is not linked to metadata`
     };
   }
-
-  if (policy.ownModule === imported) {
-    return {
-      allowed: true,
-      warning: proofSurfaceImportWarning({ imported, rel })
-    };
+  if (packageSetAllows(policy.packages, imported)) {
+    return { allowed: true };
   }
-
-  if (policy.authorized.modules.has(imported) || [...policy.authorized.prefixes].some((prefix) => imported === prefix || imported.startsWith(`${prefix}.`))) {
-    return {
-      allowed: true,
-      warning: proofSurfaceImportWarning({ imported, rel })
-    };
-  }
-
   return {
     allowed: false,
-    error: `${rel} imports surface module ${imported}, but declaration ${policy.declaration} only allows its own surface statement module and modules listed in that entry's usedSurfaceFiles metadata`
+    error: `${rel} imports ${imported}, but it is not listed in that entry's Used Surface Files metadata`
   };
+}
+
+function policyByStatementFile() {
+  const byFile = new Map();
+  for (const entry of statements) {
+    const file = normalizePath(statementLeanFileForEntry(entry));
+    if (!file) {
+      continue;
+    }
+    byFile.set(file, {
+      packages: new Set(entry.usedSurfaceFiles.map((used) => used.package).filter(Boolean))
+    });
+  }
+  return byFile;
+}
+
+function policyByProofFile() {
+  const byFile = new Map();
+  for (const proof of proofs) {
+    const file = normalizePath(proofFileForProofEntry(proof));
+    if (!file) {
+      continue;
+    }
+    const ownModules = new Set();
+    const ownStatementModule = statementModuleForProof(proof);
+    if (ownStatementModule) {
+      ownModules.add(ownStatementModule);
+    }
+    byFile.set(file, {
+      ownModules,
+      packages: new Set(proof.usedSurfaceFiles.map((used) => used.package).filter(Boolean))
+    });
+  }
+  return byFile;
+}
+
+function statementModulesByName() {
+  const byName = new Map();
+  for (const entry of statements) {
+    const file = statementLeanFileForEntry(entry);
+    const moduleName = file ? lakeModuleForFile(statementLakeConfig, statementRoot, join(packageRoot, file)) : null;
+    if (!moduleName || !entry.name) {
+      continue;
+    }
+    byName.set(entry.name, moduleName);
+    byName.set(namespaceOfDeclaration(entry.name), moduleName);
+  }
+  return byName;
+}
+
+function statementModuleForProof(proof) {
+  const theoremFile = theoremFileForProofEntry(proof);
+  if (theoremFile) {
+    return lakeModuleForFile(statementLakeConfig, statementRoot, join(packageRoot, theoremFile));
+  }
+
+  const theoremName = theoremNameForProofEntry(proof);
+  return statementModuleByName.get(theoremName) ?? statementModuleByName.get(namespaceOfDeclaration(theoremName));
+}
+
+function declaredExternalPackages() {
+  const packages = new Set();
+  for (const entry of statements) {
+    for (const used of entry.usedSurfaceFiles) {
+      if (used.package) {
+        packages.add(used.package);
+      }
+    }
+  }
+  for (const proof of proofs) {
+    for (const used of proof.usedSurfaceFiles) {
+      if (used.package) {
+        packages.add(used.package);
+      }
+    }
+  }
+  return packages;
+}
+
+function isInStatementPackage(file) {
+  return statementRoot && isInsidePath(statementRoot, file);
+}
+
+function isLakefile(rel) {
+  return rel === "lakefile.lean" || rel.endsWith("/lakefile.lean");
+}
+
+function isOwnPackageImport(imported, mode) {
+  return namespaceRoot && (imported === `${namespaceRoot}.${mode}` || imported.startsWith(`${namespaceRoot}.${mode}.`));
+}
+
+function isOwnLegacySurfaceImport(imported) {
+  return namespaceRoot && (imported === `${namespaceRoot}.Surface` || imported.startsWith(`${namespaceRoot}.Surface.`));
 }
 
 function hasAllowedImportPrefix(imported) {
@@ -286,127 +310,32 @@ function hasAllowedImportPrefix(imported) {
   });
 }
 
-function isProofImport(imported) {
-  return imported.endsWith(".Proofs") || imported.includes(".Proofs.");
-}
-
-function authorizedSurfaceImportsBySurfaceFile() {
-  const byFile = new Map();
-  for (const entry of meta.declarations ?? []) {
-    const rel = normalizePath(`${entry.folder ?? ""}/Surface.lean`);
-    const authorized = {
-      modules: new Set(),
-      prefixes: new Set(),
-      definitions: new Set()
-    };
-
-    for (const used of entry.usedSurfaceFiles ?? []) {
-      const moduleName = moduleFromSurfaceFile(used.surfaceFile);
-      if (moduleName) {
-        authorized.modules.add(moduleName);
-      }
-
-      const definition = stringValue(used.definition);
-      if (definition) {
-        authorized.definitions.add(definition);
-        const namespace = namespaceRootForDefinition(definition) ?? namespaceRootForSlug(used.slug);
-        if (namespace) {
-          authorized.prefixes.add(`${namespace}.Surface`);
-        }
-      }
-    }
-
-    byFile.set(rel, authorized);
+function packagePrefix(imported) {
+  const parts = String(imported ?? "").split(".");
+  if (parts.length >= 2 && ["Statements", "Proofs", "Surface"].includes(parts[1])) {
+    return `${parts[0]}.${parts[1]}`;
   }
-  return byFile;
+  return parts[0] ?? "";
 }
 
-function proofSurfacePolicyByProofFile() {
-  const byFile = new Map();
-  for (const proof of meta.proofs ?? []) {
-    const theoremName = theoremNameForProofEntry(proof);
-    if (!proof.proofFile || !theoremName) {
-      continue;
+function packageSetAllows(packages, imported) {
+  return [...packages].some((pkg) => {
+    if (!pkg) {
+      return false;
     }
-
-    const declarationNamespace = namespaceOfDeclaration(theoremName);
-    const entry = surfaceEntryByName.get(declarationNamespace);
-    const ownModule = entry
-      ? lakeModuleForFile(surfaceLakeConfig, surfaceRoot, join(packageRoot, entry.folder ?? "", "Surface.lean"))
-      : null;
-    byFile.set(normalizePath(proof.proofFile), {
-      declaration: theoremName,
-      entry,
-      ownModule,
-      authorized: authorizedSurfaceImportsForEntry(entry)
-    });
-  }
-  return byFile;
+    return imported === pkg || imported.startsWith(`${pkg}.`) || packagePrefix(imported) === pkg;
+  });
 }
 
-function authorizedSurfaceImportsForEntry(entry) {
-  const authorized = {
-    modules: new Set(),
-    prefixes: new Set(),
-    definitions: new Set()
-  };
-
-  for (const used of entry?.usedSurfaceFiles ?? []) {
-    const moduleName = moduleFromSurfaceFile(used.surfaceFile);
-    if (moduleName) {
-      authorized.modules.add(moduleName);
-    }
-
-    const definition = stringValue(used.definition);
-    if (definition) {
-      authorized.definitions.add(definition);
-      const namespace = namespaceRootForDefinition(definition) ?? namespaceRootForSlug(used.slug);
-      if (namespace) {
-        authorized.prefixes.add(`${namespace}.Surface`);
-      }
-    }
-  }
-
-  return authorized;
-}
-
-function authorizedSurfaceNamespaces() {
-  const namespaces = new Set();
-  for (const entry of meta.declarations ?? []) {
-    for (const used of entry.usedSurfaceFiles ?? []) {
-      const definition = stringValue(used.definition);
-      const namespace = namespaceRootForDefinition(definition) ?? namespaceRootForSlug(used.slug);
-      if (namespace && namespace !== namespaceRoot) {
-        namespaces.add(namespace);
-      }
-    }
-  }
-  return namespaces;
-}
-
-function moduleFromSurfaceFile(surfaceFile) {
-  const normalized = normalizePath(surfaceFile);
-  return lakeModuleForFile(surfaceLakeConfig, surfaceRoot, join(packageRoot, normalized));
-}
-
-function namespaceRootForDefinition(definition) {
-  const value = stringValue(definition);
-  if (!isLeanName(value)) {
-    return null;
-  }
-  const parts = value.split(".");
-  return parts[1] === "Surface" ? parts[0] : null;
-}
-
-function namespaceRootForSlug(slug) {
-  const value = stringValue(slug);
-  return value ? slugToPascal(value) : null;
-}
-
-function namespaceOfDeclaration(name) {
-  const value = stringValue(name);
-  const index = value.lastIndexOf(".");
-  return index === -1 ? value : value.slice(0, index);
+function findMatchingSubmissionDependency(dependency) {
+  return submissionDependencies.find((submission) => {
+    const expectedRef = submission.sourceCommit || submission.sourceBranch;
+    return (
+      normalizeGitUrl(dependency.url) === normalizeGitUrl(submission.repoUrl) &&
+      dependency.ref === expectedRef &&
+      (!dependency.subDir || submission.packageFolders.has(normalizePath(dependency.subDir)))
+    );
+  });
 }
 
 function loadSubmissionDependencies() {
@@ -432,23 +361,36 @@ function parseSubmissionDependency(line, path, lineNumber) {
     return null;
   }
 
-  const normalized = Object.fromEntries(
-    Object.entries(row).map(([key, value]) => [key.toLowerCase().replace(/[^a-z0-9]/g, ""), value])
-  );
   const validation = validateSubmissionRow(row);
   if (!validation.valid) {
     errors.push(
       `${path}:${lineNumber} does not match submissions.jsonl schema: ${validation.errors.map((error) => `${error.instancePath || "/"} ${error.message}`).join("; ")}`
     );
   }
+
+  const normalized = Object.fromEntries(
+    Object.entries(row).map(([key, value]) => [key.toLowerCase().replace(/[^a-z0-9]/g, ""), value])
+  );
+  const packageFolders = new Set([
+    normalized.surfacefolder,
+    normalized.statementfolder,
+    normalized.declarationfolder,
+    normalized.lakestatementpackage,
+    normalized.lakeproofpackage
+  ].map(normalizePath).filter(Boolean));
+
   const dependency = {
-    repoUrl: stringValue(normalized.repourl),
+    repoUrl: stringValue(normalized.repourl ?? normalized.gitrepo ?? normalized.githubrepo),
     sourceBranch: stringValue(normalized.sourcebranch),
     sourceCommit: stringValue(normalized.sourcecommit),
-    surfaceFolder: stringValue(normalized.surfacefolder)
+    packageFolders
   };
 
-  for (const [key, value] of Object.entries(dependency)) {
+  for (const [key, value] of Object.entries({
+    repoUrl: dependency.repoUrl,
+    sourceBranch: dependency.sourceBranch,
+    sourceCommit: dependency.sourceCommit
+  })) {
     if (!value) {
       errors.push(`${path}:${lineNumber} is missing ${key}`);
     }
@@ -474,6 +416,11 @@ function findSubmissionsJsonl() {
     }
   }
   return null;
+}
+
+function isInsidePath(parent, child) {
+  const rel = relativePath(parent, child);
+  return rel === "" || (!rel.startsWith("..") && !rel.startsWith("/"));
 }
 
 function stringValue(value) {

@@ -4,15 +4,19 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { loadContext, maxBuildOutputBytes, report } from "./common.mjs";
+import {
+  loadContext,
+  maxBuildOutputBytes,
+  packageRootForLakefile,
+  proofLakefilePath,
+  report,
+  statementLakefilePath
+} from "./common.mjs";
 
-const { packageRoot } = loadContext();
+const { packageRoot, meta } = loadContext();
 const errors = [];
 const warnings = [];
-const packages = [
-  { label: "surface package", cwd: join(packageRoot, "surface-package") },
-  { label: "proof package", cwd: packageRoot }
-];
+const packages = packageRoots();
 
 if (spawnSync("lake", ["--version"], { encoding: "utf8" }).error) {
   errors.push("lake executable not found on PATH");
@@ -33,6 +37,26 @@ if (spawnSync("lake", ["--version"], { encoding: "utf8" }).error) {
 }
 
 report("prepare Lean build/cache", errors, warnings);
+
+function packageRoots() {
+  const items = [];
+  const seen = new Set();
+  addPackage("statement/declaration package", statementLakefilePath(meta));
+  addPackage("proof package", proofLakefilePath(meta));
+  return items;
+
+  function addPackage(label, lakefilePath) {
+    if (!lakefilePath) {
+      return;
+    }
+    const cwd = packageRootForLakefile(packageRoot, lakefilePath);
+    if (!cwd || seen.has(cwd)) {
+      return;
+    }
+    seen.add(cwd);
+    items.push({ label, cwd, lakefilePath });
+  }
+}
 
 function runLake(cwd, args, label, options) {
   const result = spawnSync("lake", args, {

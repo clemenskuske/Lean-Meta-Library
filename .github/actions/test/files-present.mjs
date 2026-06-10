@@ -1,62 +1,87 @@
 #!/usr/bin/env node
-// Verifies that the required submission package files and folders exist.
-// It follows the metadata entries to check every surface file, LaTeX file, and proof file.
-// Metadata is also the ground truth for those file positions: extra declaration folders or proof files are rejected.
-import { existsSync, readdirSync, statSync } from "node:fs";
-import { basename, join } from "node:path";
-import { loadContext, relativePath, report, requireMeta, theoremNameForProofEntry, walkFiles } from "./common.mjs";
+// Verifies that metadata-listed submission files exist.
+// Metadata is also the ground truth for statement/declaration and proof file positions.
+import { existsSync, statSync } from "node:fs";
+import { basename, dirname, extname, join, resolve } from "node:path";
+import {
+  metadataProofs,
+  metadataStatements,
+  packageRootForLakefile,
+  proofLakefilePath,
+  relativePath,
+  report,
+  requireMeta,
+  statementLakefilePath,
+  statementLatexFileForEntry,
+  statementLeanFileForEntry,
+  theoremNameForProofEntry,
+  loadContext,
+  walkFiles
+} from "./common.mjs";
 
 const context = loadContext();
-const { packageRoot, meta, namespaceRoot } = context;
+const { packageRoot, meta } = context;
 const errors = [];
-const metadataDeclarationFolders = new Set();
-const metadataProofFiles = new Set();
+const expectedStatementFiles = new Set();
+const expectedProofFiles = new Set();
 
 requireMeta(context, errors);
 
-for (const path of [
-  "lakefile.lean",
-  "abstract.tex",
-  "surface-package",
-  "surface-package/lakefile.lean",
-  "proofs"
-]) {
-  const absolute = join(packageRoot, path);
-  if (!existsSync(absolute)) {
-    errors.push(`missing ${path}`);
+if (meta.abstractPath && !existsSync(join(packageRoot, meta.abstractPath))) {
+  errors.push(`missing abstractPath: ${meta.abstractPath}`);
+}
+
+const statements = metadataStatements(meta);
+const proofs = metadataProofs(meta);
+const statementLakefile = statementLakefilePath(meta);
+const proofLakefile = proofLakefilePath(meta);
+
+if (statements.length > 0) {
+  if (!statementLakefile) {
+    errors.push("missing statementLakefilePath");
+  } else if (!existsSync(join(packageRoot, statementLakefile))) {
+    errors.push(`missing statement lakefile: ${statementLakefile}`);
   }
 }
 
-for (const entry of meta.declarations ?? []) {
-  if (!entry.folder) {
-    errors.push(`declaration ${entry.name ?? "(unnamed)"} has no folder`);
-    continue;
+if (proofs.length > 0) {
+  if (!proofLakefile) {
+    errors.push("missing proofLakefilePath");
+  } else if (!existsSync(join(packageRoot, proofLakefile))) {
+    errors.push(`missing proof lakefile: ${proofLakefile}`);
+  }
+}
+
+for (const entry of statements) {
+  const leanFile = statementLeanFileForEntry(entry);
+  const latexFile = statementLatexFileForEntry(entry);
+  const label = entry.name ?? entry.entryName ?? basename(dirname(leanFile ?? ""));
+
+  if (!leanFile) {
+    errors.push(`statement ${label} has no Statement.File`);
+  } else {
+    expectedStatementFiles.add(normalizePath(leanFile));
+    if (!existsSync(join(packageRoot, leanFile))) {
+      errors.push(`statement ${label} missing Lean file: ${leanFile}`);
+    }
   }
 
-  metadataDeclarationFolders.add(normalizePath(entry.folder));
-  const folder = join(packageRoot, entry.folder);
-  if (!existsSync(folder) || !statSync(folder).isDirectory()) {
-    errors.push(`declaration folder missing: ${entry.folder}`);
-    continue;
-  }
-
-  for (const file of ["latex-file.tex", "Surface.lean"]) {
-    if (!existsSync(join(folder, file))) {
-      errors.push(`declaration ${entry.name ?? basename(entry.folder)} missing ${file}`);
+  if (!latexFile) {
+    errors.push(`statement ${label} has no Statement.LatexFile`);
+  } else {
+    expectedStatementFiles.add(normalizePath(latexFile));
+    if (!existsSync(join(packageRoot, latexFile))) {
+      errors.push(`statement ${label} missing LaTeX file: ${latexFile}`);
     }
   }
 }
 
-if (namespaceRoot && existsSync(join(packageRoot, "surface-package", namespaceRoot))) {
-  errors.push(`surface package should not contain slug-named aggregate folder: surface-package/${namespaceRoot}`);
-}
-
-for (const proof of meta.proofs ?? []) {
+for (const proof of proofs) {
   if (!proof.proofFile) {
-    errors.push(`proof for ${theoremNameForProofEntry(proof) ?? "(unknown theorem)"} has no proofFile`);
+    errors.push(`proof for ${theoremNameForProofEntry(proof) ?? "(unknown theorem)"} has no Proof.File`);
     continue;
   }
-  metadataProofFiles.add(normalizePath(proof.proofFile));
+  expectedProofFiles.add(normalizePath(proof.proofFile));
   if (!existsSync(join(packageRoot, proof.proofFile))) {
     errors.push(`proof file missing for ${theoremNameForProofEntry(proof) ?? "(unknown theorem)"}: ${proof.proofFile}`);
   }
@@ -65,29 +90,56 @@ for (const proof of meta.proofs ?? []) {
 checkDiskMatchesMetadata();
 
 function checkDiskMatchesMetadata() {
-  const surfacePackage = join(packageRoot, "surface-package");
-  if (existsSync(surfacePackage) && statSync(surfacePackage).isDirectory()) {
-    for (const entry of readdirSync(surfacePackage, { withFileTypes: true })) {
-      if (!entry.isDirectory()) {
-        continue;
-      }
-      const folder = normalizePath(`surface-package/${entry.name}`);
-      const hasDeclarationFiles = ["Surface.lean", "latex-file.tex"].some((file) => existsSync(join(surfacePackage, entry.name, file)));
-      if (hasDeclarationFiles && !metadataDeclarationFolders.has(folder)) {
-        errors.push(`declaration folder is present on disk but not listed in metadata: ${folder}`);
+  const statementRoot = statementLakefile
+    ? packageRootForLakefile(packageRoot, statementLakefile)
+    : defaultExistingDir("surface-package");
+  const proofRoots = proofSearchRoots();
+
+  if (statementRoot && existsSync(statementRoot) && statSync(statementRoot).isDirectory()) {
+    for (const file of walkFiles(statementRoot).filter(isStatementPositionFile)) {
+      const rel = normalizePath(relativePath(packageRoot, file));
+      if (!expectedStatementFiles.has(rel)) {
+        errors.push(`statement/declaration file is present on disk but not listed in metadata: ${rel}`);
       }
     }
   }
 
-  const proofsRoot = join(packageRoot, "proofs");
-  if (existsSync(proofsRoot) && statSync(proofsRoot).isDirectory()) {
-    for (const file of walkFiles(proofsRoot).filter((path) => path.endsWith(".lean"))) {
+  for (const proofRoot of proofRoots) {
+    for (const file of walkFiles(proofRoot).filter((path) => path.endsWith(".lean"))) {
       const rel = normalizePath(relativePath(packageRoot, file));
-      if (!metadataProofFiles.has(rel)) {
+      if (!expectedProofFiles.has(rel) && basename(file) !== "lakefile.lean") {
         errors.push(`proof file is present on disk but not listed in metadata: ${rel}`);
       }
     }
   }
+}
+
+function proofSearchRoots() {
+  const roots = new Set();
+  const conventionalProofs = defaultExistingDir("proofs");
+  if (conventionalProofs) {
+    roots.add(conventionalProofs);
+  }
+  for (const proofFile of expectedProofFiles) {
+    const dir = resolve(packageRoot, dirname(proofFile));
+    if (existsSync(dir) && statSync(dir).isDirectory()) {
+      roots.add(dir);
+    }
+  }
+  return [...roots];
+}
+
+function defaultExistingDir(path) {
+  const absolute = resolve(packageRoot, path);
+  return existsSync(absolute) ? absolute : null;
+}
+
+function isStatementPositionFile(path) {
+  const name = basename(path);
+  if (name === "lakefile.lean") {
+    return false;
+  }
+  return [".lean", ".tex"].includes(extname(path));
 }
 
 function normalizePath(path) {

@@ -17,26 +17,16 @@ export function createSubmissionPackage({ cwd, slug }) {
   write(root, "meta.yaml", metaYaml({ slug, namespace }));
   write(root, "abstract.tex", abstractTex());
 
-  const surfaceRoot = join(root, "surface-package");
-  mkdirSync(surfaceRoot, { recursive: true });
-  write(surfaceRoot, "lean-toolchain", `${lmlEnv.lean.toolchain}\n`);
-  write(surfaceRoot, "lakefile.lean", surfaceLakefile(namespace));
+  const statementsRoot = join(root, "statements");
+  mkdirSync(statementsRoot, { recursive: true });
+  write(statementsRoot, "lean-toolchain", `${lmlEnv.lean.toolchain}\n`);
+  write(statementsRoot, "lakefile.lean", statementLakefile(namespace));
+  write(statementsRoot, "ConnectedGraph.tex", "A connected graph is a simple graph that is connected in the sense of mathlib.\n");
+  write(statementsRoot, "ConnectedIffReachable.tex", "A graph is connected exactly when it has a vertex type and every pair of vertices is joined by a path.\n");
+  write(statementsRoot, `${namespace}/Statements/ConnectedGraph.lean`, connectedGraphStatement(namespace));
+  write(statementsRoot, `${namespace}/Statements/ConnectedIffReachable.lean`, connectedIffReachableStatement(namespace));
 
-  write(
-    surfaceRoot,
-    "ConnectedGraph/latex-file.tex",
-    "A connected graph is a simple graph that is connected in the sense of mathlib.\n"
-  );
-  write(surfaceRoot, "ConnectedGraph/Surface.lean", connectedGraphSurface(namespace));
-
-  write(
-    surfaceRoot,
-    "ConnectedIffReachable/latex-file.tex",
-    "A graph is connected exactly when it has a vertex type and every pair of vertices is joined by a path.\n"
-  );
-  write(surfaceRoot, "ConnectedIffReachable/Surface.lean", connectedIffReachableSurface(namespace));
-
-  write(root, "proofs/ConnectedIffReachableProof.lean", connectedIffReachableProof(namespace));
+  write(root, `${namespace}/Proofs/ConnectedIffReachableProof.lean`, connectedIffReachableProof(namespace));
 
   return root;
 }
@@ -64,58 +54,64 @@ package ${namespace}.Proofs where
 require mathlib from git
   "https://github.com/${lmlEnv.mathlib.repository}.git" @ "${lmlEnv.mathlib.revision}"
 
-require ${namespace}.Surface from "./surface-package"
+require ${namespace}.Statements from "./statements"
 
 @[default_target]
 lean_lib ${namespace}.Proofs where
-  srcDir := "proofs"
-  roots := #[\`ConnectedIffReachableProof]
+  roots := #[\`${namespace}.Proofs.ConnectedIffReachableProof]
 `;
 }
 
-function surfaceLakefile(namespace) {
+function statementLakefile(namespace) {
   return `import Lake
 open Lake DSL
 
-package ${namespace}.Surface where
+package ${namespace}.Statements where
 
 require mathlib from git
   "https://github.com/${lmlEnv.mathlib.repository}.git" @ "${lmlEnv.mathlib.revision}"
 
 @[default_target]
-lean_lib ConnectedGraph where
-  globs := #[\`ConnectedGraph.+]
-
-@[default_target]
-lean_lib ConnectedIffReachable where
-  globs := #[\`ConnectedIffReachable.+]
+lean_lib ${namespace}.Statements where
+  roots := #[\`${namespace}.Statements.ConnectedGraph, \`${namespace}.Statements.ConnectedIffReachable]
 `;
 }
 
 function metaYaml({ slug, namespace }) {
   return `pinnedLeanToolchain: ${lmlEnv.lean.toolchain}
 proofLakefilePath: lakefile.lean
-paperTitle: Your Submission Paper
-namespaceSlug: ${slug}
-surfaceLakefilePath: surface-package/lakefile.lean
+statementLakefilePath: statements/lakefile.lean
 abstractPath: abstract.tex
-declarations:
-  - type: Definition
-    name: ${namespace}.Surface.Definition.ConnectedGraph
-    folder: surface-package/ConnectedGraph
-    usedSurfaceFiles: []
-  - type: Statement
-    name: ${namespace}.Surface.Statement.ConnectedIffReachable
-    folder: surface-package/ConnectedIffReachable
-    usedSurfaceFiles: []
+submissionTitle: Your Submission Paper
+packageSlug: ${slug}
+statements:
+  - Name: ConnectedGraph
+    Type: Definition
+    Statement:
+      Name: ${namespace}.Definition.ConnectedGraph.IsConnectedGraph
+      File: statements/${namespace}/Statements/ConnectedGraph.lean
+      LatexFile: statements/ConnectedGraph.tex
+    Used Surface Files: []
+  - Name: ConnectedIffReachable
+    Type: Axiom
+    Statement:
+      Name: ${namespace}.Axiom.ConnectedIffReachable.connected_iff_reachable
+      File: statements/${namespace}/Statements/ConnectedIffReachable.lean
+      LatexFile: statements/ConnectedIffReachable.tex
+    Used Surface Files: []
 proofs:
-  - theorem: ${namespace}.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
-    proof: ${namespace}.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
-    type: proof
-    proofFile: proofs/ConnectedIffReachableProof.lean
-bibtex: []
+  - Name: ConnectedIffReachableProof
+    Type: proof
+    Theorem:
+      Package: ${namespace}.Statements
+      File: statements/${namespace}/Statements/ConnectedIffReachable.lean
+      Name: ${namespace}.Axiom.ConnectedIffReachable.connected_iff_reachable
+    Proof:
+      File: ${namespace}/Proofs/ConnectedIffReachableProof.lean
+      Name: ${namespace}.Proofs.ConnectedIffReachable.connected_iff_reachable
+    Used Surface Files: []
+bibtex-entries: []
 paper:
-  paperTitle: Your Submission Paper
   arxivUrl: ""
   onlineSource: ""
   doi: ""
@@ -126,55 +122,53 @@ paper:
 }
 
 function abstractTex() {
-  return `This submission records a minimal surface statement about connected simple graphs in mathlib.
+  return `This submission records a minimal statement about connected simple graphs in mathlib.
 `;
 }
 
-function connectedGraphSurface(namespace) {
+function connectedGraphStatement(namespace) {
   return `import Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected
 
-namespace ${namespace}.Surface.Definition.ConnectedGraph
+namespace ${namespace}.Definition.ConnectedGraph
 
 def IsConnectedGraph {V : Type u} (G : SimpleGraph V) : Prop :=
   G.Connected
 
-end ${namespace}.Surface.Definition.ConnectedGraph
+end ${namespace}.Definition.ConnectedGraph
 `;
 }
 
-function connectedIffReachableSurface(namespace) {
+function connectedIffReachableStatement(namespace) {
   return `import Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected
-import ConnectedGraph.Surface
+import ${namespace}.Statements.ConnectedGraph
 
-namespace ${namespace}.Surface.Statement.ConnectedIffReachable
+namespace ${namespace}.Axiom.ConnectedIffReachable
 
 axiom connected_iff_reachable {V : Type u} (G : SimpleGraph V) :
-    ${namespace}.Surface.Definition.ConnectedGraph.IsConnectedGraph G ↔
+    ${namespace}.Definition.ConnectedGraph.IsConnectedGraph G ↔
       Nonempty V ∧ ∀ u v : V, G.Reachable u v
 
-end ${namespace}.Surface.Statement.ConnectedIffReachable
+end ${namespace}.Axiom.ConnectedIffReachable
 `;
 }
 
 function connectedIffReachableProof(namespace) {
   return `import Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected
-import ConnectedIffReachable.Surface
+import ${namespace}.Statements.ConnectedIffReachable
 
-namespace ${namespace}.Proofs.Statement.ConnectedIffReachable
+namespace ${namespace}.Proofs.ConnectedIffReachable
 
--- The proof theorem must have exactly the same type as the matching surface declaration.
--- \`lml test\` asks Lean to compare the compiled types of both constants.
 theorem connected_iff_reachable {V : Type u} (G : SimpleGraph V) :
-    ${namespace}.Surface.Definition.ConnectedGraph.IsConnectedGraph G ↔
+    ${namespace}.Definition.ConnectedGraph.IsConnectedGraph G ↔
       Nonempty V ∧ ∀ u v : V, G.Reachable u v :=
   by
-    unfold ${namespace}.Surface.Definition.ConnectedGraph.IsConnectedGraph
+    unfold ${namespace}.Definition.ConnectedGraph.IsConnectedGraph
     constructor
     · intro h
       exact ⟨h.nonempty, h.preconnected⟩
     · rintro ⟨hV, hreachable⟩
       exact { preconnected := hreachable, nonempty := hV }
 
-end ${namespace}.Proofs.Statement.ConnectedIffReachable
+end ${namespace}.Proofs.ConnectedIffReachable
 `;
 }

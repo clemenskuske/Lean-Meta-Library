@@ -3,14 +3,20 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import lmlEnv from "../../../lml-env.json" with { type: "json" };
-import { loadContext, report, requireMeta } from "./common.mjs";
+import {
+  loadContext,
+  packageRootForLakefile,
+  proofLakefilePath,
+  report,
+  requireMeta,
+  statementLakefilePath
+} from "./common.mjs";
 import { lakeDependencies, loadLakeConfig } from "./lake-config.mjs";
 
 const context = loadContext();
 const { packageRoot, meta } = context;
 const errors = [];
-const proofLakeConfig = loadLakeConfig(packageRoot, "root lakefile", errors);
-const surfaceLakeConfig = loadLakeConfig(join(packageRoot, "surface-package"), "surface lakefile", errors);
+const packages = packageRoots();
 
 requireMeta(context, errors);
 
@@ -31,10 +37,30 @@ if (meta.pinnedLeanToolchain && String(meta.pinnedLeanToolchain).trim() !== expe
   );
 }
 
-checkLeanToolchainFile(join(packageRoot, "lean-toolchain"), "root lean-toolchain");
-checkLeanToolchainFile(join(packageRoot, "surface-package/lean-toolchain"), "surface lean-toolchain");
-checkMathlibRequire(proofLakeConfig, "root lakefile");
-checkMathlibRequire(surfaceLakeConfig, "surface lakefile");
+for (const item of packages) {
+  checkLeanToolchainFile(join(item.cwd, "lean-toolchain"), `${item.label} lean-toolchain`);
+  checkMathlibRequire(loadLakeConfig(item.cwd, `${item.label} lakefile`, errors), `${item.label} lakefile`);
+}
+
+function packageRoots() {
+  const items = [];
+  const seen = new Set();
+  addPackage("statement/declaration package", statementLakefilePath(meta));
+  addPackage("proof package", proofLakefilePath(meta));
+  return items;
+
+  function addPackage(label, lakefilePath) {
+    if (!lakefilePath) {
+      return;
+    }
+    const cwd = packageRootForLakefile(packageRoot, lakefilePath);
+    if (!cwd || seen.has(cwd)) {
+      return;
+    }
+    seen.add(cwd);
+    items.push({ label, cwd, lakefilePath });
+  }
+}
 
 function checkLeanToolchainFile(path, label) {
   if (!existsSync(path)) {

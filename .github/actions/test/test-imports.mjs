@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Runs negative import fixtures and verifies each one fails for its intended reason.
 import { spawnSync } from "node:child_process";
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -20,7 +20,7 @@ const fixtures = [
   {
     name: "prepare-build-cache-failure-package",
     checker: "prepare-build-cache.mjs",
-    expected: /surface package lake build failed|Unknown identifier|MissingName/,
+    expected: /statement\/declaration package lake build failed|surface package lake build failed|Unknown identifier|MissingName|unexpected identifier/,
     stripMathlibDependencyForCheck: true
   },
   {
@@ -31,17 +31,17 @@ const fixtures = [
   {
     name: "metadata-disk-state-failure-package",
     checker: "files-present.mjs",
-    expected: /declaration folder is present on disk but not listed in metadata/
+    expected: /statement\/declaration file is present on disk but not listed in metadata|declaration folder is present on disk but not listed in metadata/
   },
   {
     name: "metadata-check-failure-package",
     checker: "metadata-check.mjs",
-    expected: /bibtex must be a list/
+    expected: /legacy metadata key is not allowed|bibtex-entries must be a list|bibtex must be a list/
   },
   {
     name: "mathlib-version-failure-package",
     checker: "mathlib-version.mjs",
-    expected: /root lean-toolchain must be/
+    expected: /proof package lean-toolchain must be|root lean-toolchain must be/
   },
   {
     name: "namespaces-correct-failure-package",
@@ -103,7 +103,7 @@ const fixtures = [
   {
     name: "unauthorized-surface-import-package",
     checker: "dependency-check.mjs",
-    expected: /only allows its own surface statement module/
+    expected: /not listed in that entry's Used Surface Files metadata|only allows its own surface statement module/
   }
 ];
 
@@ -196,11 +196,10 @@ function materializeFixture({ name, stripMathlibDependencyForCheck }) {
   const fixtureDir = join(tmpRoot, basename(sourceDir));
   cpSync(sourceDir, fixtureDir, { recursive: true });
 
-  for (const lakefile of [
-    join(fixtureDir, "lakefile.lean"),
-    join(fixtureDir, "surface-package", "lakefile.lean")
-  ]) {
-    stripMathlibRequire(lakefile);
+  for (const lakefile of candidateLakefiles(fixtureDir)) {
+    if (existsSync(lakefile)) {
+      stripMathlibRequire(lakefile);
+    }
   }
 
   return {
@@ -209,6 +208,15 @@ function materializeFixture({ name, stripMathlibDependencyForCheck }) {
       rmSync(tmpRoot, { recursive: true, force: true });
     }
   };
+}
+
+function candidateLakefiles(fixtureDir) {
+  return [
+    join(fixtureDir, "lakefile.lean"),
+    join(fixtureDir, "surface-package", "lakefile.lean"),
+    join(fixtureDir, "statements", "lakefile.lean"),
+    join(fixtureDir, "proofs", "lakefile.lean")
+  ];
 }
 
 function stripMathlibRequire(lakefile) {

@@ -3,16 +3,44 @@
 // This is the expensive check that confirms Lean accepts both packages.
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
-import { loadContext, maxBuildOutputBytes, report } from "./common.mjs";
+import {
+  loadContext,
+  maxBuildOutputBytes,
+  packageRootForLakefile,
+  proofLakefilePath,
+  report,
+  statementLakefilePath
+} from "./common.mjs";
 
-const { packageRoot } = loadContext();
+const { packageRoot, meta } = loadContext();
 const errors = [];
 
 if (spawnSync("lake", ["--version"], { encoding: "utf8" }).error) {
   errors.push("lake executable not found on PATH");
 } else {
-  runLakeBuild(packageRoot, "proof package");
-  runLakeBuild(join(packageRoot, "surface-package"), "surface package");
+  for (const item of packageRoots()) {
+    runLakeBuild(item.cwd, item.label);
+  }
+}
+
+function packageRoots() {
+  const items = [];
+  const seen = new Set();
+  addPackage("statement/declaration package", statementLakefilePath(meta));
+  addPackage("proof package", proofLakefilePath(meta));
+  return items;
+
+  function addPackage(label, lakefilePath) {
+    if (!lakefilePath) {
+      return;
+    }
+    const cwd = packageRootForLakefile(packageRoot, lakefilePath);
+    if (!cwd || seen.has(cwd)) {
+      return;
+    }
+    seen.add(cwd);
+    items.push({ label, cwd, lakefilePath });
+  }
 }
 
 function runLakeBuild(cwd, label) {

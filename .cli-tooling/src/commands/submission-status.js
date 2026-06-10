@@ -5,7 +5,11 @@ import { ensureAuthenticated } from "../lib/github-auth.js";
 import { ensureGitHubCli } from "../lib/github-cli.js";
 import { lmlEnv } from "../lib/project-env.js";
 import { run } from "../lib/process.js";
-import { parseMetaYaml } from "../../../.github/actions/test/common.mjs";
+import {
+  metadataStatements,
+  parseMetaYaml,
+  statementLeanFileForEntry
+} from "../../../.github/actions/test/common.mjs";
 
 const defaultMetadataPath = String(lmlEnv.submission?.defaultMetadataPath ?? "meta.yaml");
 
@@ -359,12 +363,12 @@ function compareSurfaceFiles({ repoRoot, metaRelPath, sourceCommit, currentMeta 
 }
 
 function currentSurfaceFiles(meta, packageRelRoot = "") {
-  return [...new Set((meta.declarations ?? []).map((entry) => surfaceFileForEntry(entry, packageRelRoot)).filter(Boolean))];
+  return [...new Set(metadataStatements(meta).map((entry) => statementFileForEntry(entry, packageRelRoot)).filter(Boolean))];
 }
 
-function surfaceFileForEntry(entry, packageRelRoot) {
-  const folder = stringValue(entry.folder);
-  return folder ? posix.join(packageRelRoot, folder.replace(/\/$/g, ""), "Surface.lean") : null;
+function statementFileForEntry(entry, packageRelRoot) {
+  const file = statementLeanFileForEntry(entry);
+  return file ? posix.join(packageRelRoot, file.replace(/^\.\/+/, "")) : null;
 }
 
 function printStatus({ metaRelPath, issue, issueNumber, imported, workflow, sourceCommit, headCommit, comparison }) {

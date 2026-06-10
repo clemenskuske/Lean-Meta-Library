@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// Applies a conservative first-run policy to surface Lean files.
+// Applies a conservative first-run policy to statement/declaration Lean files.
 // It rejects macros, custom syntax, unsafe features, and other constructs outside the intended secure subset.
 import { join } from "node:path";
-import { loadContext, report } from "./common.mjs";
+import { loadContext, metadataStatements, report, statementLeanFileForEntry } from "./common.mjs";
 import { inspectCommandSyntax } from "./lean-inspect.mjs";
 
 const { packageRoot, meta } = loadContext();
@@ -38,26 +38,30 @@ const allowedCommandKinds = new Set([
   "Lean.Parser.Command.noncomputable"
 ]);
 
-for (const entry of meta.declarations ?? []) {
-  const path = join(packageRoot, entry.folder ?? "", "Surface.lean");
-  const label = `${entry.folder}/Surface.lean`;
+for (const entry of metadataStatements(meta)) {
+  const leanFile = statementLeanFileForEntry(entry);
+  if (!leanFile) {
+    continue;
+  }
+  const path = join(packageRoot, leanFile);
+  const label = leanFile;
   const inspected = inspectCommandSyntax({ file: path, label, errors })?.[0];
 
   for (const [forbiddenLabel, kind] of forbiddenPatterns) {
     if (inspected?.syntax?.some((node) => node.kind === kind) || inspected?.commands?.includes(kind)) {
-      errors.push(`surface file uses forbidden ${forbiddenLabel}: ${label}`);
+      errors.push(`statement/declaration file uses forbidden ${forbiddenLabel}: ${label}`);
     }
   }
 
   for (const [identifier, forbiddenLabel] of forbiddenIdentifiers) {
     if (inspected?.syntax?.some((node) => node.ident === identifier || node.atom === identifier)) {
-      errors.push(`surface file uses forbidden ${forbiddenLabel}: ${label}`);
+      errors.push(`statement/declaration file uses forbidden ${forbiddenLabel}: ${label}`);
     }
   }
 
   for (const kind of inspected?.commands ?? []) {
     if (!allowedCommandKinds.has(kind)) {
-      warnings.push(`surface file command is outside first-run whitelist: ${label}: ${kind}`);
+      warnings.push(`statement/declaration file command is outside first-run whitelist: ${label}: ${kind}`);
     }
   }
 }

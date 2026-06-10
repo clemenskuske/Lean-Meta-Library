@@ -10,6 +10,14 @@ submission-structure rework lands, remove fixtures that only enforce the old
 required proof-package and surface-package split, and add replacements for the
 optional statement/declaration and proof package model.
 
+After the structure-update-guidelines audit, all current fixture repos remain
+useful. They test package build failures, metadata/disk mismatches, file
+presence, file policy, proof/type checks, dependency authorization, sorry
+rejection, and forbidden axioms. None exists solely to require the old separate
+proof-package plus surface-package layout. Future updates should keep the same
+failure intent while changing the fixture shape to the new
+statement/declaration metadata vocabulary.
+
 Run all negative fixtures from the repository root with:
 
 ```sh

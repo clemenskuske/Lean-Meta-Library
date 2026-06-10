@@ -3,9 +3,21 @@
 // Defaults come from lml-env.json; local runs may override them with LML_MAX_PACKAGE_BYTES,
 // LML_MAX_FOLDER_BYTES, and LML_MAX_FILE_BYTES.
 import { existsSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import lmlEnv from "../../../lml-env.json" with { type: "json" };
-import { fileSize, loadContext, report, relativePath, walkFiles } from "./common.mjs";
+import {
+  fileSize,
+  metadataProofs,
+  metadataStatements,
+  loadContext,
+  proofFileForProofEntry,
+  report,
+  relativePath,
+  statementLeanFileForEntry,
+  statementLakefilePath,
+  proofLakefilePath,
+  walkFiles
+} from "./common.mjs";
 
 const { packageRoot, meta } = loadContext();
 const errors = [];
@@ -27,10 +39,14 @@ for (const file of packageFiles) {
 }
 
 for (const folder of [
-  "surface-package",
-  "proofs",
-  ...(meta.declarations ?? []).map((entry) => entry.folder).filter(Boolean)
+  dirname(statementLakefilePath(meta) ?? ""),
+  dirname(proofLakefilePath(meta) ?? ""),
+  ...metadataStatements(meta).map((entry) => dirname(statementLeanFileForEntry(entry) ?? "")).filter(Boolean),
+  ...metadataProofs(meta).map((proof) => dirname(proofFileForProofEntry(proof) ?? "")).filter(Boolean)
 ]) {
+  if (!folder || folder === ".") {
+    continue;
+  }
   const absolute = join(packageRoot, folder);
   if (!existsSync(absolute) || !statSync(absolute).isDirectory()) {
     continue;

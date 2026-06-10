@@ -16,7 +16,9 @@ import lmlEnv from "../../../lml-env.json" with { type: "json" };
 import {
   loadContext,
   maxBuildOutputBytes,
+  metadataProofs,
   proofNameForProofEntry,
+  theoremNameForProofEntry,
   report,
   walkFiles
 } from "./common.mjs";
@@ -114,6 +116,7 @@ function checkBuildOutputForSorry(result) {
 
 function checkCompiledAxioms() {
   const proofTargets = proofTargetNames();
+  const allowedConjectures = conjectureAxiomNames();
   if (proofTargets.length === 0) {
     warnings.push("no proof targets were found for final axiom inspection");
     return;
@@ -123,7 +126,7 @@ function checkCompiledAxioms() {
   const inspector = join(isolatedPackageRoot, "FinalProofBuildInspect.lean");
   writeFileSync(
     inspector,
-    finalProofBuildInspector({ modules, proofTargets, allowedMathlibAxioms }),
+    finalProofBuildInspector({ modules, proofTargets, allowedMathlibAxioms, allowedConjectures }),
     "utf8"
   );
 
@@ -143,8 +146,15 @@ function checkCompiledAxioms() {
 }
 
 function proofTargetNames() {
-  return (context.meta.proofs ?? [])
+  return metadataProofs(context.meta)
     .map(proofNameForProofEntry)
+    .filter(isLeanName);
+}
+
+function conjectureAxiomNames() {
+  return metadataProofs(context.meta)
+    .filter((proof) => proof.type === "reduction")
+    .map(theoremNameForProofEntry)
     .filter(isLeanName);
 }
 
@@ -280,7 +290,7 @@ function isIgnoredDependencyModule(moduleName) {
   return moduleName === "Cache" || moduleName.startsWith("Cache.");
 }
 
-function finalProofBuildInspector({ modules, proofTargets, allowedMathlibAxioms }) {
+function finalProofBuildInspector({ modules, proofTargets, allowedMathlibAxioms, allowedConjectures }) {
   const imports = modules.map((moduleName) => `import ${moduleName}`).join("\n");
   return `import Lean
 import Lean.Util.CollectAxioms
@@ -289,15 +299,8 @@ ${imports}
 open Lean
 
 def allowedBaseAxioms : Array Name := ${leanNameArray(allowedMathlibAxioms)}
+def allowedConjectureAxioms : Array Name := ${leanNameArray(allowedConjectures)}
 def checkedProofTargets : Array Name := ${leanNameArray(proofTargets)}
-
-def hasSurfaceStatementParts : List String -> Bool
-  | "Surface" :: "Statement" :: _ => true
-  | _ :: rest => hasSurfaceStatementParts rest
-  | [] => false
-
-def isSurfaceStatementName (name : Name) : Bool :=
-  hasSurfaceStatementParts (name.components.map Name.toString)
 
 def sameAxiomType (candidate allowed : ConstantInfo) : CoreM Bool := do
   if candidate.levelParams.length != allowed.levelParams.length then
@@ -308,21 +311,31 @@ def sameAxiomType (candidate allowed : ConstantInfo) : CoreM Bool := do
   Meta.MetaM.run' do
     Meta.isExprDefEq candidateType allowedType
 
-def isAllowedBaseAxiomByType (name : Name) : CoreM Bool := do
+def isAllowedBaseAxiomByNameAndType (name : Name) : CoreM Bool := do
   let info <- getConstInfo name
   match info with
   | .axiomInfo _ =>
       for allowedName in allowedBaseAxioms do
-        let allowedInfo <- getConstInfo allowedName
-        if (← sameAxiomType info allowedInfo) then
-          return true
+        if name == allowedName then
+          let allowedInfo <- getConstInfo allowedName
+          if (← sameAxiomType info allowedInfo) then
+            return true
       return false
   | _ => return false
 
-def checkAxiom (label : String) (owner : Name) (axiomName : Name) : CoreM Bool := do
-  if isSurfaceStatementName axiomName then
+def isAllowedConjectureAxiom (name : Name) : CoreM Bool := do
+  if !(allowedConjectureAxioms.contains name) then
     return false
-  if (← isAllowedBaseAxiomByType axiomName) then
+  let info <- getConstInfo name
+  match info with
+  | .axiomInfo _ =>
+      return true
+  | _ => return false
+
+def checkAxiom (label : String) (owner : Name) (axiomName : Name) : CoreM Bool := do
+  if (← isAllowedConjectureAxiom axiomName) then
+    return false
+  if (← isAllowedBaseAxiomByNameAndType axiomName) then
     return false
   let axiomInfo <- getConstInfo axiomName
   let typeText <- Meta.MetaM.run' do

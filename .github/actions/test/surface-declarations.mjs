@@ -1,14 +1,18 @@
 #!/usr/bin/env node
-// Uses Lean to verify that each metadata surface file introduces exactly one simple declaration.
-// The check diffs the environment before and after importing the surface module, so hidden public, private, generated, or instance declarations are rejected.
+// Uses Lean to verify that each metadata statement/declaration file introduces exactly one simple declaration.
+// The check diffs the environment before and after importing the module, so hidden public, private, generated, or instance declarations are rejected.
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import {
   loadContext,
   maxBuildOutputBytes,
+  metadataStatements,
+  packageRootForLakefile,
   readIfExists,
-  report
+  report,
+  statementLakefilePath,
+  statementLeanFileForEntry
 } from "./common.mjs";
 import { lakeModuleForFile, loadLakeConfig } from "./lake-config.mjs";
 import { inspectIntroducedDeclarations, isLeanName } from "./lean-inspect.mjs";
@@ -16,38 +20,44 @@ import { parseLeanImports } from "./lean-imports.mjs";
 
 const { packageRoot, meta } = loadContext();
 const errors = [];
-const surfaceRoot = join(packageRoot, "surface-package");
-const surfaceLakeConfig = loadLakeConfig(surfaceRoot, "surface lakefile", errors);
-const surfaceFiles = (meta.declarations ?? [])
-  .map((entry) => join(packageRoot, entry.folder ?? "", "Surface.lean"))
+const statements = metadataStatements(meta);
+const statementRoot = statementLakefilePath(meta)
+  ? packageRootForLakefile(packageRoot, statementLakefilePath(meta))
+  : join(packageRoot, "surface-package");
+const statementLakeConfig = statements.length > 0 && statementRoot && existsSync(join(statementRoot, "lakefile.lean"))
+  ? loadLakeConfig(statementRoot, "statement/declaration lakefile", errors)
+  : null;
+const statementFiles = statements
+  .map((entry) => join(packageRoot, statementLeanFileForEntry(entry) ?? ""))
   .filter(existsSync);
-const importsByFile = parseLeanImports(surfaceFiles, errors);
+const importsByFile = parseLeanImports(statementFiles, errors);
 
-for (const entry of meta.declarations ?? []) {
+for (const entry of statements) {
   checkSurfaceEntry(entry);
 }
 
 function checkSurfaceEntry(entry) {
-  const surfacePath = join(packageRoot, entry.folder ?? "", "Surface.lean");
+  const leanFile = statementLeanFileForEntry(entry);
+  const surfacePath = join(packageRoot, leanFile ?? "");
   const source = readIfExists(surfacePath);
-  const label = `${entry.folder ?? "(missing folder)"}/Surface.lean`;
+  const label = leanFile ?? "(missing statement file)";
 
   if (!source) {
     return;
   }
 
-  const moduleName = lakeModuleForFile(surfaceLakeConfig, surfaceRoot, surfacePath);
+  const moduleName = lakeModuleForFile(statementLakeConfig, statementRoot, surfacePath);
   if (!moduleName) {
-    errors.push(`Lake does not expose a buildable Lean module for ${label}`);
+    errors.push(`Lake does not expose a buildable Lean module for statement/declaration file ${label}`);
     return;
   }
 
   if (!isLeanModuleName(moduleName)) {
-    errors.push(`surface file has invalid Lean module name ${moduleName}: ${label}`);
+    errors.push(`statement/declaration file has invalid Lean module name ${moduleName}: ${label}`);
     return;
   }
 
-  const build = spawnSync("lake", ["--dir", surfaceRoot, "build", moduleName], {
+  const build = spawnSync("lake", ["--dir", statementRoot, "build", moduleName], {
     encoding: "utf8",
     maxBuffer: maxBuildOutputBytes
   });
@@ -61,7 +71,7 @@ function checkSurfaceEntry(entry) {
   }
 
   const imports = ["Init", ...(importsByFile.get(surfacePath) ?? []).filter((imported) => imported !== moduleName)];
-  const declarations = inspectIntroducedDeclarations({ packageDir: surfaceRoot, moduleName, imports, label, errors });
+  const declarations = inspectIntroducedDeclarations({ packageDir: statementRoot, moduleName, imports, label, errors });
   if (!declarations) {
     return;
   }
@@ -110,8 +120,8 @@ function allowedKindForEntry(type, kind) {
   if (type === "Definition") {
     return kind === "definition";
   }
-  if (type === "Statement") {
-    return kind === "axiom" || kind === "theorem";
+  if (type === "Axiom") {
+    return kind === "axiom";
   }
   return false;
 }

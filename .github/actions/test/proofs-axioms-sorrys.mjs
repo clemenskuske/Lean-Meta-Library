@@ -9,6 +9,10 @@ import {
   isLeanName,
   loadContext,
   maxBuildOutputBytes,
+  metadataProofs,
+  packageRootForLakefile,
+  proofFileForProofEntry,
+  proofLakefilePath,
   proofNameForProofEntry,
   relativePath,
   report,
@@ -18,10 +22,11 @@ import { lakeModuleForFile, loadLakeConfig } from "./lake-config.mjs";
 
 const { packageRoot, meta, namespaceRoot } = loadContext();
 const errors = [];
-const rootLakeConfig = loadLakeConfig(packageRoot, "root lakefile", errors);
+const proofRoot = proofLakefilePath(meta) ? packageRootForLakefile(packageRoot, proofLakefilePath(meta)) : packageRoot;
+const rootLakeConfig = loadLakeConfig(proofRoot, "proof lakefile", errors);
 const proofFiles = new Set(
-  (meta.proofs ?? [])
-    .map((proof) => proof.proofFile)
+  metadataProofs(meta)
+    .map(proofFileForProofEntry)
     .filter(Boolean)
     .map((proofFile) => join(packageRoot, proofFile))
 );
@@ -33,7 +38,7 @@ for (const file of walkFiles(join(packageRoot, "proofs")).filter((path) => path.
 for (const file of proofFiles) {
   const label = relativePath(packageRoot, file);
 
-  const result = spawnSync("lake", ["--dir", packageRoot, "lean", file], {
+  const result = spawnSync("lake", ["--dir", proofRoot, "lean", file], {
     encoding: "utf8",
     maxBuffer: maxBuildOutputBytes
   });
@@ -59,12 +64,13 @@ function checkCompiledProofAxioms() {
   const proofImports = new Set();
   const proofTargets = [];
 
-  for (const proof of meta.proofs ?? []) {
-    const proofModule = lakeModuleForFile(rootLakeConfig, packageRoot, proof.proofFile);
+  for (const proof of metadataProofs(meta)) {
+    const proofFile = proofFileForProofEntry(proof);
+    const proofModule = lakeModuleForFile(rootLakeConfig, proofRoot, join(packageRoot, proofFile ?? ""));
     const proofName = proofNameForProofEntry(proof);
 
-    if (!proof.proofFile || !proofModule || !isLeanName(proofModule)) {
-      errors.push(`could not infer proof module for ${proof.proofFile ?? "(missing proofFile)"}`);
+    if (!proofFile || !proofModule || !isLeanName(proofModule)) {
+      errors.push(`could not infer proof module for ${proofFile ?? "(missing Proof.File)"}`);
       continue;
     }
     if (!isLeanName(proofName)) {
@@ -74,7 +80,7 @@ function checkCompiledProofAxioms() {
 
     proofImports.add(proofModule);
     proofTargets.push({
-      label: proof.proofFile,
+      label: proofFile,
       name: proofName
     });
   }
@@ -88,7 +94,7 @@ function checkCompiledProofAxioms() {
 
   try {
     writeFileSync(inspector, proofAxiomInspector({ proofImports, proofTargets }), "utf8");
-    const result = spawnSync("lake", ["--dir", packageRoot, "lean", inspector], {
+    const result = spawnSync("lake", ["--dir", proofRoot, "lean", inspector], {
       encoding: "utf8",
       maxBuffer: maxBuildOutputBytes
     });

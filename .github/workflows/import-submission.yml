@@ -330,7 +330,13 @@ jobs:
             "Source Branch": sourceBranch,
             "Source Commit": sourceCommit,
             "Metadata File": metadataPath,
-            "Surface Folder": surfaceFolder(meta, metadataPath),
+            githubRepo: repoUrl,
+            "Surface Folder": legacySurfaceFolder(meta, metadataPath),
+            "Statement Folder": packageFolder(meta, metadataPath, "statementLakefilePath"),
+            "Declaration Folder": packageFolder(meta, metadataPath, "statementLakefilePath"),
+            "Proof Folder": packageFolder(meta, metadataPath, "proofLakefilePath"),
+            "Lake Statement Package": meta["Lake Statement Package"] || packageFolder(meta, metadataPath, "statementLakefilePath"),
+            "Lake Proof Package": meta["Lake Proof Package"] || packageFolder(meta, metadataPath, "proofLakefilePath"),
             "User Id": Number(submitterId),
             "User Login": submitterLogin,
             "Issue Id": Number(process.env.ISSUE_ID),
@@ -360,8 +366,19 @@ jobs:
           writeFileSync(logPath, nextLogText);
           writeFileSync(".website/submissions-data.js", websiteDataSource(nextLogText));
 
-          function surfaceFolder(metadata, metadataPathValue) {
+          function packageFolder(metadata, metadataPathValue, lakefileKey) {
             const metadataDir = path.dirname(normalizePath(metadataPathValue)).replace(/^\.$/, "");
+            if (metadata[lakefileKey]) {
+              return repoRelativePath(metadataDir, path.dirname(normalizePath(metadata[lakefileKey])));
+            }
+            return metadataDir;
+          }
+
+          function legacySurfaceFolder(metadata, metadataPathValue) {
+            const metadataDir = path.dirname(normalizePath(metadataPathValue)).replace(/^\.$/, "");
+            if (metadata.statementLakefilePath) {
+              return repoRelativePath(metadataDir, path.dirname(normalizePath(metadata.statementLakefilePath)));
+            }
             if (metadata.surfaceLakefilePath) {
               return repoRelativePath(metadataDir, path.dirname(normalizePath(metadata.surfaceLakefilePath)));
             }

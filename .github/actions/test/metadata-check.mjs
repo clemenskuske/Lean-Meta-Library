@@ -1,21 +1,28 @@
 #!/usr/bin/env node
-// Validates the required metadata keys and the basic shape of surface and proof entries.
-// It also applies a small character/token whitelist to catch suspicious metadata early.
+// Validates the required metadata keys and the basic shape of statement/declaration and proof entries.
+// Metadata is the ground truth for file positions, so statement and proof entries must name their files explicitly.
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
+import YAML from "yaml";
 import {
   isInside,
   isLeanName,
   loadContext,
+  metadataBibtexEntries,
+  metadataProofs,
+  metadataStatements,
   namespaceOfDeclaration,
-  proofNameForProofEntry,
+  proofLakefilePath,
   report,
   requireMeta,
-  theoremNameForProofEntry
+  statementLakefilePath,
+  statementLatexFileForEntry,
+  statementLeanFileForEntry
 } from "./common.mjs";
 
 const context = loadContext();
-const { packageRoot, meta } = context;
+const { packageRoot, meta, metaText } = context;
+const rawMeta = YAML.parse(metaText || "") ?? {};
 const errors = [];
 const warnings = [];
 
@@ -23,95 +30,126 @@ requireMeta(context, errors);
 
 const requiredKeys = [
   "pinnedLeanToolchain",
-  "proofLakefilePath",
+  "abstractPath",
+  "submissionTitle",
+  "packageSlug",
+  "bibtex-entries"
+];
+const legacyKeys = [
   "paperTitle",
   "namespaceSlug",
   "surfaceLakefilePath",
-  "abstractPath",
   "declarations",
-  "proofs"
+  "bibtex"
 ];
 
 for (const key of requiredKeys) {
-  if (!(key in meta)) {
+  if (!(key in rawMeta)) {
     errors.push(`missing required metadata key: ${key}`);
   }
 }
 
-checkRelativePath(meta.proofLakefilePath, `proofLakefilePath ${meta.proofLakefilePath}`);
-checkRelativePath(meta.surfaceLakefilePath, `surfaceLakefilePath ${meta.surfaceLakefilePath}`);
+for (const key of legacyKeys) {
+  if (key in rawMeta) {
+    errors.push(`legacy metadata key is not allowed in new metadata shape: ${key}`);
+  }
+}
+
+if (meta.statements && !Array.isArray(meta.statements)) {
+  errors.push("statements must be a list when present");
+}
+if (meta.proofs && !Array.isArray(meta.proofs)) {
+  errors.push("proofs must be a list when present");
+}
+if (Array.isArray(meta.statements) && meta.statements.length > 0 && !statementLakefilePath(meta)) {
+  errors.push("statementLakefilePath is required when statements are present");
+}
+if (Array.isArray(meta.proofs) && meta.proofs.length > 0 && !proofLakefilePath(meta)) {
+  errors.push("proofLakefilePath is required when proofs are present");
+}
+
+checkRelativePath(statementLakefilePath(meta), `statementLakefilePath ${statementLakefilePath(meta)}`);
+checkRelativePath(proofLakefilePath(meta), `proofLakefilePath ${proofLakefilePath(meta)}`);
 checkRelativePath(meta.abstractPath, `abstractPath ${meta.abstractPath}`);
 
-if (!Array.isArray(meta.declarations) || meta.declarations.length === 0) {
-  errors.push("declarations must contain at least one entry");
-}
+const statements = metadataStatements(meta);
+const statementByName = new Map();
+for (const entry of statements) {
+  const label = entry.entryName ?? entry.name ?? "(unnamed)";
+  if (!["Definition", "Axiom"].includes(entry.type)) {
+    errors.push(`statement ${label} has invalid Type ${entry.type}`);
+  }
+  if (!entry.entryName) {
+    errors.push("statement entry is missing Name");
+  }
+  if (!entry.name) {
+    errors.push(`statement ${label} is missing Statement.Name`);
+  } else if (!isLeanName(entry.name)) {
+    errors.push(`statement ${label} has invalid Lean name: ${entry.name}`);
+  }
 
-const declarationsByName = new Map();
-for (const entry of meta.declarations ?? []) {
-  if (!["Definition", "Statement"].includes(entry.type)) {
-    errors.push(`declaration ${entry.name ?? "(unnamed)"} has invalid type ${entry.type}`);
+  const leanFile = statementLeanFileForEntry(entry);
+  const latexFile = statementLatexFileForEntry(entry);
+  if (!leanFile) {
+    errors.push(`statement ${label} is missing Statement.File`);
   }
-  for (const key of ["name", "folder"]) {
-    if (!entry[key]) {
-      errors.push(`declaration is missing ${key}`);
-    }
+  if (!latexFile) {
+    errors.push(`statement ${label} is missing Statement.LatexFile`);
   }
+  checkRelativePath(leanFile, `statement file ${leanFile}`);
+  checkRelativePath(latexFile, `statement LaTeX file ${latexFile}`);
+
   if (entry.name) {
-    declarationsByName.set(entry.name, entry);
+    statementByName.set(entry.name, entry);
   }
-  checkRelativePath(entry.folder, `declaration folder ${entry.folder}`);
-  checkDeclarationFolder(entry.folder, `declaration folder ${entry.folder}`);
-  for (const used of entry.usedSurfaceFiles ?? []) {
-    checkRelativePath(used.surfaceFile, `used surface file ${used.surfaceFile}`);
-    for (const key of ["githubRepo", "slug", "surfaceFile", "definition"]) {
-      if (!used[key]) {
-        errors.push(`usedSurfaceFiles item in ${entry.name} is missing ${key}`);
-      }
-    }
-    const definitionNamespace = namespaceOfDeclaration(used.definition);
-    if (definitionNamespace && definitionNamespace === entry.name) {
-      errors.push(`usedSurfaceFiles item in ${entry.name} must point to a different namespace: ${used.definition}`);
+
+  for (const used of entry.usedSurfaceFiles) {
+    checkUsedSurfaceFile(used, `Used Surface Files item in statement ${label}`);
+    if (used.name && namespaceOfDeclaration(used.name) === namespaceOfDeclaration(entry.name)) {
+      errors.push(`Used Surface Files item in statement ${label} must point to a different namespace: ${used.name}`);
     }
   }
 }
 
-for (const proof of meta.proofs ?? []) {
-  const theoremName = theoremNameForProofEntry(proof);
-  const proofName = proofNameForProofEntry(proof);
-
-  if (!theoremName) {
-    errors.push("proof entry is missing theorem");
-    continue;
+for (const proof of metadataProofs(meta)) {
+  const label = proof.entryName ?? proof.theorem ?? "(unnamed proof)";
+  if (!proof.entryName) {
+    errors.push("proof entry is missing Name");
   }
-
   if (!["proof", "conditional-proof", "reduction"].includes(proof.type)) {
-    errors.push(`proof entry for ${theoremName} has invalid type ${proof.type}`);
+    errors.push(`proof entry ${label} has invalid Type ${proof.type}`);
   }
-  if (!theoremName.includes(".Surface.Statement.")) {
-    errors.push(`proof entry theorem must target a Surface.Statement declaration: ${theoremName}`);
+  if (!proof.theoremPackage) {
+    errors.push(`proof entry ${label} is missing Theorem.Package`);
   }
-  if (!isLeanName(theoremName)) {
-    errors.push(`proof entry theorem is not a valid Lean name: ${theoremName}`);
+  if (!proof.theoremFile) {
+    errors.push(`proof entry ${label} is missing Theorem.File`);
   }
-  if (!proofName) {
-    errors.push(`proof entry is missing proof theorem: ${theoremName}`);
-  } else if (!isLeanName(proofName)) {
-    errors.push(`proof entry proof is not a valid Lean name: ${proofName}`);
-  } else if (!proofName.includes(".Proofs.Statement.")) {
-    errors.push(`proof entry proof must target a Proofs.Statement theorem: ${proofName}`);
+  if (!proof.theorem) {
+    errors.push(`proof entry ${label} is missing Theorem.Name`);
+  } else if (!isLeanName(proof.theorem)) {
+    errors.push(`proof entry ${label} has invalid Theorem.Name: ${proof.theorem}`);
   }
   if (!proof.proofFile) {
-    errors.push(`proof entry is missing proofFile: ${theoremName}`);
-    continue;
+    errors.push(`proof entry ${label} is missing Proof.File`);
   }
+  if (!proof.proof) {
+    errors.push(`proof entry ${label} is missing Proof.Name`);
+  } else if (!isLeanName(proof.proof)) {
+    errors.push(`proof entry ${label} has invalid Proof.Name: ${proof.proof}`);
+  }
+  checkRelativePath(proof.theoremFile, `theorem file ${proof.theoremFile}`);
   checkRelativePath(proof.proofFile, `proof file ${proof.proofFile}`);
 
-  const declarationNamespace = namespaceOfDeclaration(theoremName);
-  const declarationEntry = declarationsByName.get(declarationNamespace);
-  if (!declarationEntry) {
-    errors.push(`proof entry does not match a metadata declaration: ${theoremName}`);
-  } else if (declarationEntry.type !== "Statement") {
-    errors.push(`proof entry must target a Statement declaration, found ${declarationEntry.type}: ${theoremName}`);
+  const theoremEntry = statementByName.get(proof.theorem);
+  if (!theoremEntry) {
+    errors.push(`proof entry ${label} does not match a metadata statement: ${proof.theorem}`);
+  } else if (theoremEntry.type !== "Axiom") {
+    errors.push(`proof entry ${label} must target an Axiom statement, found ${theoremEntry.type}: ${proof.theorem}`);
+  }
+
+  for (const used of proof.usedSurfaceFiles) {
+    checkUsedSurfaceFile(used, `Used Surface Files item in proof ${label}`);
   }
 }
 
@@ -129,20 +167,34 @@ for (const suspicious of ["`", "$(", "${", ";", "&&", "||", "<", ">"]) {
   }
 }
 
-if (meta.surfaceLakefilePath && !existsSync(join(packageRoot, meta.surfaceLakefilePath))) {
-  errors.push(`surfaceLakefilePath does not exist: ${meta.surfaceLakefilePath}`);
+checkExistingPath(statementLakefilePath(meta), "statementLakefilePath");
+checkExistingPath(proofLakefilePath(meta), "proofLakefilePath");
+checkExistingPath(meta.abstractPath, "abstractPath");
+
+if (!Array.isArray(metadataBibtexEntries(meta))) {
+  errors.push("bibtex-entries must be a list");
 }
 
-if (meta.proofLakefilePath && !existsSync(join(packageRoot, meta.proofLakefilePath))) {
-  errors.push(`proofLakefilePath does not exist: ${meta.proofLakefilePath}`);
+for (const key of ["githubRepo", "Lake Proof Package", "Lake Statement Package"]) {
+  if (key in meta && typeof meta[key] !== "string") {
+    errors.push(`${key} must be a string when present`);
+  }
 }
 
-if (meta.abstractPath && !existsSync(join(packageRoot, meta.abstractPath))) {
-  errors.push(`abstractPath does not exist: ${meta.abstractPath}`);
-}
-
-if (!Array.isArray(meta.bibtex)) {
-  errors.push("bibtex must be a list");
+function checkUsedSurfaceFile(used, label) {
+  for (const [key, value] of [
+    ["Package", used.package],
+    ["File", used.file],
+    ["Name", used.name]
+  ]) {
+    if (!value) {
+      errors.push(`${label} is missing ${key}`);
+    }
+  }
+  checkRelativePath(used.file, `${label} File ${used.file}`);
+  if (used.name && !isLeanName(used.name)) {
+    errors.push(`${label} has invalid Name: ${used.name}`);
+  }
 }
 
 function checkRelativePath(value, label) {
@@ -155,12 +207,9 @@ function checkRelativePath(value, label) {
   }
 }
 
-function checkDeclarationFolder(value, label) {
-  if (!value) {
-    return;
-  }
-  if (!/^surface-package\/[^/]+$/.test(value)) {
-    errors.push(`${label} must be a direct child of surface-package`);
+function checkExistingPath(value, label) {
+  if (value && !existsSync(join(packageRoot, value))) {
+    errors.push(`${label} does not exist: ${value}`);
   }
 }
 

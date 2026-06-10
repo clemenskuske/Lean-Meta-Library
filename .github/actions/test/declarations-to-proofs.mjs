@@ -10,8 +10,17 @@ import {
   isLeanName,
   loadContext,
   maxBuildOutputBytes,
+  metadataProofs,
+  metadataStatements,
+  packageRootForLakefile,
+  proofFileForProofEntry,
+  proofLakefilePath,
   proofNameForProofEntry,
-  report
+  report,
+  statementLakefilePath,
+  statementLeanFileForEntry,
+  theoremFileForProofEntry,
+  theoremNameForProofEntry
 } from "./common.mjs";
 import { lakeModuleForFile, loadLakeConfig } from "./lake-config.mjs";
 import { inspectIntroducedDeclarations } from "./lean-inspect.mjs";
@@ -19,30 +28,32 @@ import { parseLeanImports } from "./lean-imports.mjs";
 
 const { packageRoot, meta } = loadContext();
 const errors = [];
-const rootLakeConfig = loadLakeConfig(packageRoot, "root lakefile", errors);
-const surfaceRoot = join(packageRoot, "surface-package");
-const surfaceLakeConfig = loadLakeConfig(surfaceRoot, "surface lakefile", errors);
-const proofByTheorem = new Map((meta.proofs ?? []).map((proof) => [proof.theorem, proof]));
+const proofRoot = proofLakefilePath(meta) ? packageRootForLakefile(packageRoot, proofLakefilePath(meta)) : packageRoot;
+const statementRoot = statementLakefilePath(meta) ? packageRootForLakefile(packageRoot, statementLakefilePath(meta)) : join(packageRoot, "surface-package");
+const proofLakeConfig = proofRoot ? loadLakeConfig(proofRoot, "proof lakefile", errors) : null;
+const statementLakeConfig = statementRoot ? loadLakeConfig(statementRoot, "statement/declaration lakefile", errors) : null;
+const proofs = metadataProofs(meta);
+const proofByTheorem = new Map(proofs.map((proof) => [theoremNameForProofEntry(proof), proof]));
 
-for (const entry of (meta.declarations ?? []).filter((item) => item.type === "Statement")) {
+for (const entry of metadataStatements(meta).filter((item) => item.type === "Axiom" || item.type === "Statement")) {
   const namespace = declarationNamespaceForEntry(entry);
-  const surfacePath = join(packageRoot, entry.folder ?? "", "Surface.lean");
-  const surfaceModule = lakeModuleForFile(surfaceLakeConfig, surfaceRoot, surfacePath);
+  const surfacePath = join(packageRoot, statementLeanFileForEntry(entry) ?? "");
+  const surfaceModule = lakeModuleForFile(statementLakeConfig, statementRoot, surfacePath);
   if (!surfaceModule) {
-    errors.push(`could not infer surface module for ${entry.folder ?? "(missing folder)"}/Surface.lean`);
+    errors.push(`could not infer statement/declaration module for ${statementLeanFileForEntry(entry) ?? "(missing statement file)"}`);
     continue;
   }
 
   const importsByFile = parseLeanImports([surfacePath], errors);
   const declarations = inspectIntroducedDeclarations({
-    packageDir: surfaceRoot,
+    packageDir: statementRoot,
     moduleName: surfaceModule,
     imports: ["Init", ...(importsByFile.get(surfacePath) ?? []).filter((imported) => imported !== surfaceModule)],
     label: `${entry.folder ?? "(missing folder)"}/Surface.lean`,
     errors
   }) ?? [];
 
-  for (const declaration of declarations.filter((item) => isDirectChildOf(item.name, namespace) && ["axiom", "theorem"].includes(item.kind))) {
+  for (const declaration of declarations.filter((item) => isDirectChildOf(item.name, namespace) && item.kind === "axiom")) {
     const fullName = declaration.name;
     const proof = proofByTheorem.get(fullName);
     if (!proof) {
@@ -55,31 +66,33 @@ for (const entry of (meta.declarations ?? []).filter((item) => item.type === "St
       continue;
     }
 
-    const proofPath = join(packageRoot, proof.proofFile ?? "");
+    const proofPath = join(packageRoot, proofFileForProofEntry(proof) ?? "");
     const proofImports = parseLeanImports([proofPath], errors).get(proofPath) ?? [];
     if (!proofImports.includes(surfaceModule)) {
-      errors.push(`proof file ${proof.proofFile} should import ${surfaceModule}`);
+      errors.push(`proof file ${proofFileForProofEntry(proof)} should import ${surfaceModule}`);
     }
 
-    const proofModule = lakeModuleForFile(rootLakeConfig, packageRoot, proof.proofFile);
+    const proofModule = lakeModuleForFile(proofLakeConfig, proofRoot, join(packageRoot, proofFileForProofEntry(proof) ?? ""));
     const proofDeclarations = proofModule
       ? inspectIntroducedDeclarations({
-          packageDir: packageRoot,
+          packageDir: proofRoot,
           moduleName: proofModule,
           imports: ["Init"],
-          label: proof.proofFile,
+          label: proofFileForProofEntry(proof),
           errors
         }) ?? []
       : [];
     if (!proofDeclarations.some((item) => item.name === proofName && item.kind === "theorem")) {
-      errors.push(`proof file ${proof.proofFile} should prove theorem ${proofName}`);
+      errors.push(`proof file ${proofFileForProofEntry(proof)} should prove theorem ${proofName}`);
     }
     checkProofType({ surfaceName: fullName, proof, surfaceModule, proofName });
   }
 }
 
 function checkProofType({ surfaceName, proof, surfaceModule, proofName }) {
-  const proofModule = lakeModuleForFile(rootLakeConfig, packageRoot, proof.proofFile);
+  const theoremFile = theoremFileForProofEntry(proof);
+  const theoremModule = theoremFile ? lakeModuleForFile(statementLakeConfig, statementRoot, join(packageRoot, theoremFile)) : surfaceModule;
+  const proofModule = lakeModuleForFile(proofLakeConfig, proofRoot, join(packageRoot, proofFileForProofEntry(proof) ?? ""));
   if (!surfaceModule || !proofModule || !proofName) {
     errors.push(`could not infer proof check target for ${surfaceName}`);
     return;
@@ -89,14 +102,14 @@ function checkProofType({ surfaceName, proof, surfaceModule, proofName }) {
   const inspector = join(tmp, "ProofTypeCheck.lean");
 
   try {
-    writeFileSync(inspector, proofTypeInspector({ surfaceModule, proofModule, surfaceName, proofName }));
-    const result = spawnSync("lake", ["--dir", packageRoot, "env", "lean", inspector], {
+    writeFileSync(inspector, proofTypeInspector({ surfaceModule: theoremModule ?? surfaceModule, proofModule, surfaceName, proofName }));
+    const result = spawnSync("lake", ["--dir", proofRoot, "env", "lean", inspector], {
       encoding: "utf8",
       maxBuffer: maxBuildOutputBytes
     });
 
     if (result.error) {
-      errors.push(`could not run Lean proof type check for ${proof.proofFile}: ${result.error.message}`);
+      errors.push(`could not run Lean proof type check for ${proofFileForProofEntry(proof)}: ${result.error.message}`);
       return;
     }
     if (result.status !== 0) {

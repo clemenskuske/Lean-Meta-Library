@@ -80,6 +80,7 @@ export function parseMetaYaml(text) {
   const parsed = YAML.parse(text || "") ?? {};
   return {
     declarations: [],
+    statements: [],
     proofs: [],
     paper: {},
     ...parsed
@@ -87,10 +88,11 @@ export function parseMetaYaml(text) {
 }
 
 export function inferNamespaceRoot(meta) {
-  if (meta.namespaceSlug) {
-    return slugToPascal(String(meta.namespaceSlug));
+  const slug = meta.packageSlug ?? meta.namespaceSlug;
+  if (slug) {
+    return slugToPascal(String(slug));
   }
-  const fromEntry = meta.declarations?.find((entry) => entry.name)?.name?.split(".")?.[0];
+  const fromEntry = metadataStatements(meta).find((entry) => entry.name)?.name?.split(".")?.[0];
   if (fromEntry) {
     return fromEntry;
   }
@@ -148,15 +150,120 @@ export function isInside(parent, child) {
 }
 
 export function declarationNamespaceForEntry(entry) {
-  return entry.name;
+  return entry.name ?? namespaceOfDeclaration(entry.statementName);
 }
 
 export function theoremNameForProofEntry(proof) {
-  return proof?.theorem ?? null;
+  return proof?.theorem ?? proof?.Theorem?.Name ?? null;
 }
 
 export function proofNameForProofEntry(proof) {
-  return proof?.proof ?? null;
+  return proof?.proof ?? proof?.Proof?.Name ?? null;
+}
+
+export function proofFileForProofEntry(proof) {
+  return proof?.proofFile ?? proof?.Proof?.File ?? null;
+}
+
+export function theoremFileForProofEntry(proof) {
+  return proof?.Theorem?.File ?? null;
+}
+
+export function metadataPackageSlug(meta) {
+  return meta.packageSlug ?? meta.namespaceSlug ?? null;
+}
+
+export function metadataSubmissionTitle(meta) {
+  return meta.submissionTitle ?? meta.paperTitle ?? meta.paper?.paperTitle ?? null;
+}
+
+export function metadataBibtexEntries(meta) {
+  return meta["bibtex-entries"] ?? meta.bibtex ?? null;
+}
+
+export function statementLakefilePath(meta) {
+  return meta.statementLakefilePath ?? meta.surfaceLakefilePath ?? null;
+}
+
+export function proofLakefilePath(meta) {
+  return meta.proofLakefilePath ?? null;
+}
+
+export function packageRootForLakefile(packageRoot, lakefilePath) {
+  return lakefilePath ? resolve(packageRoot, dirname(lakefilePath)) : null;
+}
+
+export function metadataStatements(meta) {
+  if (Array.isArray(meta.statements) && meta.statements.length > 0) {
+    return meta.statements.map(normalizeStatementEntry);
+  }
+  return (meta.declarations ?? []).map(normalizeLegacyDeclarationEntry);
+}
+
+export function metadataProofs(meta) {
+  return (meta.proofs ?? []).map(normalizeProofEntry);
+}
+
+export function statementLeanFileForEntry(entry) {
+  return entry.file ?? (entry.folder ? `${entry.folder}/Surface.lean` : null);
+}
+
+export function statementLatexFileForEntry(entry) {
+  return entry.latexFile ?? (entry.folder ? `${entry.folder}/latex-file.tex` : null);
+}
+
+export function normalizedUsedSurfaceFiles(items) {
+  return (items ?? []).map((item) => ({
+    package: item.Package ?? item.githubRepo ?? item.slug ?? null,
+    file: item.File ?? item.surfaceFile ?? null,
+    name: item.Name ?? item.definition ?? null,
+    raw: item
+  }));
+}
+
+function normalizeStatementEntry(entry) {
+  const statement = entry.Statement ?? {};
+  const file = statement.File ?? entry.File ?? null;
+  const latexFile = statement.LatexFile ?? entry.LatexFile ?? null;
+  return {
+    raw: entry,
+    entryName: entry.Name ?? entry.name ?? null,
+    type: entry.Type ?? entry.type ?? null,
+    name: statement.Name ?? entry.name ?? null,
+    statementName: statement.Name ?? entry.name ?? null,
+    file,
+    latexFile,
+    folder: file ? dirname(file).split(sep).join("/") : null,
+    usedSurfaceFiles: normalizedUsedSurfaceFiles(entry["Used Surface Files"] ?? entry.usedSurfaceFiles)
+  };
+}
+
+function normalizeLegacyDeclarationEntry(entry) {
+  return {
+    raw: entry,
+    entryName: entry.Name ?? entry.name ?? null,
+    type: entry.Type ?? entry.type ?? null,
+    name: entry.name ?? entry.Name ?? null,
+    statementName: entry.name ?? entry.Name ?? null,
+    file: entry.file ?? (entry.folder ? `${entry.folder}/Surface.lean` : null),
+    latexFile: entry.latexFile ?? (entry.folder ? `${entry.folder}/latex-file.tex` : null),
+    folder: entry.folder ?? null,
+    usedSurfaceFiles: normalizedUsedSurfaceFiles(entry["Used Surface Files"] ?? entry.usedSurfaceFiles)
+  };
+}
+
+function normalizeProofEntry(proof) {
+  return {
+    raw: proof,
+    entryName: proof.Name ?? null,
+    type: proof.Type ?? proof.type ?? null,
+    theorem: proof.Theorem?.Name ?? proof.theorem ?? null,
+    theoremPackage: proof.Theorem?.Package ?? null,
+    theoremFile: proof.Theorem?.File ?? null,
+    proof: proof.Proof?.Name ?? proof.proof ?? null,
+    proofFile: proof.Proof?.File ?? proof.proofFile ?? null,
+    usedSurfaceFiles: normalizedUsedSurfaceFiles(proof["Used Surface Files"] ?? proof.usedSurfaceFiles)
+  };
 }
 
 export function namespaceOfDeclaration(name) {
