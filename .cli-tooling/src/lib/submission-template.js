@@ -91,14 +91,14 @@ statements:
       Name: ${namespace}.Definition.ConnectedGraph.IsConnectedGraph
       File: statements/${namespace}/Statements/ConnectedGraph.lean
       LatexFile: statements/ConnectedGraph.tex
-    Used Surface Files: []
+    DeclarationReferences: []
   - Name: ConnectedIffReachable
     Type: Axiom
     Statement:
       Name: ${namespace}.Axiom.ConnectedIffReachable.connected_iff_reachable
       File: statements/${namespace}/Statements/ConnectedIffReachable.lean
       LatexFile: statements/ConnectedIffReachable.tex
-    Used Surface Files: []
+    DeclarationReferences: []
 proofs:
   - Name: ConnectedIffReachableProof
     Type: proof
@@ -109,7 +109,7 @@ proofs:
     Proof:
       File: ${namespace}/Proofs/ConnectedIffReachableProof.lean
       Name: ${namespace}.Proofs.ConnectedIffReachable.connected_iff_reachable
-    Used Surface Files: []
+    DeclarationReferences: []
 bibtex-entries: []
 paper:
   arxivUrl: ""

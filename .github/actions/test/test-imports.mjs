@@ -103,7 +103,7 @@ const fixtures = [
   {
     name: "unauthorized-surface-import-package",
     checker: "dependency-check.mjs",
-    expected: /not listed in that entry's Used Surface Files metadata|only allows its own surface statement module/
+    expected: /not listed in that entry's DeclarationReferences metadata|only allows its own surface statement module/
   }
 ];
 

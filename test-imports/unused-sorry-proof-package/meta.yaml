@@ -1,29 +1,33 @@
 pinnedLeanToolchain: leanprover/lean4:v4.30.0
 proofLakefilePath: lakefile.lean
-paperTitle: Unused Sorry Proof Fixture
-namespaceSlug: unused-sorry-proof
-surfaceLakefilePath: surface-package/lakefile.lean
+statementLakefilePath: surface-package/lakefile.lean
 abstractPath: abstract.tex
-declarations:
-  - type: Definition
-    name: UnusedSorryProof.Surface.Definition.ConnectedGraph
-    folder: surface-package/ConnectedGraph
-    usedSurfaceFiles: []
-  - type: Statement
-    name: UnusedSorryProof.Surface.Statement.ConnectedIffReachable
-    folder: surface-package/ConnectedIffReachable
-    usedSurfaceFiles: []
+submissionTitle: Unused Sorry Proof Fixture
+packageSlug: unused-sorry-proof
+statements:
+  - Name: ConnectedGraph
+    Type: Definition
+    Statement:
+      Name: UnusedSorryProof.Surface.Definition.ConnectedGraph.IsConnectedGraph
+      File: surface-package/ConnectedGraph/Surface.lean
+      LatexFile: surface-package/ConnectedGraph/latex-file.tex
+    DeclarationReferences: []
+  - Name: ConnectedIffReachable
+    Type: Axiom
+    Statement:
+      Name: UnusedSorryProof.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
+      File: surface-package/ConnectedIffReachable/Surface.lean
+      LatexFile: surface-package/ConnectedIffReachable/latex-file.tex
+    DeclarationReferences: []
 proofs:
-  - theorem: UnusedSorryProof.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
-    proof: UnusedSorryProof.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
-    type: proof
-    proofFile: proofs/ConnectedIffReachableProof.lean
-bibtex: []
-paper:
-  paperTitle: Unused Sorry Proof Fixture
-  arxivUrl: ""
-  onlineSource: ""
-  doi: ""
-  orcids: []
-  journalOrConference: ""
-  keywords: []
+  - Name: ConnectedIffReachableProof
+    Type: proof
+    Theorem:
+      Package: UnusedSorryProof.Statements
+      File: surface-package/ConnectedIffReachable/Surface.lean
+      Name: UnusedSorryProof.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
+    Proof:
+      File: proofs/ConnectedIffReachableProof.lean
+      Name: UnusedSorryProof.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
+    DeclarationReferences: []
+bibtex-entries: []

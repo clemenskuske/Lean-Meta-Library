@@ -76,7 +76,7 @@ function checkSurfaceEntry(entry) {
     return;
   }
 
-  const directDeclarations = declarations.filter((declaration) => isDirectChildOf(declaration.name, entry.name));
+  const directDeclarations = declarations.filter((declaration) => isPrimaryDeclarationForEntry(declaration.name, entry.name));
   if (directDeclarations.length !== 1) {
     errors.push(
       `${label} should introduce exactly one direct declaration under ${entry.name}, found ${formatCount(directDeclarations)}`
@@ -114,6 +114,10 @@ function isDirectChildOf(name, namespace) {
 
   const suffix = name.slice(namespace.length + 1);
   return suffix.length > 0 && !suffix.includes(".");
+}
+
+function isPrimaryDeclarationForEntry(name, metadataName) {
+  return name === metadataName || isDirectChildOf(name, metadataName);
 }
 
 function allowedKindForEntry(type, kind) {

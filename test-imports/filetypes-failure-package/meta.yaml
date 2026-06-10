@@ -1,29 +1,33 @@
 pinnedLeanToolchain: leanprover/lean4:v4.30.0
 proofLakefilePath: lakefile.lean
-paperTitle: Filetypes Failure Fixture
-namespaceSlug: filetypes-failure
-surfaceLakefilePath: surface-package/lakefile.lean
+statementLakefilePath: surface-package/lakefile.lean
 abstractPath: abstract.tex
-declarations:
-  - type: Definition
-    name: FiletypesFailure.Surface.Definition.ConnectedGraph
-    folder: surface-package/ConnectedGraph
-    usedSurfaceFiles: []
-  - type: Statement
-    name: FiletypesFailure.Surface.Statement.ConnectedIffReachable
-    folder: surface-package/ConnectedIffReachable
-    usedSurfaceFiles: []
+submissionTitle: Filetypes Failure Fixture
+packageSlug: filetypes-failure
+statements:
+  - Name: ConnectedGraph
+    Type: Definition
+    Statement:
+      Name: FiletypesFailure.Surface.Definition.ConnectedGraph.IsConnectedGraph
+      File: surface-package/ConnectedGraph/Surface.lean
+      LatexFile: surface-package/ConnectedGraph/latex-file.tex
+    DeclarationReferences: []
+  - Name: ConnectedIffReachable
+    Type: Axiom
+    Statement:
+      Name: FiletypesFailure.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
+      File: surface-package/ConnectedIffReachable/Surface.lean
+      LatexFile: surface-package/ConnectedIffReachable/latex-file.tex
+    DeclarationReferences: []
 proofs:
-  - theorem: FiletypesFailure.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
-    proof: FiletypesFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
-    type: proof
-    proofFile: proofs/ConnectedIffReachableProof.lean
-bibtex: []
-paper:
-  paperTitle: Filetypes Failure Fixture
-  arxivUrl: ""
-  onlineSource: ""
-  doi: ""
-  orcids: []
-  journalOrConference: ""
-  keywords: []
+  - Name: ConnectedIffReachableProof
+    Type: proof
+    Theorem:
+      Package: FiletypesFailure.Statements
+      File: surface-package/ConnectedIffReachable/Surface.lean
+      Name: FiletypesFailure.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
+    Proof:
+      File: proofs/ConnectedIffReachableProof.lean
+      Name: FiletypesFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
+    DeclarationReferences: []
+bibtex-entries: []

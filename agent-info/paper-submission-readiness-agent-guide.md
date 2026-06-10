@@ -10,6 +10,11 @@ If generated starter files or older checker messages still use the
 surface-package vocabulary, translate that wording to the statement/declaration
 model below when planning new work.
 
+Use submission terminology for the Lean Meta Library entry itself. A submission
+is not the source repository; it may contain up to two Lake packages, the
+statement-package and the proof-package. Reserve repository terminology for the
+source checkout or GitHub repository that hosts the submission.
+
 ## Core Principle
 
 Do not infer the submitted statement set from the source project alone. Build
@@ -170,7 +175,7 @@ undeclared axioms.
 
 For dependency work, run `lml update` first and read `submissions.jsonl`.
 Imported rows should preserve enough information to locate both statement and
-proof package modes for the imported repository.
+proof package modes for the imported submission.
 
 ## Proof Artifacts
 
@@ -190,7 +195,7 @@ It may rely on definitions, declared dependencies, Std, and Mathlib.
 
 The final proof-build stage is being reworked. The target design is:
 
-1. Import all nested imported repositories into the root Lake file using
+1. Import all nested imported submissions into the root Lake file using
    metadata and `submissions.jsonl`.
 2. During the Lean build, recursively follow metadata references.
 3. Replace references to proved dependency statement axioms with the proof

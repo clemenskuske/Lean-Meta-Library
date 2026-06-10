@@ -9,6 +9,9 @@ structure discussion evolves.
 The target model moves from the old surface-package framing to
 statement/declaration terminology:
 
+- A submission is the Lean Meta Library entry, not the source repository.
+- A submission may contain up to two Lake packages: a statement-package and a
+  proof-package.
 - The public declaration side is the statement/declaration package.
 - Public entries are `Definition` or `Axiom`.
 - Axiom entries are Lean axioms only; theorem declarations belong to proof
@@ -124,10 +127,10 @@ axiom-remapping substitution from declared dependencies only. Do not use a
 global substitution; undeclared axioms should survive and be caught by the axiom
 gate.
 
-Imported repository information comes from metadata files and
-`submissions.jsonl`. Import registry rows should preserve enough information to
-locate both statement/declaration and proof package modes for an imported
-repository.
+Imported submission information comes from metadata files and
+`submissions.jsonl`. Import registry rows should preserve enough source
+repository information to locate both statement/declaration and proof package
+modes for an imported submission.
 
 ## Final Proof Build Rework
 
@@ -137,8 +140,9 @@ and inspect proof-target axioms against statement axioms plus base axioms.
 
 The new approach must:
 
-1. Import all nested imported repositories into the root Lake file.
-2. Read repository information from metadata files and `submissions.jsonl`.
+1. Import all nested imported submissions into the root Lake file.
+2. Read submission and source checkout information from metadata files and
+   `submissions.jsonl`.
 3. During the Lean build, run a script that recursively follows metadata
    references.
 4. Change proofs so they reference the proof counterpart of a referenced

@@ -1,29 +1,33 @@
 pinnedLeanToolchain: leanprover/lean4:v4.30.0
 proofLakefilePath: lakefile.lean
-paperTitle: Folder Size Failure Fixture
-namespaceSlug: folder-size-failure
-surfaceLakefilePath: surface-package/lakefile.lean
+statementLakefilePath: surface-package/lakefile.lean
 abstractPath: abstract.tex
-declarations:
-  - type: Definition
-    name: FolderSizeFailure.Surface.Definition.ConnectedGraph
-    folder: surface-package/ConnectedGraph
-    usedSurfaceFiles: []
-  - type: Statement
-    name: FolderSizeFailure.Surface.Statement.ConnectedIffReachable
-    folder: surface-package/ConnectedIffReachable
-    usedSurfaceFiles: []
+submissionTitle: Folder Size Failure Fixture
+packageSlug: folder-size-failure
+statements:
+  - Name: ConnectedGraph
+    Type: Definition
+    Statement:
+      Name: FolderSizeFailure.Surface.Definition.ConnectedGraph.IsConnectedGraph
+      File: surface-package/ConnectedGraph/Surface.lean
+      LatexFile: surface-package/ConnectedGraph/latex-file.tex
+    DeclarationReferences: []
+  - Name: ConnectedIffReachable
+    Type: Axiom
+    Statement:
+      Name: FolderSizeFailure.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
+      File: surface-package/ConnectedIffReachable/Surface.lean
+      LatexFile: surface-package/ConnectedIffReachable/latex-file.tex
+    DeclarationReferences: []
 proofs:
-  - theorem: FolderSizeFailure.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
-    proof: FolderSizeFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
-    type: proof
-    proofFile: proofs/ConnectedIffReachableProof.lean
-bibtex: []
-paper:
-  paperTitle: Folder Size Failure Fixture
-  arxivUrl: ""
-  onlineSource: ""
-  doi: ""
-  orcids: []
-  journalOrConference: ""
-  keywords: []
+  - Name: ConnectedIffReachableProof
+    Type: proof
+    Theorem:
+      Package: FolderSizeFailure.Statements
+      File: surface-package/ConnectedIffReachable/Surface.lean
+      Name: FolderSizeFailure.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
+    Proof:
+      File: proofs/ConnectedIffReachableProof.lean
+      Name: FolderSizeFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
+    DeclarationReferences: []
+bibtex-entries: []

@@ -9,6 +9,16 @@ When adding new notes, place them where they make the file easiest to understand
 not automatically at the bottom. The file may be rewritten as the structure
 discussion evolves.
 
+## Hard Earned Lessons
+
+- Use "submission" for the artificial Lean Meta Library entry. Do not call this
+  a repo. Use "repository" only when referring to the actual source-code
+  repository or GitHub repository URL.
+- A submission can contain two Lake packages: a statement-package and a
+  proof-package.
+- Statement-package and proof-package are Lake packages inside a submission, not
+  submissions themselves.
+
 ## Package Structure
 
 - Submissions no longer need separate proof and surface packages.
@@ -104,8 +114,8 @@ differently by the existing implementation.
   run `lake update`, `lake clean`, cache fetch, `lake build`, reject
   `sorry`/`sorryAx`, and inspect proof-target axioms against surface statement
   axioms plus base axioms.
-- The new approach must first import all nested imported repositories into the
-  root Lake file. The information for those imported repositories comes from
+- The new approach must first import all nested imported submissions into the
+  root Lake file. The information for those imported submissions comes from
   metadata files and `submissions.jsonl`.
 - During the Lean build, run a script that recursively follows references in the
   metadata files. It must change proofs so they reference the proof counterpart

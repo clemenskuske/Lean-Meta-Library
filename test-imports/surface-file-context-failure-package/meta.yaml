@@ -1,29 +1,33 @@
 pinnedLeanToolchain: leanprover/lean4:v4.30.0
 proofLakefilePath: lakefile.lean
-paperTitle: Surface File Context Failure Fixture
-namespaceSlug: surface-file-context-failure
-surfaceLakefilePath: surface-package/lakefile.lean
+statementLakefilePath: surface-package/lakefile.lean
 abstractPath: abstract.tex
-declarations:
-  - type: Definition
-    name: SurfaceFileContextFailure.Surface.Definition.ConnectedGraph
-    folder: surface-package/ConnectedGraph
-    usedSurfaceFiles: []
-  - type: Statement
-    name: SurfaceFileContextFailure.Surface.Statement.ConnectedIffReachable
-    folder: surface-package/ConnectedIffReachable
-    usedSurfaceFiles: []
+submissionTitle: Surface File Context Failure Fixture
+packageSlug: surface-file-context-failure
+statements:
+  - Name: ConnectedGraph
+    Type: Definition
+    Statement:
+      Name: SurfaceFileContextFailure.Surface.Definition.ConnectedGraph.IsConnectedGraph
+      File: surface-package/ConnectedGraph/Surface.lean
+      LatexFile: surface-package/ConnectedGraph/latex-file.tex
+    DeclarationReferences: []
+  - Name: ConnectedIffReachable
+    Type: Axiom
+    Statement:
+      Name: SurfaceFileContextFailure.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
+      File: surface-package/ConnectedIffReachable/Surface.lean
+      LatexFile: surface-package/ConnectedIffReachable/latex-file.tex
+    DeclarationReferences: []
 proofs:
-  - theorem: SurfaceFileContextFailure.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
-    proof: SurfaceFileContextFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
-    type: proof
-    proofFile: proofs/ConnectedIffReachableProof.lean
-bibtex: []
-paper:
-  paperTitle: Surface File Context Failure Fixture
-  arxivUrl: ""
-  onlineSource: ""
-  doi: ""
-  orcids: []
-  journalOrConference: ""
-  keywords: []
+  - Name: ConnectedIffReachableProof
+    Type: proof
+    Theorem:
+      Package: SurfaceFileContextFailure.Statements
+      File: surface-package/ConnectedIffReachable/Surface.lean
+      Name: SurfaceFileContextFailure.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
+    Proof:
+      File: proofs/ConnectedIffReachableProof.lean
+      Name: SurfaceFileContextFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
+    DeclarationReferences: []
+bibtex-entries: []

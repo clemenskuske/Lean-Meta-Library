@@ -22,8 +22,10 @@ allowed submission file/import policy, first-run size limits, checker output lim
 
 ## Submission Contract
 
-A submission consists of public statement/declaration entries, proof artifacts,
-and metadata. The structure rework moves the checker and CLI vocabulary toward
+A submission is the Lean Meta Library entry, not the source repository. It
+consists of public statement/declaration entries, proof artifacts, and metadata,
+and it may contain up to two Lake packages: a statement-package and a
+proof-package. The structure rework moves the checker and CLI vocabulary toward
 statement/declaration packages, structured proof metadata, and statement-level
 proof certificates.
 

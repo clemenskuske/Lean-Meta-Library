@@ -105,7 +105,7 @@ function checkLakefile(config, label, allowedExternalImports) {
     }
 
     if (!packageSetAllows(allowedExternalPackages, dependency.name)) {
-      errors.push(`${label} dependency ${dependency.name} is not listed in metadata Used Surface Files`);
+      errors.push(`${label} dependency ${dependency.name} is not listed in metadata DeclarationReferences`);
       continue;
     }
 
@@ -201,7 +201,7 @@ function metadataAuthorizedImportVerdict({ imported, rel, policy, kind, isOwnImp
   }
   return {
     allowed: false,
-    error: `${rel} imports ${imported}, but it is not listed in that entry's Used Surface Files metadata`
+    error: `${rel} imports ${imported}, but it is not listed in that entry's DeclarationReferences metadata`
   };
 }
 

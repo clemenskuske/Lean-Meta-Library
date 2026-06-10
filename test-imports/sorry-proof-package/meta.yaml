@@ -1,29 +1,33 @@
 pinnedLeanToolchain: leanprover/lean4:v4.30.0
 proofLakefilePath: lakefile.lean
-paperTitle: Sorry Proof Fixture
-namespaceSlug: sorry-proof
-surfaceLakefilePath: surface-package/lakefile.lean
+statementLakefilePath: surface-package/lakefile.lean
 abstractPath: abstract.tex
-declarations:
-  - type: Definition
-    name: SorryProof.Surface.Definition.ConnectedGraph
-    folder: surface-package/ConnectedGraph
-    usedSurfaceFiles: []
-  - type: Statement
-    name: SorryProof.Surface.Statement.ConnectedIffReachable
-    folder: surface-package/ConnectedIffReachable
-    usedSurfaceFiles: []
+submissionTitle: Sorry Proof Fixture
+packageSlug: sorry-proof
+statements:
+  - Name: ConnectedGraph
+    Type: Definition
+    Statement:
+      Name: SorryProof.Surface.Definition.ConnectedGraph.IsConnectedGraph
+      File: surface-package/ConnectedGraph/Surface.lean
+      LatexFile: surface-package/ConnectedGraph/latex-file.tex
+    DeclarationReferences: []
+  - Name: ConnectedIffReachable
+    Type: Axiom
+    Statement:
+      Name: SorryProof.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
+      File: surface-package/ConnectedIffReachable/Surface.lean
+      LatexFile: surface-package/ConnectedIffReachable/latex-file.tex
+    DeclarationReferences: []
 proofs:
-  - theorem: SorryProof.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
-    proof: SorryProof.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
-    type: proof
-    proofFile: proofs/ConnectedIffReachableProof.lean
-bibtex: []
-paper:
-  paperTitle: Sorry Proof Fixture
-  arxivUrl: ""
-  onlineSource: ""
-  doi: ""
-  orcids: []
-  journalOrConference: ""
-  keywords: []
+  - Name: ConnectedIffReachableProof
+    Type: proof
+    Theorem:
+      Package: SorryProof.Statements
+      File: surface-package/ConnectedIffReachable/Surface.lean
+      Name: SorryProof.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
+    Proof:
+      File: proofs/ConnectedIffReachableProof.lean
+      Name: SorryProof.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
+    DeclarationReferences: []
+bibtex-entries: []

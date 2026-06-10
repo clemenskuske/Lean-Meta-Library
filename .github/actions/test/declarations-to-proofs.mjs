@@ -53,7 +53,7 @@ for (const entry of metadataStatements(meta).filter((item) => item.type === "Axi
     errors
   }) ?? [];
 
-  for (const declaration of declarations.filter((item) => isDirectChildOf(item.name, namespace) && item.kind === "axiom")) {
+  for (const declaration of declarations.filter((item) => isPrimaryDeclarationForEntry(item.name, namespace) && item.kind === "axiom")) {
     const fullName = declaration.name;
     const proof = proofByTheorem.get(fullName);
     if (!proof) {
@@ -126,6 +126,10 @@ function isDirectChildOf(name, namespace) {
   }
   const suffix = name.slice(namespace.length + 1);
   return suffix.length > 0 && !suffix.includes(".");
+}
+
+function isPrimaryDeclarationForEntry(name, metadataName) {
+  return name === metadataName || isDirectChildOf(name, metadataName);
 }
 
 function proofTypeInspector({ surfaceModule, proofModule, surfaceName, proofName }) {

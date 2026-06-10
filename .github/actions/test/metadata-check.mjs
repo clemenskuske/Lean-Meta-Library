@@ -104,9 +104,9 @@ for (const entry of statements) {
   }
 
   for (const used of entry.usedSurfaceFiles) {
-    checkUsedSurfaceFile(used, `Used Surface Files item in statement ${label}`);
+    checkUsedSurfaceFile(used, `DeclarationReferences item in statement ${label}`);
     if (used.name && namespaceOfDeclaration(used.name) === namespaceOfDeclaration(entry.name)) {
-      errors.push(`Used Surface Files item in statement ${label} must point to a different namespace: ${used.name}`);
+      errors.push(`DeclarationReferences item in statement ${label} must point to a different namespace: ${used.name}`);
     }
   }
 }
@@ -149,7 +149,7 @@ for (const proof of metadataProofs(meta)) {
   }
 
   for (const used of proof.usedSurfaceFiles) {
-    checkUsedSurfaceFile(used, `Used Surface Files item in proof ${label}`);
+    checkUsedSurfaceFile(used, `DeclarationReferences item in proof ${label}`);
   }
 }
 
@@ -183,7 +183,6 @@ for (const key of ["githubRepo", "Lake Proof Package", "Lake Statement Package"]
 
 function checkUsedSurfaceFile(used, label) {
   for (const [key, value] of [
-    ["Package", used.package],
     ["File", used.file],
     ["Name", used.name]
   ]) {

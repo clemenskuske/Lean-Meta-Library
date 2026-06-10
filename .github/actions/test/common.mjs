@@ -214,11 +214,16 @@ export function statementLatexFileForEntry(entry) {
 
 export function normalizedUsedSurfaceFiles(items) {
   return (items ?? []).map((item) => ({
-    package: item.Package ?? item.githubRepo ?? item.slug ?? null,
+    package: item.PackageSlug ?? item.Package ?? item.githubRepo ?? item.slug ?? null,
+    currentPackage: item.CurrentPackage === true,
     file: item.File ?? item.surfaceFile ?? null,
     name: item.Name ?? item.definition ?? null,
     raw: item
   }));
+}
+
+function declarationReferences(entry) {
+  return entry.DeclarationReferences ?? entry["Used Surface Files"] ?? entry.usedSurfaceFiles;
 }
 
 function normalizeStatementEntry(entry) {
@@ -234,7 +239,7 @@ function normalizeStatementEntry(entry) {
     file,
     latexFile,
     folder: file ? dirname(file).split(sep).join("/") : null,
-    usedSurfaceFiles: normalizedUsedSurfaceFiles(entry["Used Surface Files"] ?? entry.usedSurfaceFiles)
+    usedSurfaceFiles: normalizedUsedSurfaceFiles(declarationReferences(entry))
   };
 }
 
@@ -248,7 +253,7 @@ function normalizeLegacyDeclarationEntry(entry) {
     file: entry.file ?? (entry.folder ? `${entry.folder}/Surface.lean` : null),
     latexFile: entry.latexFile ?? (entry.folder ? `${entry.folder}/latex-file.tex` : null),
     folder: entry.folder ?? null,
-    usedSurfaceFiles: normalizedUsedSurfaceFiles(entry["Used Surface Files"] ?? entry.usedSurfaceFiles)
+    usedSurfaceFiles: normalizedUsedSurfaceFiles(declarationReferences(entry))
   };
 }
 
@@ -262,7 +267,7 @@ function normalizeProofEntry(proof) {
     theoremFile: proof.Theorem?.File ?? null,
     proof: proof.Proof?.Name ?? proof.proof ?? null,
     proofFile: proof.Proof?.File ?? proof.proofFile ?? null,
-    usedSurfaceFiles: normalizedUsedSurfaceFiles(proof["Used Surface Files"] ?? proof.usedSurfaceFiles)
+    usedSurfaceFiles: normalizedUsedSurfaceFiles(declarationReferences(proof))
   };
 }
 

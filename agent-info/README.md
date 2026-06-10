@@ -6,6 +6,11 @@ Use this guide when you are helping inside a Lean Meta Library workspace or usin
 
 Lean Meta Library records Lean formalization submissions in a form that can be checked, imported, and reused by later submissions.
 
+A submission is the Lean Meta Library entry, not the source repository. A
+submission may contain up to two Lake packages: a statement-package and a
+proof-package. Each is a Lake package; use repository terminology only for the
+source checkout or GitHub repository that hosts the submission.
+
 The core idea is to separate three things:
 
 - The public statement/declaration content: trustworthy `Definition` entries
@@ -74,9 +79,9 @@ Start by syncing the local registry. `lml update` refreshes `submissions.jsonl` 
 `submissions.jsonl` is the import registry. It is a JSON Lines file: each non-empty line is one complete JSON object for one imported submission.
 
 Read it when you need to know what has already been imported, what statement or
-proof package a later submission may depend on, or which repository, branch,
-commit, metadata path, and repository-relative package folders define imported
-content.
+proof package a later submission may depend on, or which source repository,
+branch, commit, metadata path, and source-repository-relative package folders
+define imported submission content.
 
 Important fields include:
 
