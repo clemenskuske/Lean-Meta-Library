@@ -1,0 +1,266 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://lean-meta-library.local/schemas/meta.config.yaml"
+title: "Lean Meta Library metadata"
+description: >
+  Schema for Lean Meta Library meta.yaml files. Fields marked as created fields
+  are populated by tooling/workflows rather than supplied by the initial author.
+type: object
+additionalProperties: false
+
+required:
+  - pinnedLeanToolchain
+  - abstractPath
+  - submissionTitle
+  - submissionSlug
+  - bibtex-entries
+
+dependentRequired:
+  proofs:
+    - proofLakefilePath
+  proofLakefilePath:
+    - proofs
+  statements:
+    - statementLakefilePath
+  statementLakefilePath:
+    - statements
+
+properties:
+  pinnedLeanToolchain:
+    type: string
+    minLength: 1
+    description: "Pinned Lean toolchain. Must match the Lean toolchain information in lml-env.json."
+
+  proofLakefilePath:
+    $ref: "#/$defs/repoRelativePath"
+    description: >
+      Repository-relative path to the Lake file for the package whose
+      proof entries discharge axioms from this submission or from other
+      submissions.
+
+  statementLakefilePath:
+    $ref: "#/$defs/repoRelativePath"
+    description: >
+      Repository-relative path to the Lake file for the package whose
+      statement entries publish public definitions and axiom statements.
+
+  abstractPath:
+    $ref: "#/$defs/repoRelativePath"
+    description: >
+      Repository-relative path to abstract.tex. The abstract is a short
+      summary of the submission's results.
+
+  submissionTitle:
+    type: string
+    minLength: 1
+    description: "Human-readable submission title."
+
+  submissionSlug:
+    $ref: "#/$defs/submissionSlug"
+    description: "Machine-facing slug for this submission. Lean package names are derived from this value."
+
+  bibtex-entries:
+    type: array
+    description: >
+      BibTeX references for papers whose results are fully or partly formalized
+      in this submission.
+    items:
+      type: string
+
+  statements:
+    type: array
+    minItems: 1
+    description: >
+      Entries that publish the submission's public definitions and axiom
+      statements. Each entry names the public declaration, records whether it is
+      a definition or axiom, points to the Lean declaration, and lists the
+      declaration references used by that declaration.
+    items:
+      $ref: "#/$defs/statementEntry"
+
+  proofs:
+    type: array
+    description: >
+      Entries that record proofs or reductions for target statements. Each entry
+      names the target statement, identifies the proof-side declaration, records
+      the proof kind, and lists the declaration references used by that proof.
+    items:
+      $ref: "#/$defs/proofEntry"
+
+  submissionIssueNumber:
+    type: integer
+    minimum: 1
+    description: >
+      Created automatically by the submit workflow. GitHub issue number for the
+      issue used to manage this submission.
+
+  submissionIssueUrl:
+    type: string
+    format: uri
+    description: >
+      Created automatically by the submit workflow. URL of the GitHub issue used
+      to manage this submission.
+
+  githubRepo:
+    type: string
+    format: uri
+    minLength: 1
+    description: "Created automatically by tooling/workflows. Full repository URL."
+
+  submittedBy:
+    type: string
+    minLength: 1
+    description: "Created automatically by the submit workflow. User who initiated the submission."
+
+  LakeProofPackage:
+    $ref: "#/$defs/repoRelativePath"
+    description: "Repository-relative path to the Lake proof package folder."
+
+  LakeStatementPackage:
+    $ref: "#/$defs/repoRelativePath"
+    description: "Repository-relative path to the Lake statement package folder."
+
+$defs:
+  repoRelativePath:
+    type: string
+    minLength: 1
+    pattern: "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+    description: "Relative path that must stay inside the repository root."
+
+  leanName:
+    type: string
+    pattern: "^[A-Za-z_][A-Za-z0-9_']*(\\.[A-Za-z_][A-Za-z0-9_']*)*$"
+
+  submissionSlug:
+    type: string
+    minLength: 1
+    pattern: "^[A-Za-z][A-Za-z0-9-]*$"
+
+  statementEntry:
+    type: object
+    description: >
+      Statement entry. Required fields are Name, Type, and Statement.
+      DeclarationReferences is optional.
+    additionalProperties: false
+    required:
+      - Name
+      - Type
+      - Statement
+    properties:
+      Name:
+        type: string
+        minLength: 1
+        description: "Metadata entry name for this public declaration."
+      Type:
+        type: string
+        enum:
+          - Definition
+          - Axiom
+        description: "Statement entry kind."
+      Statement:
+        $ref: "#/$defs/declarationReference"
+      DeclarationReferences:
+        type: array
+        items:
+          $ref: "#/$defs/declarationReference"
+
+  proofEntry:
+    type: object
+    description: >
+      Proof entry. Required fields are Name, Type, Theorem, Proof, and
+      DeclarationReferences.
+    additionalProperties: false
+    required:
+      - Name
+      - Type
+      - Theorem
+      - Proof
+      - DeclarationReferences
+    properties:
+      Name:
+        type: string
+        minLength: 1
+        description: "Metadata entry name for this proof/reduction."
+      Type:
+        type: string
+        enum:
+          - proof
+          - conditional-proof
+          - reduction
+      Theorem:
+        type: object
+        description: "Theorem target reference. Required fields are SubmissionSlug, File, and Name."
+        additionalProperties: false
+        required:
+          - SubmissionSlug
+          - File
+          - Name
+        properties:
+          SubmissionSlug:
+            $ref: "#/$defs/submissionSlug"
+            description: "Submission slug for the theorem/axiom target."
+          File:
+            $ref: "#/$defs/repoRelativePath"
+          Name:
+            $ref: "#/$defs/leanName"
+      Proof:
+        type: object
+        description: "Proof theorem reference. Required fields are File and Name."
+        additionalProperties: false
+        required:
+          - File
+          - Name
+        properties:
+          File:
+            $ref: "#/$defs/repoRelativePath"
+          Name:
+            $ref: "#/$defs/leanName"
+      DeclarationReferences:
+        type: array
+        description: "Declarations referenced by this proof."
+        items:
+          $ref: "#/$defs/declarationReference"
+
+  declarationReference:
+    type: object
+    description: >
+      Reference to a declaration used by a statement or proof. Use
+      CurrentSubmission for references inside this submission, or SubmissionSlug
+      for references to another submission. LeanStatement and LatexDefinition
+      should be in the same folder.
+    $comment: >
+      Standard JSON Schema cannot compare path prefixes directly. Metadata
+      validation code should check that LeanStatement and LatexDefinition are in
+      the same folder.
+    additionalProperties: false
+    required:
+      - LeanStatement
+      - LatexDefinition
+      - Name
+    oneOf:
+      - required:
+          - CurrentSubmission
+        not:
+          required:
+            - SubmissionSlug
+      - required:
+          - SubmissionSlug
+        not:
+          required:
+            - CurrentSubmission
+    properties:
+      CurrentSubmission:
+        type: boolean
+        const: true
+        description: "True when the referenced declaration belongs to this submission."
+      SubmissionSlug:
+        $ref: "#/$defs/submissionSlug"
+        description: "Submission slug for a referenced declaration from another submission."
+      LeanStatement:
+        $ref: "#/$defs/repoRelativePath"
+        description: "Repository-relative path to the referenced Lean statement file."
+      LatexDefinition:
+        $ref: "#/$defs/repoRelativePath"
+        description: "Repository-relative path to the referenced LaTeX definition file."
+      Name:
+        $ref: "#/$defs/leanName"
+        description: "Referenced Lean declaration name."

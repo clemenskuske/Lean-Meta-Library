@@ -6,9 +6,9 @@ files. The goal is to produce a submission package that accurately reflects the
 user's mathematical intent and passes the checks exposed by the Lean Meta
 Library CLI.
 
-If generated starter files or older checker messages still use the
-surface-package vocabulary, translate that wording to the statement/declaration
-model below when planning new work.
+If generated starter files or checker messages use older package vocabulary,
+translate that wording to the Statement Package model below when planning new
+work.
 
 Use submission terminology for the Lean Meta Library entry itself. A submission
 is not the source repository; it may contain up to two Lake packages, the
@@ -37,9 +37,9 @@ Before writing the submission package, gather these decisions from the user:
 - Check whether a PDF of the paper is present. If it is present, use it to
   answer relevant metadata and statement-selection questions where possible; if
   it is not present, ask the user whether they can provide one.
-- The submission title, package slug, and short abstract.
+- The submission title, submission slug, and short abstract.
 - Which Lean project folder, archive, or remote source is the starting point.
-- Which declarations should be public statement/declaration entries.
+- Which declarations should be public statement entries.
 - For each public entry, whether it is a `Definition` or an `Axiom`.
 - For each axiom, whether the proof entry type is `proof`,
   `conditional-proof`, or `reduction`, and which proof file in the source
@@ -64,11 +64,11 @@ lml create-paper <slug>
 ```
 
 The structure rework no longer requires separate proof and statement packages in
-every submission. A statement/declaration package and a proof package are both
+every submission. A statement package and a proof package are both
 allowed, but checks that require their Lake files and internal contents should
 run only when the corresponding package is present.
 
-When present, a statement/declaration package should contain its `lakefile.lean`
+When present, a statement package should contain its `lakefile.lean`
 plus, for each definition or axiom, a Lean file and a LaTeX file explaining the
 entry in paper-facing language. When present, a proof package should contain its
 `lakefile.lean` plus the proof files referenced by metadata.
@@ -79,47 +79,48 @@ must still be included in the shared statement library.
 ## Metadata File
 
 Create `meta.yaml` with the user. It is the source of truth for the CLI checks.
-Use the new target field names:
+Use `meta.config.yaml` as the schema source of truth. The author-created
+metadata should use the exact field names below; workflow-created fields such as
+`githubRepo`, `submittedBy`, `LakeStatementPackage`, `LakeProofPackage`,
+`submissionIssueNumber`, and `submissionIssueUrl` should normally be omitted
+until tooling writes them.
 
 ```yaml
-pinnedLeanToolchain: <keep the CLI-generated Lean toolchain>
-githubRepo: owner/name
+pinnedLeanToolchain: leanprover/lean4:vX.Y.Z
 submissionTitle: User Confirmed Title
-packageSlug: UserSlug
+submissionSlug: UserSlug
 statementLakefilePath: statements/lakefile.lean
 proofLakefilePath: proofs/lakefile.lean
-Lake Statement Package: statements
-Lake Proof Package: proofs
 abstractPath: abstract.tex
 statements:
   - Name: MainDefinition
     Type: Definition
     Statement:
+      CurrentSubmission: true
+      LeanStatement: statements/MainDefinition.lean
+      LatexDefinition: statements/MainDefinition.tex
       Name: UserSlug.Definition.MainDefinition.main_definition
-    File: statements/MainDefinition.lean
-    Latex File: statements/MainDefinition.tex
-    Used Surface Files: []
+    DeclarationReferences: []
   - Name: MainStatement
     Type: Axiom
     Statement:
+      CurrentSubmission: true
+      LeanStatement: statements/MainStatement.lean
+      LatexDefinition: statements/MainStatement.tex
       Name: UserSlug.Statement.MainStatement.main_statement
-    File: statements/MainStatement.lean
-    Latex File: statements/MainStatement.tex
-    Used Surface Files: []
+    DeclarationReferences: []
 proofs:
   - Name: MainStatementProof
     Type: proof
     Theorem:
-      Package: UserSlug.Statements
+      SubmissionSlug: UserSlug
       File: statements/MainStatement.lean
       Name: UserSlug.Statement.MainStatement.main_statement
     Proof:
       File: proofs/MainStatementProof.lean
       Name: UserSlug.Proofs.MainStatement.main_statement
-    Used Surface Files: []
+    DeclarationReferences: []
 bibtex-entries: []
-submissionIssueNumber:
-submissionIssueUrl:
 ```
 
 Use `Type: proof` for a fully formal proof, `Type: conditional-proof` for a
@@ -128,16 +129,17 @@ uses unresolved conjectures. An `assumption` is a conjecture expected to be
 true. A statement with `proof` or `conditional-proof` is classified as a
 theorem. A statement with `reduction` is classified as a conjecture.
 
-Metadata strings must stay simple ASCII text accepted by the CLI checks. Avoid
-shell syntax, angle brackets, backticks, semicolons, and nonessential
-punctuation.
+The schema requires `statements` and `statementLakefilePath` to appear together,
+and `proofs` and `proofLakefilePath` to appear together. All repository paths
+must be relative paths that stay inside the repository root. Metadata strings
+should stay simple ASCII text accepted by the CLI checks.
 
-## Statement/Declaration Files
+## Statement Files
 
-The statement/declaration content records the public mathematical entries. It
-should be minimal, trustworthy, and user-confirmed.
+The statement content records the public mathematical entries. It should be
+minimal, trustworthy, and user-confirmed.
 
-Each submitted statement/declaration file must:
+Each submitted statement file must:
 
 - Import only allowed modules: `Mathlib.*`, `Std.*`, local statement modules,
   or authorized imported package APIs.
@@ -157,21 +159,22 @@ language.
 
 ## Dependencies
 
-Declared dependencies are the security boundary. Used-file records should use
-the target checklist shape:
+Declared dependencies are the security boundary. Declaration reference records
+must use the schema shape:
 
 ```yaml
-Used Surface Files:
-  - Package: OtherSlug.Statements
-    File: statements/OtherEntry.lean
+DeclarationReferences:
+  - SubmissionSlug: OtherSlug
+    LeanStatement: statements/OtherEntry.lean
+    LatexDefinition: statements/OtherEntry.tex
     Name: OtherSlug.Statement.OtherEntry.other_statement
 ```
 
-Proof entries may include proof-level `Used Surface Files` as well as
-statement-level used-file metadata. Actual dependencies come from Lean axiom
-collection and must be included in declared dependencies. Build axiom-remapping
-substitutions from declared dependencies only; do not silently rewrite
-undeclared axioms.
+Proof entries may include proof-level `DeclarationReferences` as well as
+statement-level `DeclarationReferences`. Actual dependencies come from Lean
+axiom collection and must be included in declared dependencies. Build
+axiom-remapping substitutions from declared dependencies only; do not silently
+rewrite undeclared axioms.
 
 For dependency work, run `lml update` first and read `submissions.jsonl`.
 Imported rows should preserve enough information to locate both statement and
@@ -256,12 +259,13 @@ Also check:
 
 Before submitting or asking the user to submit, confirm:
 
-- The user has approved the title, package slug, abstract, statement entries,
+- The user has approved the title, submission slug, abstract, statement entries,
   proof entry types, and bibliographic metadata.
 - Every `Definition` and `Axiom` has a matching statement file and LaTeX file.
 - Every discharged axiom has a matching typed proof file and metadata entry.
 - Statement files contain exactly one direct public declaration each.
 - Proof files contain no forbidden placeholders or local axioms.
-- Imports and used-file metadata explain all declared dependencies.
+- Imports and `DeclarationReferences` metadata explain all declared
+  dependencies.
 - Any external dependency is backed by a matching row in `submissions.jsonl`.
 - `lml test --meta=<slug>-package/meta.yaml` passes for the exact metadata path.

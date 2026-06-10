@@ -6,40 +6,44 @@ structure discussion evolves.
 
 ## Goal
 
-The target model moves from the old surface-package framing to
-statement/declaration terminology:
+The target model uses Statement Package terminology:
 
 - A submission is the Lean Meta Library entry, not the source repository.
 - A submission may contain up to two Lake packages: a statement-package and a
   proof-package.
-- The public declaration side is the statement/declaration package.
+- The public statement side is the statement package.
 - Public entries are `Definition` or `Axiom`.
 - Axiom entries are Lean axioms only; theorem declarations belong to proof
   artifacts, not statement files.
 - Proof artifacts discharge statements with `proof`, `conditional-proof`, or
   `reduction` entries.
 
-Separate statement/declaration and proof packages are no longer required for
+Separate statement and proof packages are no longer required for
 every submission. If either package is present, its package-specific checks
 should run. A proof package that depends locally on a statement package remains
 allowed, but it is not required.
 
 ## Naming Model
 
-Use the checklist names from `structure-update-guidelines`:
+Use `meta.config.yaml` as the source of truth for field names and metadata
+shape. The schema currently uses:
 
-- `DeclarationPackage` instead of `Surface Package`.
+- Statement Package terminology.
 - `statementLakefilePath` instead of `surfaceLakefilePath`.
-- `packageSlug` instead of `namespaceSlug`.
+- `submissionSlug` instead of `namespaceSlug`.
 - `submissionTitle` instead of `paperTitle`.
 - `bibtex-entries` instead of `bibtex`.
 - `statements` instead of `declarations`.
+- `Statement`, `DeclarationReferences`, `CurrentSubmission`,
+  `SubmissionSlug`, `LeanStatement`, `LatexDefinition`, and `Name` instead of
+  older used-surface-file records.
 - Statement entry types `Definition` and `Axiom`; do not keep `Statement` as an
   allowed entry type.
 
-Created metadata should also include `githubRepo`, `Lake Proof Package`, and
-`Lake Statement Package`, in addition to `submissionIssueNumber` and
-`submissionIssueUrl`.
+Created metadata fields are `githubRepo`, `submittedBy`, `LakeProofPackage`,
+`LakeStatementPackage`, `submissionIssueNumber`, and `submissionIssueUrl`.
+Authors should normally omit these until tooling/workflows populate them. If
+present, they must satisfy the schema, for example `githubRepo` must be a URI.
 
 ## Metadata Shape
 
@@ -50,61 +54,64 @@ statements:
   - Name: MainStatement
     Type: Axiom
     Statement:
-      Name: PackageSlug.Statement.MainStatement.main_statement
-    File: statements/MainStatement.lean
-    Used Surface Files:
-      - Package: OtherPackage.Statements
-        File: statements/OtherStatement.lean
+      CurrentSubmission: true
+      LeanStatement: statements/MainStatement.lean
+      LatexDefinition: statements/MainStatement.tex
+      Name: SubmissionSlug.Statement.MainStatement.main_statement
+    DeclarationReferences:
+      - SubmissionSlug: OtherSubmission
+        LeanStatement: statements/OtherStatement.lean
+        LatexDefinition: statements/OtherStatement.tex
         Name: OtherPackage.Statement.OtherStatement.other_statement
 ```
 
-Proof entries should use structured theorem, proof, and used-file records:
+Proof entries should use structured theorem, proof, and declaration-reference
+records:
 
 ```yaml
 proofs:
   - Name: MainStatementProof
     Type: proof
     Theorem:
-      Package: PackageSlug.Statements
+      SubmissionSlug: SubmissionSlug
       File: statements/MainStatement.lean
-      Name: PackageSlug.Statement.MainStatement.main_statement
+      Name: SubmissionSlug.Statement.MainStatement.main_statement
     Proof:
       File: proofs/MainStatementProof.lean
-      Name: PackageSlug.Proofs.MainStatement.main_statement
-    Used Surface Files:
-      - Package: OtherPackage.Statements
-        File: statements/OtherStatement.lean
+      Name: SubmissionSlug.Proofs.MainStatement.main_statement
+    DeclarationReferences:
+      - SubmissionSlug: OtherSubmission
+        LeanStatement: statements/OtherStatement.lean
+        LatexDefinition: statements/OtherStatement.tex
         Name: OtherPackage.Statement.OtherStatement.other_statement
 ```
 
-Proof-level used-file metadata must be supported. The current checker model
-authorizes proof imports through declaration-level `usedSurfaceFiles`; the new
-model must allow proof entries to declare their own used files.
+Proof-level `DeclarationReferences` metadata must be supported. The checker
+model must allow proof entries to declare their own referenced declarations.
 
 ## Needed Files And Packages
 
 Package checks should be conditional:
 
-- If a statement/declaration package is present, require its `lakefile.lean`.
+- If a statement package is present, require its `lakefile.lean`.
 - For each theorem or definition recorded in metadata, require its Lean file and
   LaTeX file.
 - If a proof package is present, require its `lakefile.lean`.
 - Lake build checks should build only packages that are present.
 
-Do not require statement/declaration folders to be direct children of a
-`surface-package/` folder. Do not require a unique Lean library for each
+Do not require statement folders to be direct children of a fixed package
+folder. Do not require a unique Lean library for each
 statement folder. Each statement must still be included in the shared statement
 library.
 
-The old `Slug.Surface` package-name rule should be replaced. The target names
-are `Slug.Statements` and `Slug.Proofs`, resolved according to the checklist
-naming model rather than the old `namespaceSlug` model.
+The target package names are `Slug.Statements` and `Slug.Proofs`, resolved from
+the submission slug.
 
 ## Statement Declaration Inspection
 
-Statement/declaration packages should contain only expected files. Current
+Statement Packages should contain only expected files. Current
 filetype checks allow any permitted extension anywhere in the package; update
-them so package contents match the statement/declaration package model.
+them so package contents match the statement package model.
 
 Use Lean-level inspection for statement files:
 
@@ -119,7 +126,8 @@ Use Lean-level inspection for statement files:
 
 Check two dependency graphs:
 
-- Declared dependencies from metadata, including proof-level used-file records.
+- Declared dependencies from metadata, including proof-level
+  `DeclarationReferences` records.
 - Actual dependencies from Lean axiom collection on the proof term.
 
 Require declared dependencies to include actual dependencies. Build the
@@ -129,7 +137,7 @@ gate.
 
 Imported submission information comes from metadata files and
 `submissions.jsonl`. Import registry rows should preserve enough source
-repository information to locate both statement/declaration and proof package
+repository information to locate both statement and proof package
 modes for an imported submission.
 
 ## Final Proof Build Rework
@@ -234,9 +242,9 @@ Not trusted:
 
 ## Tests And Fixtures
 
-Update tests that currently require the old package split or direct
-`surface-package/` children. Remove tests that require or enforce the old
-separate proof-package and surface-package structure.
+Update tests that currently require the old package split or direct fixed
+statement-folder children. Remove tests that require or enforce a separate
+proof-package and statement-package structure.
 
 Update proof metadata tests that currently require theorem names to contain
 `.Surface.Statement.` and proof names to contain `.Proofs.Statement.`. They
@@ -248,7 +256,7 @@ Add or update fixtures for:
 - Missing required files only when a package is present.
 - `Definition` and `Axiom` statement entries.
 - Rejection of statement theorem declarations.
-- Proof-level used-file metadata.
+- Proof-level `DeclarationReferences` metadata.
 - Declared dependencies covering actual Lean axiom dependencies.
 - Statement-level dependency DAG acyclicity.
 - Axiom-gate matching by name, type, and source module.

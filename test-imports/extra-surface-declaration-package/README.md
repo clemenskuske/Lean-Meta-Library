@@ -1,6 +1,6 @@
 # Extra Statement Declaration
 
-This package is a negative import fixture. The statement/declaration file
+This package is a negative import fixture. The statement file
 introduces a helper definition in addition to the public axiom.
 
 Expected rejection: the declaration checker reports that the statement file

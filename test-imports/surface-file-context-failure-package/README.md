@@ -5,4 +5,4 @@ This package is a negative import fixture for the legacy
 context checker during the structure rework.
 
 Expected rejection: the context check reports a forbidden eval command in the
-statement/declaration file.
+statement file.

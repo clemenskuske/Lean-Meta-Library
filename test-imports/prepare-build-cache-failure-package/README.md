@@ -3,4 +3,4 @@
 This package is a negative import fixture for the `prepare-build-cache.mjs` checker.
 
 Expected rejection: `prepare Lean build/cache` reports that the
-statement/declaration package Lake build failed while that package is present.
+statement package Lake build failed while that package is present.
