@@ -24,16 +24,7 @@ repository:
       - .yaml
       - .yml
     pathRule: repo-relative-file
-    expectedContent:
-      - "Must validate against meta.config.yaml."
-      - "Author-supplied required fields are pinnedLeanToolchain, abstractPath, submissionTitle, submissionSlug, and bibtex-entries."
-      - "If statements is present, statementLakefilePath must also be present."
-      - "If statementLakefilePath is present, statements must also be present."
-      - "If proofs is present, proofLakefilePath must also be present."
-      - "If proofLakefilePath is present, proofs must also be present."
-      - "pinnedLeanToolchain must equal lml-env.json lean.toolchain."
-      - "Repository paths must be relative paths that stay inside the source repository."
-      - "Created fields githubRepo, submittedBy, LakeStatementPackage, LakeProofPackage, submissionIssueNumber, and submissionIssueUrl may be absent before workflow/tooling updates."
+    schemaFrom: meta.config.yaml
   abstractFile:
     pathFrom: abstractPath
     required: true
