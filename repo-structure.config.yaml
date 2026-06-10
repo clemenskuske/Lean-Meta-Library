@@ -15,8 +15,6 @@ sourcesOfTruth:
   allowedFileExtensions: "lml-env.json#/submission/allowedFileExtensions"
   allowedExtensionlessFiles: "lml-env.json#/submission/allowedExtensionlessFiles"
   allowedDirectImportPrefixes: "lml-env.json#/submission/allowedImportPrefixes"
-  pinnedLeanToolchain: "lml-env.json#/lean/toolchain"
-  pinnedMathlibRevision: "lml-env.json#/mathlib/revision"
 
 repository:
   kind: source-repository
