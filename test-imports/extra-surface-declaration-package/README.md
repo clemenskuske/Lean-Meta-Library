@@ -1,7 +1,7 @@
-# Extra Surface Declaration
+# Extra Statement Declaration
 
-This package is a negative import fixture. The statement surface file introduces a
-helper definition in addition to the public theorem axiom.
+This package is a negative import fixture. The statement/declaration file
+introduces a helper definition in addition to the public axiom.
 
-Expected rejection: `surface declarations` reports that the surface file
+Expected rejection: the declaration checker reports that the statement file
 introduces more than one direct declaration under the metadata namespace.

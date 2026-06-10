@@ -1,355 +1,261 @@
-# Submission API Structure Agent README
+# Submission Structure Rework Agent README
 
-Use this README as the implementation target for the next Lean Meta Library submission-structure rework. It explains the intended file layout before the checker and CLI code are changed.
-
-The starting point is the current paper-submission readiness guide in `agent-info/paper-submission-readiness-agent-guide.md`. That guide describes the current two-package model. This README keeps the same idea but adds explicit API modules for each package mode and changes how cross-repository references are routed.
+Use this README as an implementation target for the Lean Meta Library
+submission-structure rework. The repository file `structure-update-guidelines`
+is the ground truth; when the two files disagree, update this README from that
+file before changing code.
 
 ## Goal
 
-Every submission repository still has two Lean package modes:
+The target model moves from the old surface-package framing to
+statement/declaration terminology:
 
-- The surface mode exposes the trustworthy public declarations.
-- The proofs mode exposes proved replacements for surface statement axioms.
+- The public declaration side is the statement/declaration package.
+- Public entries are `Definition` or `Axiom`.
+- Axiom entries are Lean axioms only; theorem declarations belong to proof
+  artifacts, not statement files.
+- Proof artifacts discharge statements with `proof`, `conditional-proof`, or
+  `reduction` entries.
 
-The rework adds one stable API module for each mode:
+Separate statement/declaration and proof packages are no longer required for
+every submission. If either package is present, its package-specific checks
+should run. A proof package that depends locally on a statement package remains
+allowed, but it is not required.
 
-- `Repo.API` in the surface package imports the repository's surface definitions and axioms.
-- `Repo.API` in the proofs package imports the same surface definitions and the repository's proof theorems.
+## Naming Model
 
-All references from one submission repository to another must import the other repository's `Repo.API` module. Downstream code should not import another repository's individual surface or proof modules directly.
+Use the checklist names from `structure-update-guidelines`:
 
-The final import-stage proof build should stop relying on a namespace rewrite or regex-like surface-to-proof substitution. Instead, it should build the current submission together with the proof packages of every used repository and then reject any forbidden axioms or sorries found by Lean.
+- `DeclarationPackage` instead of `Surface Package`.
+- `statementLakefilePath` instead of `surfaceLakefilePath`.
+- `packageSlug` instead of `namespaceSlug`.
+- `submissionTitle` instead of `paperTitle`.
+- `bibtex-entries` instead of `bibtex`.
+- `statements` instead of `declarations`.
+- Statement entry types `Definition` and `Axiom`; do not keep `Statement` as an
+  allowed entry type.
 
-## rules-block
+Created metadata should also include `githubRepo`, `Lake Proof Package`, and
+`Lake Statement Package`, in addition to `submissionIssueNumber` and
+`submissionIssueUrl`.
 
-These rules carry forward from the startup guide and the paper-submission readiness guide, adjusted for the API-module structure:
+## Metadata Shape
 
-- Treat `meta.yaml` as the submission source of truth. Lean files, package files, abstracts, proof entries, and dependency metadata must match it.
-- Build the submission with the user. Do not infer the public mathematical surface from a source project alone; get user approval for the title, namespace slug, abstract, public declarations, proof entry types, assumptions, and bibliography.
-- Keep the submission small and reviewable. Copy or adapt only the surface and proof code needed for the user-approved submission.
-- Start from `lml create-paper <slug>` once the CLI scaffold supports this layout, so Lean toolchain and mathlib pins come from current policy.
-- Keep both `lean-toolchain` files and both Lake files pinned to the toolchain and mathlib revision required by `lml-env.json`.
-- Metadata strings should stay simple ASCII accepted by the checker. Avoid shell syntax, angle brackets, backticks, semicolons, and nonessential punctuation.
-- Every `Definition` and `Statement` needs a matching declaration folder, `Surface.lean`, and `latex-file.tex`.
-- Each surface declaration file introduces exactly one direct public declaration. Do not add helper declarations, private declarations, instances, structures, classes, inductives, extra axioms, macros, custom syntax, `unsafe`, `run_cmd`, `#eval`, `#print`, `extern`, or `IO`.
-- A `Definition` entry introduces one `def`. A `Statement` entry introduces one `axiom`; theorem/proof declarations belong in the proof package, not the surface package.
-- Every surface statement needs exactly one matching metadata proof entry and proof file. Proof entry type is `proof`, `conditional-proof`, or `reduction`.
-- Surface statement axioms and proof-package theorems must expose the same Lean declaration name. The package mode changes; the declaration name does not.
-- The two `Repo/API.lean` files are the mode-specific aggregate import files. Surface API imports `Repo.Definition*` and `Repo.Axiom*`; proof API imports `Repo.Definition*` and `Repo.Proof*`.
-- The proof package may import definitions from the local surface package, but it must not import or depend on axioms from the local surface package. A submitted proof must establish the same theorem name without using its surface axiom as an assumption.
-- Everything built through proof `Repo.API` must be free of internal axioms. Allowed axiom dependencies are only the configured mathlib base axioms and declarations explicitly marked as imports in the metadata file.
-- Surface modules should be checked with Lean so submitted surface constants are only definitions or axioms; theorem/proof declarations must not be introduced or imported as submitted surface content.
-- Proof files must not contain `axiom`, `sorry`, `admit`, or `unsafe`, and compiled proof targets must not depend on `sorryAx` or local proof-side axioms.
-- Imports may use `Mathlib.*`, `Std.*`, local modules from the same submission, and authorized external repository APIs. Cross-repository imports must go through `OtherRepo.API`.
-- `usedSurfaceFiles` remains the authorization source for external repository references. Any external dependency must be backed by the matching row in `submissions.jsonl`.
-- Run `lml update` before dependency work, and do not edit `submissions.jsonl` by hand.
-- Run `lml test --meta=path/to/meta.yaml` before calling a submission package done. Treat warnings as review items.
+Statement entries should use the checklist shape:
 
-## Target Package Shape
-
-Create one submission package folder, normally named `<slug>-package/`:
-
-```text
-<slug>-package/
-  lean-toolchain
-  lakefile.lean
-  meta.yaml
-  abstract.tex
-  Repo/
-    API.lean
-    Definition1.lean
-    Definition2.lean
-    Proof1.lean
-    Proof2.lean
-  proofs/
-    <TheoremName>Proof.lean
-  surface-package/
-    lean-toolchain
-    lakefile.lean
-    Repo/
-      API.lean
-      Definition1.lean
-      Definition2.lean
-      Axiom1.lean
-      Axiom2.lean
-    <EntryName>/
-      latex-file.tex
-      Surface.lean
+```yaml
+statements:
+  - Name: MainStatement
+    Type: Axiom
+    Statement:
+      Name: PackageSlug.Statement.MainStatement.main_statement
+    File: statements/MainStatement.lean
+    Used Surface Files:
+      - Package: OtherPackage.Statements
+        File: statements/OtherStatement.lean
+        Name: OtherPackage.Statement.OtherStatement.other_statement
 ```
 
-Here `Repo` means the PascalCase namespace root derived from `namespaceSlug`. For example, `namespaceSlug: connected-graphs` uses `ConnectedGraphs`.
-
-The top-level package is the proofs package. The nested `surface-package/` is the surface package. Both package modes need a `Repo/API.lean` file so the Lean module name is `Repo.API`.
-
-## Surface Package
-
-The surface package records public definitions and statement axioms. Its package name remains:
-
-```lean
-package Repo.Surface where
-```
-
-The surface package should expose `Repo.API` as its aggregate module:
-
-```text
-surface-package/Repo/API.lean
-```
-
-`surface-package/Repo/API.lean` imports all local surface declaration modules. Definitions are imported by their definition modules. Statements are imported by their axiom modules:
-
-```lean
-import Repo.Definition1
-import Repo.Definition2
-import Repo.Axiom1
-import Repo.Axiom2
-```
-
-Declaration files still have one folder per metadata declaration:
-
-```text
-surface-package/<EntryName>/Surface.lean
-surface-package/<EntryName>/latex-file.tex
-```
-
-The public `Repo.Definition*` and `Repo.Axiom*` modules imported by `Repo/API.lean` should expose these declaration files in the stable API shape. Each declaration file still introduces exactly one direct public declaration under the metadata namespace. The declaration namespace should not include the package-mode marker `Surface`, because the proof package must expose the same Lean declaration name:
-
-```lean
-namespace Repo.Statement.MainStatement
-
-axiom main_statement : SomeStatement
-
-end Repo.Statement.MainStatement
-```
-
-Local imports inside the same submission may still use local declaration modules. Imports from another submission repository must go through that repository's API module, for example:
-
-```lean
-import OtherRepo.API
-```
-
-## Proof Package
-
-The root package is the proof package. Its package name remains:
-
-```lean
-package Repo.Proofs where
-```
-
-It should expose `Repo.API` as its aggregate module:
-
-```text
-Repo/API.lean
-```
-
-`Repo/API.lean` imports local surface definition modules and submitted proof modules. It does not import local surface axiom modules:
-
-```lean
-import Repo.Definition1
-import Repo.Definition2
-import Repo.Proof1
-import Repo.Proof2
-```
-
-Each proof file imports Mathlib, Std, local proof helpers, local modules that do not define the same constant being replaced, local surface definitions, and any authorized external repository APIs. A proof file must not import the local surface module that defines the exact same constant it is proving, because the proof package exposes that constant name itself:
-
-```lean
-import Mathlib.SomeModule
-import DefinitionEntry.Surface
-import OtherRepo.API
-```
-
-The proof package is allowed to use local surface definitions. It is not allowed to use local surface axioms, including statement axioms from the same submission. The checker should reject proof targets whose compiled axiom dependencies include local surface-package statement axioms.
-
-The local surface package and local proof package both expose a `Repo.API` module as alternate modes for downstream users. The same API import should resolve to definitions plus axioms in surface mode and definitions plus proofs in proof mode. Implementation work must make sure the current repository's proof build does not accidentally create a duplicate-module or duplicate-constant conflict between its local surface mode and proof mode.
-
-Proof declarations use exactly the same Lean declaration name as their matching surface axiom:
-
-```lean
-namespace Repo.Statement.MainStatement
-
-theorem main_statement : SomeStatement := by
-  ...
-
-end Repo.Statement.MainStatement
-```
-
-## Name Matching Rule
-
-For every metadata proof entry, the surface axiom and proof theorem must have exactly the same Lean declaration name. They live in different package modes, so Lean sees only the surface version or only the proof version in a given external dependency, but the exported constant name is identical.
-
-Allowed:
+Proof entries should use structured theorem, proof, and used-file records:
 
 ```yaml
 proofs:
-  - theorem: Repo.Statement.MainStatement.main_statement
-    proof: Repo.Statement.MainStatement.main_statement
+  - Name: MainStatementProof
+    Type: proof
+    Theorem:
+      Package: PackageSlug.Statements
+      File: statements/MainStatement.lean
+      Name: PackageSlug.Statement.MainStatement.main_statement
+    Proof:
+      File: proofs/MainStatementProof.lean
+      Name: PackageSlug.Proofs.MainStatement.main_statement
+    Used Surface Files:
+      - Package: OtherPackage.Statements
+        File: statements/OtherStatement.lean
+        Name: OtherPackage.Statement.OtherStatement.other_statement
 ```
 
-Not allowed:
+Proof-level used-file metadata must be supported. The current checker model
+authorizes proof imports through declaration-level `usedSurfaceFiles`; the new
+model must allow proof entries to declare their own used files.
 
-```yaml
-proofs:
-  - theorem: Repo.Statement.MainStatement.main_statement
-    proof: Repo.Proofs.Statement.MainStatement.main_statement
-```
+## Needed Files And Packages
 
-Also not allowed:
+Package checks should be conditional:
 
-```yaml
-proofs:
-  - theorem: Repo.Statement.MainStatement.main_statement
-    proof: Repo.Statement.MainStatement.main_statement_proof
-```
+- If a statement/declaration package is present, require its `lakefile.lean`.
+- For each theorem or definition recorded in metadata, require its Lean file and
+  LaTeX file.
+- If a proof package is present, require its `lakefile.lean`.
+- Lake build checks should build only packages that are present.
 
-The surface package exposes:
+Do not require statement/declaration folders to be direct children of a
+`surface-package/` folder. Do not require a unique Lean library for each
+statement folder. Each statement must still be included in the shared statement
+library.
 
-```lean
-namespace B
+The old `Slug.Surface` package-name rule should be replaced. The target names
+are `Slug.Statements` and `Slug.Proofs`, resolved according to the checklist
+naming model rather than the old `namespaceSlug` model.
 
-axiom main_theorem : SomeStatement
+## Statement Declaration Inspection
 
-end B
-```
+Statement/declaration packages should contain only expected files. Current
+filetype checks allow any permitted extension anywhere in the package; update
+them so package contents match the statement/declaration package model.
 
-The proof package exposes the same name:
+Use Lean-level inspection for statement files:
 
-```lean
-namespace B
+- `Definition` entries introduce one `def`.
+- `Axiom` entries introduce one `axiom`.
+- Theorems, proof declarations, helper constants, private declarations,
+  instances, structures, classes, inductives, extra axioms, macros, custom
+  syntax, `unsafe`, `run_cmd`, `#eval`, `#print`, `extern`, and `IO` are not
+  submitted statement content.
 
-theorem main_theorem : SomeStatement := by
-  ...
+## Dependency Model
 
-end B
-```
+Check two dependency graphs:
 
-The type must still elaborate to the same compiled Lean type. Textual similarity is not enough.
+- Declared dependencies from metadata, including proof-level used-file records.
+- Actual dependencies from Lean axiom collection on the proof term.
 
-## Cross-Repository Dependency Policy
+Require declared dependencies to include actual dependencies. Build the
+axiom-remapping substitution from declared dependencies only. Do not use a
+global substitution; undeclared axioms should survive and be caught by the axiom
+gate.
 
-Each imported repository has two usable modes:
+Imported repository information comes from metadata files and
+`submissions.jsonl`. Import registry rows should preserve enough information to
+locate both statement/declaration and proof package modes for an imported
+repository.
 
-- Surface mode for first-run surface checking and public references.
-- Proof mode for final proof builds.
+## Final Proof Build Rework
 
-References from a submission to another repository must import only:
+The final proof-build stage should no longer only copy the package, run
+`lake update`, `lake clean`, cache fetch, `lake build`, reject `sorry`/`sorryAx`,
+and inspect proof-target axioms against statement axioms plus base axioms.
 
-```lean
-import OtherRepo.API
-```
+The new approach must:
 
-The Lake dependency decides whether that API resolves to surface declarations or proof declarations:
+1. Import all nested imported repositories into the root Lake file.
+2. Read repository information from metadata files and `submissions.jsonl`.
+3. During the Lean build, run a script that recursively follows metadata
+   references.
+4. Change proofs so they reference the proof counterpart of a referenced
+   statement instead of its statement axiom when that referenced statement is
+   not a conjecture.
+5. Use the resulting `.olean` files for axiom testing and related checks.
+6. Return computed dependency and conjecture information.
+7. Compare the computed information to the version recorded in metadata; a
+   mismatch is a failure.
 
-- In ordinary surface checking, the dependency points at the other repository's surface package.
-- In final proof checking, the dependency points at the other repository's proof package.
+Composed proof outputs should rely only on trusted base axioms and conjectures.
 
-This keeps source imports stable while allowing the final build to replace external surface axioms with their proof-package theorems.
+## Statement-Level Proof Certificates
 
-## Final Proof Build
+The atomic unit is a statement, not a paper. Paper-level dependency cycles are
+allowed, but the statement dependency graph must be acyclic.
 
-The target final check is:
+Target certificate flow:
 
-1. Copy the submitted package into an isolated temporary directory.
-2. Read metadata and `usedSurfaceFiles` to determine all external repositories used by the submission.
-3. Add every used repository to the root proof-package Lake file.
-4. For each external repository, choose the proof package, not the surface package.
-5. Run `lake update`.
-6. Run `lake clean`.
-7. Fetch the Lake build cache best-effort.
-8. Run `lake build`.
-9. Reject build output that reports `sorry` or `sorryAx`.
-10. Ask Lean to inspect every module imported by the proof package `Repo.API`.
-11. Reject internal axioms: every compiled axiom dependency in those imports must be either one of the allowed mathlib base axioms or an external import explicitly authorized by the metadata.
+1. Treat each statement as an axiom with no value.
+2. Annotate discharger theorems with which statement they discharge, for example
+   with a `discharges` attribute.
+3. Require the discharger theorem's type to be definitionally equal to the
+   statement axiom's type.
+4. Certify a statement by walking the statement DAG rooted at that statement in
+   leaves-first topological order.
+5. For each statement, create a composed constant whose type is the original
+   statement type and whose value is the discharger proof term with dependency
+   axioms remapped to already-created composed constants.
+6. Share composed constants by name across diamonds in the dependency graph.
+7. Emit a small certificate that bridges the statement type to the composed
+   theorem type in both directions and reports the composed theorem's axioms.
+8. Re-verify the composed `.olean` output with `lean4checker` in a clean,
+   pinned environment.
 
-The important behavioral change is that final proof checking should use actual proof-package dependencies for used repositories. It should not import a surface package and then rewrite or reinterpret names with a special regex rule.
+The composer itself is not trusted. If it emits a bad term, Lean rejects it; if
+it emits a term with extra axioms, the axiom gate must catch it.
 
-## Surface Declaration Inspection
+## Axiom Gate
 
-Surface files should also be checked with Lean, not only with text parsing. The checker should import the surface package `Repo.API` and inspect the constants introduced by the submission's surface modules.
+The axiom gate must match axioms by name, type, and source module, not by name
+alone. The whitelist must be pinned to a canonical signed trusted base, and the
+recheck must run against that pinned base rather than an adversary-supplied
+environment.
 
-Allowed introduced constant kinds in the surface package:
+Accepted composed proofs should bottom out only in trusted base axioms and
+declared conjectures.
 
-- Definitions recorded as metadata `Definition` entries.
-- Axioms recorded as metadata `Statement` entries.
+## Lean And Orchestration Split
 
-Rejected introduced constant kinds in the surface package:
+Lean must own anything that touches Lean semantics:
 
-- Theorems or proof-carrying declarations.
-- Extra helper constants of any kind.
-- Imported theorem or proof modules from the same or another submission package.
+- The `discharges` attribute.
+- Reading terms, definitional equality, and type comparison.
+- Axiom sets and term rewriting.
+- Adding composed declarations.
+- Statement-graph construction and acyclicity checks.
+- Typed bridge generation.
+- The name/type/module axiom gate.
 
-This does not mean Mathlib or Std imports are forbidden in surface files. It means the submitted surface itself should expose only definitions and axioms, and should not smuggle in a theorem/proof surface through an imported submission module.
+Python, Lake, Nix, or other glue should only orchestrate:
 
-## What Changed
+- Discover libraries.
+- Compute library build order.
+- Run `lake build` per library in sandboxes.
+- Shuttle `.olean` files to isolated `lean4checker`.
+- Aggregate results.
 
-- Each package mode now has an `API.lean` file.
-- `Repo.API` is the aggregate module in both modes.
-- The surface `Repo.API` imports `Repo.Definition*` and `Repo.Axiom*` modules.
-- The proof `Repo.API` imports `Repo.Definition*` and `Repo.Proof*` modules.
-- Cross-repository Lean imports go through `OtherRepo.API`.
-- Surface statement axioms and proof theorems must have exactly the same Lean declaration name.
-- The final proof build uses proof packages for all used repositories.
-- The final proof build checks everything imported by proof `Repo.API` for sorries and forbidden internal axioms after normal Lean elaboration and build.
+Glue must not compute the axiom-remapping substitution or the whitelist
+decision. The small trusted glue exception is signature/hash verification and
+ensuring the recheck runs against the pinned base.
 
-## What Needs To Change In Code
+## Trusted Computing Base
 
-Update the CLI scaffold:
+Trusted:
 
-- `create-paper` should generate both `Repo/API.lean` files.
-- `create-paper` should generate surface modules under `surface-package/Repo/` and proof modules under root `Repo/`.
-- Generated surface `Repo/API.lean` should import `Repo.Definition1`, `Repo.Definition2`, `Repo.Axiom1`, `Repo.Axiom2`, and so on.
-- Generated proof `Repo/API.lean` should import `Repo.Definition1`, `Repo.Definition2`, `Repo.Proof1`, `Repo.Proof2`, and so on.
-- Generated Lake files should include the API modules and all imported declaration/proof modules in their `lean_lib` roots or globs.
-- Generated proof names should already satisfy the same-Lean-declaration-name rule.
+- The Lean kernel.
+- `lean4checker`.
+- The canonical signed trusted base.
+- The guarantee that verification runs against that base.
+- The name/type/module axiom gate.
+- The small provenance glue.
 
-Update metadata and namespace checks:
+Not trusted:
 
-- Require `surface-package/Repo/API.lean`.
-- Require root `Repo/API.lean`.
-- Check that the surface API imports local `Repo.Definition*` and `Repo.Axiom*` modules, not proof modules.
-- Check that the proof API imports local `Repo.Definition*` and `Repo.Proof*` modules, not local surface axiom modules.
-- Check that every proof theorem name is exactly the same Lean name as the corresponding surface theorem name.
-- Check that proof-package imports and compiled proof dependencies may use local surface definitions but not local surface axioms.
-- Use Lean inspection for surface modules to verify that submitted surface constants are only definitions or axioms and that no theorem/proof declaration is introduced or imported as part of the submitted surface.
+- The composer.
+- Orchestration glue.
+- Every paper's proof file.
 
-Update dependency checks:
+## Tests And Fixtures
 
-- Treat cross-repository `import OtherRepo.API` as the only allowed external repository import form.
-- Keep using `usedSurfaceFiles` as the authorization source for external repository references.
-- In surface/package checks, resolve `OtherRepo.API` through a surface package Lake dependency.
-- In final proof checks, resolve `OtherRepo.API` through a proof package Lake dependency.
-- Reject direct cross-repository imports such as `OtherRepo.Surface...`, `OtherRepo.Proofs...`, or individual external entry modules.
+Update tests that currently require the old package split or direct
+`surface-package/` children. Remove tests that require or enforce the old
+separate proof-package and surface-package structure.
 
-Update final proof build:
+Update proof metadata tests that currently require theorem names to contain
+`.Surface.Statement.` and proof names to contain `.Proofs.Statement.`. They
+should validate the structured `Theorem` and `Proof` fields instead.
 
-- Before `lake update`, rewrite or synthesize the isolated root Lake dependency list so each used external repository is required in proof mode.
-- Build against those proof dependencies directly.
-- Remove the special surface-to-proof regex-style replacement from the final checker.
-- Keep the existing build-output sorry detection.
-- Run Lean-level axiom inspection over everything imported by proof `Repo.API`.
-- Reject internal axioms in those imports. Allowed axioms are only the configured mathlib base axioms and axioms explicitly marked as imports in the metadata.
-- Ensure the Lean-level axiom inspection rejects local surface-package axioms used by proof-package theorems while allowing local surface definitions.
+Add or update fixtures for:
 
-Update import registry handling:
+- Optional package presence.
+- Missing required files only when a package is present.
+- `Definition` and `Axiom` statement entries.
+- Rejection of statement theorem declarations.
+- Proof-level used-file metadata.
+- Declared dependencies covering actual Lean axiom dependencies.
+- Statement-level dependency DAG acyclicity.
+- Axiom-gate matching by name, type, and source module.
+- Final proof-build composition and metadata dependency/conjecture comparison.
 
-- Preserve enough information in `submissions.jsonl` to locate both package modes for an imported repository.
-- If the surface folder remains the recorded folder, add or derive the proof package folder for final proof builds.
-- Ensure imported rows still record repository URL, source branch, source commit, metadata path, and surface folder.
+## Suggested Milestone
 
-Update tests and fixtures:
+Start with three toy libraries `C <- B <- A`, one statement each, dischargers
+wired up, the composer producing the composed proof for `A`, the certificate
+passing, and a `lean4checker` pass.
 
-- Update the happy-path starter fixture shape to include API modules.
-- Add a fixture that rejects a missing surface `Repo/API.lean`.
-- Add a fixture that rejects a missing proof `Repo/API.lean`.
-- Add a fixture that rejects a malformed API import list, such as proof API importing `Repo.Axiom1` instead of `Repo.Proof1`.
-- Add a fixture that rejects external direct imports bypassing `OtherRepo.API`.
-- Add a fixture that rejects mismatched surface/proof Lean declaration names.
-- Add a fixture that rejects a proof theorem depending on its local surface axiom, while accepting proof code that imports local surface definitions.
-- Add a fixture that rejects a theorem/proof declaration introduced by or imported through the surface API.
-- Add a fixture that rejects an internal axiom imported by proof `Repo.API` unless it is explicitly authorized by metadata.
-- Update the final-proof-build failure fixture so the failure comes from a real proof-package dependency build, not from name rewriting.
-
-## Migration Notes For Agents
-
-Until the code and tests are updated, the current CLI may still expect the older structure from `paper-submission-readiness-agent-guide.md`. Treat this README as the target design for the upcoming implementation work, not as a guarantee that the present checker already accepts this layout.
-
-When implementing the rework, change tests and code together in small steps. Keep the old guide available until the CLI scaffold and all checks accept the API-module structure.
+Then add a second statement per paper and a deliberate paper-level but
+statement-acyclic cycle to confirm the graph is statement-granular.

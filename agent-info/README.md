@@ -6,10 +6,20 @@ Use this guide when you are helping inside a Lean Meta Library workspace or usin
 
 Lean Meta Library records Lean formalization submissions in a form that can be checked, imported, and reused by later submissions.
 
+The current structure-planning source is the repository file
+`structure-update-guidelines`. Treat it as the ground truth when it conflicts
+with older examples or checker names in this guide.
+
 The core idea is to separate three things:
 
-- The public mathematical surface: trustworthy declarations, either definitions or statements.
-- The proof package: Lean files for `proof`, `conditional-proof`, and `reduction` entries. A statement with a `proof` or `conditional-proof` is a theorem; a statement with a `reduction` is a conjecture. An `assumption` is a conjecture expected to be true, and a `conditional-proof` is a proof relying only on assumptions.
+- The public statement/declaration content: trustworthy `Definition` entries
+  and `Axiom` entries. Statement entries should introduce axioms, not theorem
+  declarations.
+- The proof artifacts: Lean files for `proof`, `conditional-proof`, and
+  `reduction` entries. A statement with a `proof` or `conditional-proof` is a
+  theorem; a statement with a `reduction` is a conjecture. An `assumption` is a
+  conjecture expected to be true, and a `conditional-proof` is a proof relying
+  only on assumptions.
 - The submission metadata: a small manifest that tells the checker where the declarations, proofs, abstract, toolchain, and bibliographic data live.
 
 Agents should treat the metadata file as the submission source of truth. The Lean files should match it, and the checks should be run from it.
@@ -42,7 +52,7 @@ The commands have these roles:
 - `create-paper <slug>`: create a starter submission package that an agent can adapt with user-approved declarations, metadata, and proofs.
 - `test --meta=path/to/meta.yaml`: run the local submission checks from the metadata file.
 - `submit --meta=path/to/meta.yaml`: run checks, then dispatch the GitHub submit workflow.
-- `submission-status path/to/meta.yaml`: report submission issue, workflow, import, source commit, and surface-file status.
+- `submission-status path/to/meta.yaml`: report submission issue, workflow, import, source commit, and statement-file status.
 
 When a user asks you to make an arbitrary Lean project submission ready, start with:
 
@@ -50,9 +60,11 @@ When a user asks you to make an arbitrary Lean project submission ready, start w
 lml agent-submission-guide
 ```
 
-That command prints the guide for turning a Lean project into a checked Lean Meta Library submission. Use `lml create-paper <slug>` for the starter package, then replace the starter content with the user's actual title, abstract, surface declarations, proof files, and bibliographic metadata.
+That command prints the guide for turning a Lean project into a checked Lean Meta Library submission. Use `lml create-paper <slug>` for the starter package when it matches the current checker, then replace the starter content with the user's actual title, abstract, statement/declaration entries, proof files, and bibliographic metadata.
 
-For the upcoming API-module submission-structure rework, also read `agent-info/submission-api-structure-agent-readme.md`. That README is the target design for the new layout before the checker and CLI scaffold are updated.
+For structure-update work, read `structure-update-guidelines` first, then
+`agent-info/submission-api-structure-agent-readme.md`. The guideline file
+supersedes older surface-package wording and records the latest target model.
 
 
 ## How To Use `submissions.jsonl`
@@ -65,19 +77,30 @@ Start by syncing the local registry. `lml update` refreshes `submissions.jsonl` 
 
 `submissions.jsonl` is the import registry. It is a JSON Lines file: each non-empty line is one complete JSON object for one imported submission.
 
-Read it when you need to know what has already been imported, what surface package a later submission may depend on, or which repository, branch, commit, metadata path, and repository-relative surface folder define an imported surface.
+Read it when you need to know what has already been imported, what statement or
+proof package a later submission may depend on, or which repository, branch,
+commit, metadata path, and repository-relative package folders define imported
+content.
 
 Important fields include:
 
 - `Repo Url`, `Source Branch`, and `Source Commit`: the exact source revision for the imported submission.
 - `Metadata File`: the metadata path used for the import.
-- `Surface Folder`: the repository-relative folder containing the imported surface package.
-- `declarations`: the public definition and statement declarations recorded for that submission.
+- `Surface Folder`: legacy repository-relative folder for the imported public
+  declaration package when present.
+- `Lake Statement Package` and `Lake Proof Package`: target metadata fields for
+  locating the statement/declaration and proof package modes.
+- `statements`: target public `Definition` and `Axiom` entries recorded for
+  that submission.
 - `proofs`: typed proof targets using `proof`, `conditional-proof`, or `reduction`.
-- `paper`: paper title and bibliographic metadata.
+- `submissionTitle` and `bibtex-entries`: target title and bibliographic metadata.
 - `User Login`, `Issue Number`, and `Issue Url`: submission provenance from the import workflow.
 
-For dependency work, the registry is the authorization source. A later submission may use at most the imported surface package authorized by its metadata row, and its Lake dependency must point to the recorded repository, source commit, and repository-relative surface folder. Downstream Lean files should import only the required `.Surface` package from that dependency.
+For dependency work, the registry is the authorization source. Declared
+dependencies should use records with `Package`, `File`, and `Name`. Actual
+dependencies come from Lean axiom collection and must be included in the
+declared dependencies; undeclared axiom dependencies should survive to the axiom
+gate rather than being silently rewritten.
 
 Do not change `submissions.jsonl` by hand. It is synced registry state, and import automation or `lml update` may recreate or overwrite it from the canonical repository state at any time.
 
@@ -86,9 +109,11 @@ Do not change `submissions.jsonl` by hand. It is synced registry state, and impo
 
 1. Read the local agent instructions and project README files.
 2. Inspect the metadata file before editing submission files.
-3. If preparing a new submission, ask the user to confirm the title, namespace slug, abstract, public declarations, proof types, and proof sources.
-4. `lml update`: refresh `submissions.jsonl`, then use it only for imported-surface context and dependency authorization.
+3. If preparing a new submission, ask the user to confirm the title, package slug, abstract, public `Definition`/`Axiom` entries, proof types, and proof sources.
+4. `lml update`: refresh `submissions.jsonl`, then use it only for imported statement/proof context and dependency authorization.
 5. `lml test --meta=path/to/meta.yaml`: run this before calling submission work complete.
 6. `lml submission-status path/to/meta.yaml`: run this when the user wants to know whether a submitted package has been uploaded, tested, imported, or changed since submission.
 
-Keep the package small and reviewable. Prefer the minimal surface and proof code needed for the user-approved mathematical submission over copying a whole source project into the submission package.
+Keep the package small and reviewable. Prefer the minimal statement/declaration
+and proof code needed for the user-approved mathematical submission over copying
+a whole source project into the submission package.

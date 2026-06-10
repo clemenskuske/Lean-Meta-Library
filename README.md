@@ -22,24 +22,53 @@ allowed submission file/import policy, first-run size limits, checker output lim
 
 ## Submission Contract
 
-A submission consists of declarations and proofs. Declarations live in the surface package and are the trustworthy public surface: definitions are Lean `def`s, and statements are usually Lean `axiom`s or `theorem`s.
+A submission consists of public statement/declaration entries, proof artifacts,
+and metadata. The current structure planning source is
+`structure-update-guidelines`; it is the ground truth for upcoming checker and
+CLI structure changes.
+
+Statement entries use the new metadata vocabulary:
+
+- `Definition` entries introduce Lean `def`s.
+- `Axiom` entries introduce Lean `axiom`s. Statement files must not introduce
+  theorem declarations as submitted statement content.
+- Metadata uses `packageSlug`, `submissionTitle`, `statementLakefilePath`,
+  `statements`, and `bibtex-entries` rather than the older surface-oriented
+  names.
 
 ```lean
-axiom Surface.Statement.entry : SomeStatement
+axiom Statements.Entry.entry : SomeStatement
 ```
 
-Proofs live in the proof package. A proof entry has type `proof`, `conditional-proof`, or `reduction`, and it must provide a proof-side theorem with the same Lean type as the surface statement:
+Proof entries have type `proof`, `conditional-proof`, or `reduction`. They name
+the discharged theorem and proof target with structured `Theorem` and `Proof`
+records containing `Package`, `File`, and `Name`. The proof target must have the
+same Lean type as the statement axiom:
 
 ```lean
-theorem Proofs.Statement.entry : SomeStatement := by
+theorem Proofs.Entry.entry : SomeStatement := by
   ...
 ```
 
-When `lml test` runs, each proof metadata entry explicitly names the surface theorem constant and the proof theorem constant. The checker passes both Lean names to Lean and asks `isDefEq` to compare their compiled types. A statement is classified as a theorem when it has a `proof` or `conditional-proof`; it is classified as a conjecture when it has a `reduction`. An `assumption` is a conjecture expected to be true, and a `conditional-proof` is a proof that relies only on assumptions. Proof files may rely on declarations, Std, and Mathlib. The proof checker elaborates proof files, but only the metadata proof targets are trusted as submitted proofs: it asks Lean for each proof theorem's compiled axiom dependencies and rejects dependencies on `sorryAx` or local proof-namespace axioms. Unused declarations or imported declarations with `sorry` do not fail this check unless a submitted proof theorem depends on them.
+When `lml test` runs, each proof metadata entry lets Lean compare the compiled
+types with `isDefEq`. A statement is classified as a theorem when it has a
+`proof` or `conditional-proof`; it is classified as a conjecture when it has a
+`reduction`. An `assumption` is a conjecture expected to be true, and a
+`conditional-proof` is a proof that relies only on assumptions. Proof files may
+rely on definitions, declared dependencies, Std, and Mathlib, but submitted proof
+targets must not depend on `sorryAx` or local proof-side axioms.
 
-At the end of the import workflow, a final proof build runs in an isolated temporary copy. It runs `lake update`, `lake clean`, fetches the Lake build cache best-effort, then runs `lake build`. The final check relies on Lean elaboration and compiled proof-target axiom inspection. It asks Lean to verify that each metadata proof theorem's dependencies are either surface statement declarations or have the same types as the constants listed in `lml-env.json` at `checks.allowedMathlibAxioms`, currently `propext`, `Quot.sound`, and `Classical.choice`.
+The final proof-build design is being reworked around statement-level proof
+certificates. The build must recursively follow metadata references through
+`submissions.jsonl`, compose proof outputs in statement-dependency order, and
+verify that composed proofs bottom out only in the trusted base axioms and
+declared conjectures. The axiom gate must match trusted axioms by name, type,
+and source module against a pinned trusted base.
 
-Surface files may always import other surface modules from the same submission package. Surface imports from other packages or namespaces must be justified by the current declaration's `usedSurfaceFiles` metadata; each `usedSurfaceFiles` item must include a referenced declaration, and metadata validation rejects references in the same namespace as the current declaration. A proof file may import its own surface statement module, but any other surface imports must be justified by that statement declaration's `usedSurfaceFiles` metadata. Accepted proof package dependencies are still reported as warnings.
+Declared dependency metadata defines the security boundary. Used-file records
+use `Package`, `File`, and `Name`; proof entries may also record proof-level
+`Used Surface Files`. Actual dependencies come from Lean axiom collection and
+must be included in the declared dependencies.
 
 ## CLI Tooling
 
@@ -76,7 +105,7 @@ lml create-paper
 
 The `agent-introduction` command prints `agent-info/README.md`, a general startup guide for agents working with the Lean Meta Library setup, `submissions.jsonl`, and the CLI.
 
-The `agent-submission-guide` command prints `agent-info/paper-submission-readiness-agent-guide.md`, the guide for agents turning an arbitrary Lean project into a paper submission package whose surface, metadata, and proofs are user-approved and checker-ready.
+The `agent-submission-guide` command prints `agent-info/paper-submission-readiness-agent-guide.md`, the guide for agents turning an arbitrary Lean project into a submission package whose statements, metadata, and proofs are user-approved and checker-ready.
 
 The `test` command runs `.github/actions/test/run-all.mjs` using the metadata file as the source of submission information:
 
@@ -88,10 +117,16 @@ The first-run checker prepares the Lean build/cache first, runs static checks in
 
 ```yaml
 proofs:
-  - theorem: MySlug.Surface.Statement.SomeEntry.some_statement
-    proof: MySlug.Proofs.Statement.SomeEntry.some_statement
-    type: reduction
-    proofFile: proofs/SomeEntryReduction.lean
+  - Name: SomeEntryReduction
+    Type: reduction
+    Theorem:
+      Package: MySlug.Statements
+      File: Statements/SomeEntry.lean
+      Name: MySlug.Statement.SomeEntry.some_statement
+    Proof:
+      File: proofs/SomeEntryReduction.lean
+      Name: MySlug.Proofs.SomeEntry.some_statement
+    Used Surface Files: []
 ```
 
 The `submit` command runs the submission checks first, then dispatches `.github/workflows/submit.yml` for the current repository, branch, commit, and metadata file:
@@ -101,7 +136,7 @@ lml submit path/to/meta.yaml
 lml submit --no-prior-test path/to/meta.yaml
 ```
 
-The `submission-status` command reports whether the metadata file has been submitted or imported, whether a related workflow is currently uploading, testing, or finalizing the submission, and how the recorded source commit compares with the current commit and surface files:
+The `submission-status` command reports whether the metadata file has been submitted or imported, whether a related workflow is currently uploading, testing, or finalizing the submission, and how the recorded source commit compares with the current commit and statement files:
 
 ```sh
 lml submission-status path/to/meta.yaml
@@ -126,8 +161,8 @@ npm run smoke
 
 Negative import-check fixtures live in `test-imports/`. Each package is a small
 submission that should fail for one documented reason, such as a missing proof
-file, a mismatched proof type, `sorry`, an extra surface declaration, or an
-unauthorized surface import.
+file, a mismatched proof type, `sorry`, an extra statement declaration, or an
+unauthorized statement/dependency import.
 
 Run them with:
 

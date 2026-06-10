@@ -20,9 +20,11 @@ Lean version; Lake ships with that toolchain, so separate `lean.version` and `la
 
 ## Submission dependency policy
 
-Each `submissions.jsonl` row may authorize one imported surface package. The row must include `Repo Url`, `Source Branch`, `Source Commit`, and `Surface Folder`; `Surface Folder` is repository-relative, even when the submission metadata file lives in a package subdirectory. Lake dependencies must use that repository, the source commit, and the surface folder as the dependency subdirectory, and downstream Lean files may import only the required `.Surface` package.
+`structure-update-guidelines` is the ground truth for the upcoming submission-structure rework. When it conflicts with older surface-package wording in this file or in generated examples, follow `structure-update-guidelines` and update the stale documentation.
 
-Submission Lean files may directly import Mathlib modules, Std modules, local surface modules, and authorized imported `.Surface` packages only.
+Each `submissions.jsonl` row must preserve enough information to locate imported statement/declaration and proof package modes. Older rows may still record `Repo Url`, `Source Branch`, `Source Commit`, and `Surface Folder`; the target metadata also records `githubRepo`, `Lake Statement Package`, and `Lake Proof Package`.
+
+Submission Lean files may directly import Mathlib modules, Std modules, local statement/declaration modules, and authorized imported packages only. Declared dependencies use `Package`, `File`, and `Name` records. Actual dependencies come from Lean axiom collection and must be included in the declared dependencies.
 
 ## Submission checks
 
@@ -53,11 +55,11 @@ npm run test:imports
 This command checks every package under `test-imports/` and fails if any fixture is accepted or rejected for an unexpected reason.
 Keep `test-imports/` broad enough to cover each executable checker script in `.github/actions/test/`; helper modules are exercised through those checker fixtures.
 
-Each submission consists of declarations and proofs. Declarations live in the surface package and are the trustworthy public surface. A metadata declaration is either a `Definition` or a `Statement`. A statement is classified as a theorem when it has a proof entry of type `proof` or `conditional-proof`; it is classified as a conjecture when it has a proof entry of type `reduction`. An `assumption` is a conjecture expected to be true, and a `conditional-proof` is a proof that relies only on assumptions. Each proof metadata entry explicitly names the surface theorem constant with `theorem` and the proof theorem constant with `proof`; the proof checker sends those names to Lean and asks Lean `isDefEq` to compare their compiled types. Proof files may rely on declarations, Std, and Mathlib. The proof-file checker elaborates proof files, rejects proof-file output that reports `sorry` or `sorryAx`, and asks Lean for each metadata proof theorem's compiled axiom dependencies so submitted proofs may not depend on `sorryAx` or local proof-namespace axioms.
+Each submission consists of statement/declaration entries and proofs. Public entries are `Definition` or `Axiom`; `Statement` is being replaced by `Axiom`, and statement/declaration files should introduce axioms rather than theorem declarations. A statement is classified as a theorem when it has a proof entry of type `proof` or `conditional-proof`; it is classified as a conjecture when it has a proof entry of type `reduction`. An `assumption` is a conjecture expected to be true, and a `conditional-proof` is a proof that relies only on assumptions. Each proof metadata entry uses structured `Theorem` and `Proof` records, and the checker asks Lean `isDefEq` to compare their compiled types. Proof files may rely on definitions, declared dependencies, Std, and Mathlib. The proof-file checker elaborates proof files, rejects proof-file output that reports `sorry` or `sorryAx`, and asks Lean for each metadata proof theorem's compiled axiom dependencies so submitted proofs may not depend on `sorryAx` or local proof-namespace axioms.
 
-The import workflow also runs a final proof build after the normal first-run checks. That check copies the submitted package into an isolated temporary directory, runs `lake update`, runs `lake clean`, fetches the Lake build cache best-effort, then runs `lake build`. The final check relies on Lean elaboration, build output, and compiled proof-target axiom inspection. It rejects build output that reports `sorry` or `sorryAx`, and asks Lean to inspect each metadata proof theorem's axiom dependencies. The permitted axioms are surface statement declarations and axioms with the same Lean types as the constants listed in `lml-env.json` at `checks.allowedMathlibAxioms`, currently `propext`, `Quot.sound`, and `Classical.choice`; the check compares base axiom types rather than accepting names alone.
+The import workflow's final proof build is being reworked. The target check imports all nested imported repositories into the root Lake file, recursively follows metadata references during the Lean build, rewrites references to proved dependency statements to their proof counterparts while leaving conjectures as conjectures, uses the resulting `.olean` files for axiom testing, and compares computed dependency/conjecture information to metadata.
 
-Surface files may always import other surface modules from the same submission package. Surface imports from other packages or namespaces must be justified by the current declaration's `usedSurfaceFiles` metadata; each `usedSurfaceFiles` item must include a referenced declaration, and metadata validation rejects references in the same namespace as the current declaration. A proof file may import its own surface statement module, but any other surface imports must be justified by that statement declaration's `usedSurfaceFiles` metadata. Accepted proof package dependencies are still reported as warnings.
+The axiom gate must match axioms by name, type, and source module against a pinned trusted base. Accepted composed proofs should bottom out only in trusted base axioms and declared conjectures.
 
 ## Submit workflow
 
@@ -65,7 +67,7 @@ The `.github/workflows/submit.yml` workflow creates or updates a GitHub issue fo
 
 ## Submission status command
 
-The CLI `submission-status` command reports whether a metadata file has a submission issue, whether it has been imported, the related upload/test/finalizing workflow state when available, the distance from the recorded source commit to the current commit, and whether metadata surface files were added, changed, or removed since that source commit.
+The CLI `submission-status` command reports whether a metadata file has a submission issue, whether it has been imported, the related upload/test/finalizing workflow state when available, the distance from the recorded source commit to the current commit, and whether metadata statement/declaration files were added, changed, or removed since that source commit.
 
 ## Agent introduction command
 
@@ -73,15 +75,15 @@ The CLI `agent-introduction` command prints `agent-info/README.md`, the general 
 
 ## Agent submission guide command
 
-The CLI `agent-submission-guide` command prints `agent-info/paper-submission-readiness-agent-guide.md`, the guide for agents preparing an arbitrary Lean project as a Lean Meta Library paper submission with user-approved metadata, surface files, and proofs that should pass the local checks.
+The CLI `agent-submission-guide` command prints `agent-info/paper-submission-readiness-agent-guide.md`, the guide for agents preparing an arbitrary Lean project as a Lean Meta Library paper submission with user-approved metadata, statement/declaration files, and proofs that should pass the local checks.
 
-## Submission API structure rework
+## Submission structure rework
 
-`agent-info/submission-api-structure-agent-readme.md` records the target submission file structure for the upcoming API-module rework before checker and CLI code changes are made. In that target structure, both the surface package and proof package contain a `Repo/API.lean` aggregate import file, external repository imports go through `Repo.API`, surface axioms and proof theorems use the same Lean declaration name, proof packages may import local surface definitions but not local surface axioms, and the final proof build checks everything imported by proof `Repo.API` for forbidden internal axioms or sorries.
+`agent-info/submission-api-structure-agent-readme.md` records the target submission structure rework before checker and CLI code changes are made. It follows `structure-update-guidelines`: separate proof and statement/declaration packages are optional, package checks run only when the corresponding package is present, statement entries are `Definition` and `Axiom`, metadata uses the new checklist names, proof-level used-file metadata is supported, and final proof checking is built around statement-level proof certificates.
 
 ## Import submission workflow
 
-The `.github/workflows/import-submission.yml` workflow runs when an issue labeled `submission` is opened, labeled, edited, or reopened. It reads the repository URL, source branch, source commit, metadata file path, and submitted-by login from the issue body, checks out that exact commit, runs the first-run checks from `.github/actions/test/` against the metadata file at that path, then adds or updates the matching row in `submissions.jsonl`. Imported rows include the parsed metadata plus repository, branch, commit, metadata path, repository-relative surface folder, issue id/number/url, and submitting user id/login. After a successful import, the workflow comments on and closes the issue.
+The `.github/workflows/import-submission.yml` workflow runs when an issue labeled `submission` is opened, labeled, edited, or reopened. It reads the repository URL, source branch, source commit, metadata file path, and submitted-by login from the issue body, checks out that exact commit, runs the first-run checks from `.github/actions/test/` against the metadata file at that path, then adds or updates the matching row in `submissions.jsonl`. Imported rows include the parsed metadata plus repository, branch, commit, metadata path, repository-relative package folder information, issue id/number/url, and submitting user id/login. After a successful import, the workflow comments on and closes the issue.
 
 The import workflow posts issue progress comments after completed milestones so submitters can see which step worked,
 how many steps remain, and what runs next. Keep those comments in place for long-running submission checks.
@@ -90,24 +92,15 @@ Warning: the import workflow currently passes `GITHUB_TOKEN` as a Git HTTP extra
 
 ## Submission package structure
 
-The CLI `create-paper` command creates one submission package folder. Preserve this structure:
+The CLI `create-paper` command may still create the older starter shape until the rework is implemented. For new structure work, preserve these target rules from `structure-update-guidelines`:
 
-- `your-submission-package/`
-- `your-submission-package/lakefile.lean`: proof package Lake file.
-- `your-submission-package/meta.yaml`: submission metadata with dummy first-iteration values.
-- `your-submission-package/abstract.tex`: short LaTeX abstract.
-- `your-submission-package/surface-package/`: separate Lake package for trustworthy declarations.
-- `your-submission-package/surface-package/lakefile.lean`: surface package Lake file.
-- `your-submission-package/surface-package/<EntryName>/`: one direct child folder per statement or definition.
-- Each declaration folder contains `latex-file.tex` and `Surface.lean`.
-- Do not create an extra slug-named aggregate folder under `surface-package/`; surface modules live only in the entry folders.
-- Surface namespaces use `Slug.Surface.Definition.Name` or `Slug.Surface.Statement.Name`.
-- Surface and proof files should use `import` to include modules from other files, then prefer fully qualified names for imported surface declarations instead of relying on `open`.
-- Each metadata declaration's `Surface.lean` introduces exactly one direct declaration under its surface namespace; helper declarations, private declarations, generated declarations, instances, structures, classes, inductives, and extra axioms are rejected.
-- Lake packages use the dotted metadata slug form: `Slug.Surface` for the surface package and `Slug.Proofs` for the proof package.
+- Submissions no longer need separate proof and statement/declaration packages.
+- A proof package depending locally on `Slug.Surface` from `./surface-package` remains allowed, but is not expected.
+- Do not require a unique Lean library for each statement folder; each statement must still be included in the shared statement library.
+- Use `DeclarationPackage` instead of `Surface Package`.
+- Metadata should move from `surfaceLakefilePath`, `namespaceSlug`, `paperTitle`, `bibtex`, `declarations`, and `usedSurfaceFiles` to `statementLakefilePath`, `packageSlug`, `submissionTitle`, `bibtex-entries`, `statements`, and used-file records with `Package`, `File`, and `Name`.
+- Statement entry types are `Definition` and `Axiom`; statement/declaration files only allow axioms for statement entries.
+- If a statement/declaration package is present, require its `lakefile.lean` and, for each theorem or definition, a LaTeX file and Lean file.
+- If a proof package is present, require its `lakefile.lean`.
 - Generated Lake packages must pin mathlib to `lml-env.json`'s exact `mathlib.revision`, not to the floating `stable` branch.
-- `your-submission-package/proofs/`: proof files for statement declarations, kept directly under `proofs/` unless a submission has a reason to organize them further.
-- Proof namespaces use `Slug.Proofs.Statement.Name`.
-- The `create-paper` starter proof for `ConnectedIffReachable` must contain a direct Lean proof, not a delegation back to the surface axiom.
-- Every surface statement needs one matching proof entry under `proofs:` with `theorem`, `proof`, `type: proof`, `type: conditional-proof`, or `type: reduction`, and a matching proof file under `proofs/`.
-- `bibtex` in `meta.yaml` is a list so a submission can record multiple BibTeX entries.
+- Every discharged statement needs one matching proof entry using structured `Theorem` and `Proof` fields, a proof `Type` of `proof`, `conditional-proof`, or `reduction`, and a matching proof file.
