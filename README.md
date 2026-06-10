@@ -23,9 +23,9 @@ allowed submission file/import policy, first-run size limits, checker output lim
 ## Submission Contract
 
 A submission consists of public statement/declaration entries, proof artifacts,
-and metadata. The current structure planning source is
-`structure-update-guidelines`; it is the ground truth for upcoming checker and
-CLI structure changes.
+and metadata. The structure rework moves the checker and CLI vocabulary toward
+statement/declaration packages, structured proof metadata, and statement-level
+proof certificates.
 
 Statement entries use the new metadata vocabulary:
 

@@ -20,7 +20,7 @@ Lean version; Lake ships with that toolchain, so separate `lean.version` and `la
 
 ## Submission dependency policy
 
-`structure-update-guidelines` is the ground truth for the upcoming submission-structure rework. When it conflicts with older surface-package wording in this file or in generated examples, follow `structure-update-guidelines` and update the stale documentation.
+The upcoming submission-structure rework moves the project away from older surface-package wording and toward statement/declaration terminology, structured proof metadata, and statement-level proof certificates. Keep documentation aligned with that target model when new structure instructions arrive.
 
 Each `submissions.jsonl` row must preserve enough information to locate imported statement/declaration and proof package modes. Older rows may still record `Repo Url`, `Source Branch`, `Source Commit`, and `Surface Folder`; the target metadata also records `githubRepo`, `Lake Statement Package`, and `Lake Proof Package`.
 
@@ -79,7 +79,7 @@ The CLI `agent-submission-guide` command prints `agent-info/paper-submission-rea
 
 ## Submission structure rework
 
-`agent-info/submission-api-structure-agent-readme.md` records the target submission structure rework before checker and CLI code changes are made. It follows `structure-update-guidelines`: separate proof and statement/declaration packages are optional, package checks run only when the corresponding package is present, statement entries are `Definition` and `Axiom`, metadata uses the new checklist names, proof-level used-file metadata is supported, and final proof checking is built around statement-level proof certificates.
+`agent-info/submission-api-structure-agent-readme.md` records the target submission structure rework before checker and CLI code changes are made. Separate proof and statement/declaration packages are optional, package checks run only when the corresponding package is present, statement entries are `Definition` and `Axiom`, metadata uses the new checklist names, proof-level used-file metadata is supported, and final proof checking is built around statement-level proof certificates.
 
 ## Import submission workflow
 
@@ -92,7 +92,7 @@ Warning: the import workflow currently passes `GITHUB_TOKEN` as a Git HTTP extra
 
 ## Submission package structure
 
-The CLI `create-paper` command may still create the older starter shape until the rework is implemented. For new structure work, preserve these target rules from `structure-update-guidelines`:
+The CLI `create-paper` command may still create the older starter shape until the rework is implemented. For new structure work, preserve these target rules:
 
 - Submissions no longer need separate proof and statement/declaration packages.
 - A proof package depending locally on `Slug.Surface` from `./surface-package` remains allowed, but is not expected.

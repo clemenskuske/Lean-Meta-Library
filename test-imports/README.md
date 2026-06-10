@@ -5,11 +5,10 @@ This folder contains small Lean Meta Library submission packages that are meant
 to fail the import checks. They are useful as regression inputs when changing
 the local checker suite or the GitHub import workflow.
 
-`structure-update-guidelines` is the ground truth for the submission-structure
-rework. These fixtures currently document the old checker suite; as the rework
-lands, remove fixtures that only enforce the old required proof-package and
-surface-package split, and add replacements for the optional
-statement/declaration and proof package model.
+These fixtures currently document the old checker suite. As the
+submission-structure rework lands, remove fixtures that only enforce the old
+required proof-package and surface-package split, and add replacements for the
+optional statement/declaration and proof package model.
 
 Run all negative fixtures from the repository root with:
 

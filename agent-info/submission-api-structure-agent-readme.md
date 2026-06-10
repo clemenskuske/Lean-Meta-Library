@@ -1,9 +1,8 @@
 # Submission Structure Rework Agent README
 
 Use this README as an implementation target for the Lean Meta Library
-submission-structure rework. The repository file `structure-update-guidelines`
-is the ground truth; when the two files disagree, update this README from that
-file before changing code.
+submission-structure rework. Keep this file self-contained and update it as the
+structure discussion evolves.
 
 ## Goal
 

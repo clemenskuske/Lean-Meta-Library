@@ -6,10 +6,6 @@ Use this guide when you are helping inside a Lean Meta Library workspace or usin
 
 Lean Meta Library records Lean formalization submissions in a form that can be checked, imported, and reused by later submissions.
 
-The current structure-planning source is the repository file
-`structure-update-guidelines`. Treat it as the ground truth when it conflicts
-with older examples or checker names in this guide.
-
 The core idea is to separate three things:
 
 - The public statement/declaration content: trustworthy `Definition` entries
@@ -62,9 +58,9 @@ lml agent-submission-guide
 
 That command prints the guide for turning a Lean project into a checked Lean Meta Library submission. Use `lml create-paper <slug>` for the starter package when it matches the current checker, then replace the starter content with the user's actual title, abstract, statement/declaration entries, proof files, and bibliographic metadata.
 
-For structure-update work, read `structure-update-guidelines` first, then
-`agent-info/submission-api-structure-agent-readme.md`. The guideline file
-supersedes older surface-package wording and records the latest target model.
+For structure-update work, read
+`agent-info/submission-api-structure-agent-readme.md`. It records the latest
+target model and supersedes older surface-package wording.
 
 
 ## How To Use `submissions.jsonl`

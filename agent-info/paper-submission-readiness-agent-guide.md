@@ -6,8 +6,7 @@ files. The goal is to produce a submission package that accurately reflects the
 user's mathematical intent and passes the checks exposed by the Lean Meta
 Library CLI.
 
-`structure-update-guidelines` is the ground truth for the current structure
-rework. If generated starter files or older checker messages still use the
+If generated starter files or older checker messages still use the
 surface-package vocabulary, translate that wording to the statement/declaration
 model below when planning new work.
 
