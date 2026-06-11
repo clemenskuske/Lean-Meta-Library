@@ -29,13 +29,6 @@ root:
         - "Paper-facing summary of the submission's results."
         - "Local repository file, not a generated GitHub source URL."
 
-    leanToolchain:
-      fileName: lean-toolchain
-      required: false
-      description: >
-        Optional root Lake package toolchain file. If present, it should agree
-        with the metadata pinnedLeanToolchain value.
-
   folders:
     statementFolder:
       requiredWhenMetadataHas:
@@ -54,16 +47,6 @@ root:
             - "Defines the statement-side Lake package or library."
             - "Builds every statement Lean file listed in metadata."
             - "Includes all listed statement files in one shared statement library."
-
-        leanToolchain:
-          fileName: lean-toolchain
-          required: false
-          description: "Optional statement package Lean toolchain file."
-
-        lakeManifest:
-          fileName: lake-manifest.json
-          required: false
-          description: "Optional Lake manifest for the statement package."
 
       declarationFolders:
         arrayFromMetadata: statements
@@ -107,16 +90,6 @@ root:
             - "Defines the proof-side Lake package or library."
             - "Builds every proof Lean file listed in metadata."
             - "May depend locally on a present statement package, but that split is not required."
-
-        leanToolchain:
-          fileName: lean-toolchain
-          required: false
-          description: "Optional proof package Lean toolchain file."
-
-        lakeManifest:
-          fileName: lake-manifest.json
-          required: false
-          description: "Optional Lake manifest for the proof package."
 
       proofFiles:
         arrayFromMetadata: proofs
