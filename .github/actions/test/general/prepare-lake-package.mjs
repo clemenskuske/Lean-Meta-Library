@@ -258,7 +258,7 @@ function addProblem(message, { required, errors, warnings }) {
 }
 
 function pruneLakePackageGitDirsForCi(cwd, warnings) {
-  if (process.env.GITHUB_ACTIONS !== "true" && process.env.LML_PRUNE_LAKE_PACKAGES !== "1") {
+  if (process.env.LML_PRUNE_LAKE_PACKAGES !== "1") {
     return;
   }
 
