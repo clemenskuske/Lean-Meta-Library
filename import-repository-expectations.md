@@ -40,16 +40,17 @@ the files mentioned by metadata plus the statement package Lake file:
 - each `statements[].Statement.LeanStatement`
 - each `statements[].Statement.LatexDefinition`
 
-No other Lean or LaTeX files may be present in the statement package. In
-particular, extra statement/declaration folders or unlisted statement files are
-rejected.
+No other Lean or LaTeX files may be present in the statement package. Each
+metadata statement Lean/LaTeX reference must resolve to a file, and each
+statement package Lean/LaTeX file must be referenced by metadata. In particular,
+extra statement/declaration folders or unlisted statement files are rejected.
 
 The statement package Lake file must:
 
 - be buildable by Lake;
 - declare the statement package/library for the submission;
-- include every metadata-listed statement Lean file in a shared statement
-  library;
+- expose exactly the metadata-referenced statement Lean files through the shared
+  statement library;
 - use the namespace/package shape implied by `submissionSlug`, namely
   `<SubmissionSlugAsPascal>.Statements`;
 - declare a Lean library named `<SubmissionSlugAsPascal>.Statements`.
