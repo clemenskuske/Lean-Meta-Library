@@ -112,8 +112,10 @@ must:
 - use the namespace/package shape implied by `submissionSlug`, namely
   `<SubmissionSlugAsPascal>.Proofs`;
 - declare a Lean library named `<SubmissionSlugAsPascal>.Proofs`;
-- use only allowed local dependencies: the local statement package for the same
-  submission, or the tolerated legacy local surface package during migration.
+- may import any modules needed for the proof package to build. For repositories
+  already recorded in `submissions.jsonl`, proof code should prefer importing
+  the statement/surface files and referencing their axioms rather than importing
+  whole proof packages, but this is guidance rather than an enforced rule.
 
 The proof package is not closed under metadata in the way the statement package
 is. It may contain additional Lean files, helper declarations, intermediate
