@@ -35,7 +35,7 @@ let failed = false;
 for (const group of [
   { name: "prepare build/cache", checks: prepareChecks, parallel: false },
   { name: "static checks", checks: staticChecks, parallel: true },
-  { name: "Lean checks", checks: leanChecks, parallel: true }
+  { name: "Lean checks", checks: leanChecks, parallel: false }
 ]) {
   if (group.checks.length === 0) {
     continue;

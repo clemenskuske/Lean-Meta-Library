@@ -2,12 +2,13 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
-import { maxBuildOutputBytes } from "../common.mjs";
+import { maxBuildOutputBytes, walkFiles } from "../common.mjs";
 import { loadLakeConfig } from "../lake-config.mjs";
 
 const markerVersion = 1;
 const lockTimeoutMs = 5 * 60 * 1000;
 const staleLockMs = 10 * 60 * 1000;
+const lakeCommandTimeoutMs = Number(process.env.LML_LAKE_COMMAND_TIMEOUT_MS ?? 20 * 60 * 1000);
 
 export function ensureLakeAvailable(errors) {
   const result = spawnSync("lake", ["--version"], {
@@ -63,6 +64,7 @@ export function ensurePreparedLakePackage({ packageRoot, lakefilePath, label, ki
     if (update.status !== 0 || update.error) {
       return { ...resolved, markerPath, skipped: false };
     }
+    pruneLakePackageGitDirsForCi(resolved.cwd, warnings);
 
     const cacheArgs = cacheGetArgs(resolved.cwd, label, warnings);
     if (cacheArgs.length > 0) {
@@ -80,7 +82,7 @@ export function ensurePreparedLakePackage({ packageRoot, lakefilePath, label, ki
         packageDir: resolved.cwd,
         preparedAt: new Date().toISOString()
       });
-      pruneLakePackagesForCi(resolved.cwd, warnings);
+      pruneLakePackageGitDirsForCi(resolved.cwd, warnings);
     }
 
     return { ...resolved, markerPath, skipped: false };
@@ -217,12 +219,15 @@ function normalizePath(path) {
 }
 
 function runLake(cwd, args, label, options) {
+  console.log(`::group::${label}`);
+  console.log(`$ lake ${args.join(" ")}`);
   const result = spawnSync("lake", args, {
     cwd,
-    encoding: "utf8",
     env: lakeEnv(),
-    maxBuffer: maxBuildOutputBytes
+    stdio: "inherit",
+    timeout: lakeCommandTimeoutMs
   });
+  console.log(`::endgroup::`);
 
   if (result.error) {
     addProblem(`${label} failed to start: ${result.error.message}`, options);
@@ -230,7 +235,11 @@ function runLake(cwd, args, label, options) {
   }
 
   if (result.status !== 0) {
-    addProblem(`${label} failed\n${result.stdout}${result.stderr}`.trim(), options);
+    addProblem(`${label} failed with exit code ${result.status}`, options);
+  }
+
+  if (result.signal) {
+    addProblem(`${label} terminated by signal ${result.signal}`, options);
   }
 
   return result;
@@ -248,7 +257,7 @@ function addProblem(message, { required, errors, warnings }) {
   }
 }
 
-function pruneLakePackagesForCi(cwd, warnings) {
+function pruneLakePackageGitDirsForCi(cwd, warnings) {
   if (process.env.GITHUB_ACTIONS !== "true" && process.env.LML_PRUNE_LAKE_PACKAGES !== "1") {
     return;
   }
@@ -264,7 +273,7 @@ function pruneLakePackagesForCi(cwd, warnings) {
     }
     const packageDir = join(packagesDir, entry.name);
     try {
-      pruneDependencyPackage(packageDir);
+      pruneDependencyGitMetadata(packageDir);
     } catch (error) {
       warnings.push(`could not prune Lake dependency package ${entry.name}: ${error.message}`);
     }
@@ -272,6 +281,11 @@ function pruneLakePackagesForCi(cwd, warnings) {
 }
 
 function cacheGetArgs(cwd, label, warnings) {
+  const importedMathlibModules = mathlibImportModules(cwd);
+  if (importedMathlibModules.length > 0) {
+    return importedMathlibModules;
+  }
+
   const configErrors = [];
   const config = loadLakeConfig(cwd, `${label} lakefile`, configErrors);
   if (configErrors.length > 0) {
@@ -282,19 +296,29 @@ function cacheGetArgs(cwd, label, warnings) {
     .filter(Boolean);
 }
 
-function pruneDependencyPackage(packageDir) {
-  for (const entry of readdirSync(packageDir, { withFileTypes: true })) {
-    if (shouldKeepDependencyEntry(entry.name)) {
+function mathlibImportModules(cwd) {
+  const modules = new Set();
+  for (const file of walkFiles(cwd)) {
+    if (!file.endsWith(".lean")) {
       continue;
     }
-    rmSync(join(packageDir, entry.name), { recursive: true, force: true });
+    const source = readFileSync(file, "utf8");
+    for (const line of source.split(/\r?\n/)) {
+      const match = line.match(/^\s*import\s+([A-Za-z_][A-Za-z0-9_']*(?:\.[A-Za-z_][A-Za-z0-9_']*)*)\s*$/);
+      if (match && match[1].startsWith("Mathlib.")) {
+        modules.add(match[1]);
+      }
+    }
   }
+  return [...modules].sort();
 }
 
-function shouldKeepDependencyEntry(name) {
-  return name === ".lake" ||
-    name === "lakefile.lean" ||
-    name === "lakefile.toml" ||
-    name === "lean-toolchain" ||
-    name === "lake-manifest.json";
+function pruneDependencyGitMetadata(packageDir) {
+  for (const entry of readdirSync(packageDir, { withFileTypes: true })) {
+    if (entry.name === ".git") {
+      rmSync(join(packageDir, entry.name), { recursive: true, force: true });
+    } else if (entry.isDirectory() && entry.name !== ".lake") {
+      pruneDependencyGitMetadata(join(packageDir, entry.name));
+    }
+  }
 }
