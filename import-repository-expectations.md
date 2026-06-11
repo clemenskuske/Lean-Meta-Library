@@ -165,11 +165,9 @@ The current checker suite still verifies package toolchain and mathlib policy,
 even though `lean-toolchain` files are not part of the physical layout contract
 in `repo-structure.config.yaml`.
 
-- `pinnedLeanToolchain` in metadata must equal `lml-env.json`'s
-  `lean.toolchain`.
-- Each present Lake package currently must have a `lean-toolchain` file.
-- Each present package `lean-toolchain` file must contain exactly the configured
-  Lean toolchain from `lml-env.json`.
+- Any statement or proof Lake package used by the submission must use the Lean
+  toolchain configured in `lml-env.json`; the metadata's `pinnedLeanToolchain`
+  must record that same configured toolchain.
 - Each present Lake file must have exactly one git dependency named `mathlib`.
 - The mathlib dependency URL must be the repository from `lml-env.json`.
 - The mathlib dependency revision must be exactly `lml-env.json`'s
