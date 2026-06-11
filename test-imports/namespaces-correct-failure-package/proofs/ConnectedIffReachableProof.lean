@@ -1,11 +1,11 @@
-import ConnectedIffReachable.Surface
+import NamespacesCorrectFailure.Statements.ConnectedIffReachable
 
 namespace NamespacesCorrectFailure.Proofs.Statement.ConnectedIffReachable
 
 theorem connected_iff_reachable (n : Nat) :
-    NamespacesCorrectFailure.Surface.Definition.ConnectedGraph.IsConnectedGraph n ↔ True :=
+    NamespacesCorrectFailure.Statements.ConnectedGraph.IsConnectedGraph n ↔ True :=
   by
-    unfold NamespacesCorrectFailure.Surface.Definition.ConnectedGraph.IsConnectedGraph
+    unfold NamespacesCorrectFailure.Statements.ConnectedGraph.IsConnectedGraph
     constructor
     · intro _h
       trivial

@@ -241,21 +241,7 @@ $defs:
           - conditional-proof
           - reduction
       Theorem:
-        type: object
-        description: "Theorem target reference. Required fields are SubmissionSlug, File, and Name."
-        additionalProperties: false
-        required:
-          - SubmissionSlug
-          - File
-          - Name
-        properties:
-          SubmissionSlug:
-            $ref: "#/$defs/submissionSlug"
-            description: "Submission slug for the theorem/axiom target."
-          File:
-            $ref: "#/$defs/repoRelativePath"
-          Name:
-            $ref: "#/$defs/leanName"
+        $ref: "#/$defs/declarationReference"
       Proof:
         type: object
         description: "Proof theorem reference. Required fields are File and Name."

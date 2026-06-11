@@ -5,11 +5,7 @@ import { ensureAuthenticated } from "../lib/github-auth.js";
 import { ensureGitHubCli } from "../lib/github-cli.js";
 import { lmlEnv } from "../lib/project-env.js";
 import { run } from "../lib/process.js";
-import {
-  metadataStatements,
-  parseMetaYaml,
-  statementLeanFileForEntry
-} from "../../../.github/actions/test/common.mjs";
+import { parseMetaYaml } from "../../../.github/actions/test/common.mjs";
 
 const defaultMetadataPath = String(lmlEnv.submission?.defaultMetadataPath ?? "meta.yaml");
 
@@ -301,8 +297,8 @@ function compareWithSourceCommit({ repoRoot, metaRelPath, sourceCommit, currentM
   const days = Math.max(0, Math.floor((headTimestamp - sourceTimestamp) / 86400));
   const shortstat = optionalGit(repoRoot, ["diff", "--shortstat", `${sourceCommit}..HEAD`]) || "no committed file changes";
   const packageRelRoot = dirname(metaRelPath).replace(/^\.$/, "");
-  const dirty = optionalGit(repoRoot, ["status", "--short", "--", metaRelPath, ...currentSurfaceFiles(currentMeta, packageRelRoot)]);
-  const surface = compareSurfaceFiles({ repoRoot, metaRelPath, sourceCommit, currentMeta });
+  const dirty = optionalGit(repoRoot, ["status", "--short", "--", metaRelPath, ...currentStatementFiles(currentMeta, packageRelRoot)]);
+  const statements = compareStatementFiles({ repoRoot, metaRelPath, sourceCommit, currentMeta });
 
   return {
     available: true,
@@ -311,7 +307,7 @@ function compareWithSourceCommit({ repoRoot, metaRelPath, sourceCommit, currentM
     days,
     shortstat,
     dirty,
-    surface
+    statements
   };
 }
 
@@ -334,12 +330,12 @@ function optionalGit(repoRoot, args) {
   return result.stdout.trim();
 }
 
-function compareSurfaceFiles({ repoRoot, metaRelPath, sourceCommit, currentMeta }) {
+function compareStatementFiles({ repoRoot, metaRelPath, sourceCommit, currentMeta }) {
   const usedMetaText = optionalGit(repoRoot, ["show", `${sourceCommit}:${metaRelPath}`]);
   const usedMeta = usedMetaText ? parseMetaYaml(usedMetaText) : { declarations: [] };
   const packageRelRoot = dirname(metaRelPath).replace(/^\.$/, "");
-  const currentFiles = currentSurfaceFiles(currentMeta, packageRelRoot);
-  const usedFiles = currentSurfaceFiles(usedMeta, packageRelRoot);
+  const currentFiles = currentStatementFiles(currentMeta, packageRelRoot);
+  const usedFiles = currentStatementFiles(usedMeta, packageRelRoot);
   const currentSet = new Set(currentFiles);
   const usedSet = new Set(usedFiles);
 
@@ -362,12 +358,12 @@ function compareSurfaceFiles({ repoRoot, metaRelPath, sourceCommit, currentMeta 
   };
 }
 
-function currentSurfaceFiles(meta, packageRelRoot = "") {
-  return [...new Set(metadataStatements(meta).map((entry) => statementFileForEntry(entry, packageRelRoot)).filter(Boolean))];
+function currentStatementFiles(meta, packageRelRoot = "") {
+  return [...new Set((meta.statements ?? []).map((entry) => statementFileForEntry(entry, packageRelRoot)).filter(Boolean))];
 }
 
 function statementFileForEntry(entry, packageRelRoot) {
-  const file = statementLeanFileForEntry(entry);
+  const file = entry?.Statement?.LeanStatement;
   return file ? posix.join(packageRelRoot, file.replace(/^\.\/+/, "")) : null;
 }
 
@@ -401,14 +397,14 @@ function printStatus({ metaRelPath, issue, issueNumber, imported, workflow, sour
   );
   console.log(`Changes since source commit: ${comparison.shortstat}`);
   if (comparison.dirty) {
-    console.log("Uncommitted metadata/surface changes:");
+    console.log("Uncommitted metadata/statement changes:");
     console.log(indent(comparison.dirty));
   }
 
-  console.log(`Surface files different: ${comparison.surface.different ? "yes" : "no"}`);
-  printList("New surface files", comparison.surface.added);
-  printList("Changed surface files", comparison.surface.changed);
-  printList("Removed surface files", comparison.surface.removed);
+  console.log(`Statement files different: ${comparison.statements.different ? "yes" : "no"}`);
+  printList("New statement files", comparison.statements.added);
+  printList("Changed statement files", comparison.statements.changed);
+  printList("Removed statement files", comparison.statements.removed);
 }
 
 function workflowLine(workflow) {

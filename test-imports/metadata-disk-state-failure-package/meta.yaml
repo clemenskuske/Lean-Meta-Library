@@ -1,6 +1,5 @@
-pinnedLeanToolchain: leanprover/lean4:v4.30.0
 proofLakefilePath: lakefile.lean
-statementLakefilePath: surface-package/lakefile.lean
+statementLakefilePath: statements/lakefile.lean
 abstractPath: abstract.tex
 submissionTitle: Metadata Disk State Failure Fixture
 statements:
@@ -8,28 +7,31 @@ statements:
     Type: Definition
     Statement:
       CurrentSubmission: true
-      Name: ExtraSurfaceDeclaration.Surface.Definition.ConnectedGraph.IsConnectedGraph
-      LeanStatement: surface-package/ConnectedGraph/Surface.lean
-      LatexDefinition: surface-package/ConnectedGraph/latex-file.tex
+      Name: MetadataDiskStateFailure.Statements.ConnectedGraph.IsConnectedGraph
+      LeanStatement: statements/MetadataDiskStateFailure/Statements/ConnectedGraph.lean
+      LatexDefinition: statements/MetadataDiskStateFailure/Statements/ConnectedGraph.tex
     DeclarationReferences: []
   - Name: ConnectedIffReachable
     Type: Axiom
     Statement:
       CurrentSubmission: true
-      Name: ExtraSurfaceDeclaration.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
-      LeanStatement: surface-package/ConnectedIffReachable/Surface.lean
-      LatexDefinition: surface-package/ConnectedIffReachable/latex-file.tex
+      Name: MetadataDiskStateFailure.Statements.ConnectedIffReachable.connected_iff_reachable
+      LeanStatement: statements/MetadataDiskStateFailure/Statements/ConnectedIffReachable.lean
+      LatexDefinition: statements/MetadataDiskStateFailure/Statements/ConnectedIffReachable.tex
     DeclarationReferences: []
 proofs:
   - Name: ConnectedIffReachableProof
     Type: proof
     Theorem:
-      SubmissionSlug: extra-surface-declaration
-      File: surface-package/ConnectedIffReachable/Surface.lean
-      Name: ExtraSurfaceDeclaration.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
+      Name: MetadataDiskStateFailure.Statements.ConnectedIffReachable.connected_iff_reachable
+      LeanStatement: statements/MetadataDiskStateFailure/Statements/ConnectedIffReachable.lean
+      LatexDefinition: statements/MetadataDiskStateFailure/Statements/ConnectedIffReachable.tex
+      CurrentSubmission: true
     Proof:
       File: proofs/ConnectedIffReachableProof.lean
-      Name: ExtraSurfaceDeclaration.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
+      Name: MetadataDiskStateFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
     DeclarationReferences: []
 bibtex-entries: []
-submissionSlug: extra-surface-declaration
+submissionSlug: metadata-disk-state-failure
+proofLeanToolchainPath: lean-toolchain
+statementLeanToolchainPath: statements/lean-toolchain

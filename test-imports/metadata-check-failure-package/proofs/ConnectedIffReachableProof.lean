@@ -1,11 +1,11 @@
-import ConnectedIffReachable.Surface
+import MetadataCheckFailure.Statements.ConnectedIffReachable
 
 namespace MetadataCheckFailure.Proofs.Statement.ConnectedIffReachable
 
 theorem connected_iff_reachable (n : Nat) :
-    MetadataCheckFailure.Surface.Definition.ConnectedGraph.IsConnectedGraph n ↔ True :=
+    MetadataCheckFailure.Statements.ConnectedGraph.IsConnectedGraph n ↔ True :=
   by
-    unfold MetadataCheckFailure.Surface.Definition.ConnectedGraph.IsConnectedGraph
+    unfold MetadataCheckFailure.Statements.ConnectedGraph.IsConnectedGraph
     constructor
     · intro _h
       trivial

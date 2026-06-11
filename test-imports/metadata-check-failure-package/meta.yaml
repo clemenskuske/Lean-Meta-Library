@@ -1,29 +1,38 @@
-pinnedLeanToolchain: leanprover/lean4:v4.30.0
 proofLakefilePath: lakefile.lean
-paperTitle: Metadata Check Failure Fixture
-namespaceSlug: metadata-check-failure
-surfaceLakefilePath: surface-package/lakefile.lean
+statementLakefilePath: statements/lakefile.lean
 abstractPath: abstract.tex
-declarations:
-  - type: Definition
-    name: MetadataCheckFailure.Surface.Definition.ConnectedGraph
-    folder: surface-package/ConnectedGraph
-    usedSurfaceFiles: []
-  - type: Statement
-    name: MetadataCheckFailure.Surface.Statement.ConnectedIffReachable
-    folder: surface-package/ConnectedIffReachable
-    usedSurfaceFiles: []
+submissionTitle: Metadata Check Failure Fixture
+statements:
+  - Name: ConnectedGraph
+    Type: Definition
+    Statement:
+      CurrentSubmission: true
+      Name: MetadataCheckFailure.Statements.ConnectedGraph.IsConnectedGraph
+      LeanStatement: statements/MetadataCheckFailure/Statements/ConnectedGraph.lean
+      LatexDefinition: statements/MetadataCheckFailure/Statements/ConnectedGraph.tex
+    DeclarationReferences: []
+  - Name: ConnectedIffReachable
+    Type: Axiom
+    Statement:
+      CurrentSubmission: true
+      Name: MetadataCheckFailure.Statements.ConnectedIffReachable.connected_iff_reachable
+      LeanStatement: statements/MetadataCheckFailure/Statements/ConnectedIffReachable.lean
+      LatexDefinition: statements/MetadataCheckFailure/Statements/ConnectedIffReachable.tex
+    DeclarationReferences: []
 proofs:
-  - theorem: MetadataCheckFailure.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
-    proof: MetadataCheckFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
-    type: proof
-    proofFile: proofs/ConnectedIffReachableProof.lean
-bibtex: ""
-paper:
-  paperTitle: Metadata Check Failure Fixture
-  arxivUrl: ""
-  onlineSource: ""
-  doi: ""
-  orcids: []
-  journalOrConference: ""
-  keywords: []
+  - Name: ConnectedIffReachableProof
+    Type: proof
+    Theorem:
+      Name: MetadataCheckFailure.Statements.ConnectedIffReachable.connected_iff_reachable
+      LeanStatement: statements/MetadataCheckFailure/Statements/ConnectedIffReachable.lean
+      LatexDefinition: statements/MetadataCheckFailure/Statements/ConnectedIffReachable.tex
+      CurrentSubmission: true
+    Proof:
+      File: proofs/ConnectedIffReachableProof.lean
+      Name: MetadataCheckFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
+    DeclarationReferences: []
+bibtex-entries: []
+submissionSlug: metadata-check-failure
+proofLeanToolchainPath: lean-toolchain
+statementLeanToolchainPath: statements/lean-toolchain
+legacyCompatibilityField: true

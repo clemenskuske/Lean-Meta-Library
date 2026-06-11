@@ -1,0 +1,208 @@
+// Adds statement-package dependencies needed by proof metadata before building proofs.
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, extname, join, resolve } from "node:path";
+import { validateSubmissionRow } from "../../submission-schema.mjs";
+import { proofLakefilePath } from "../common.mjs";
+import { slugToPascal } from "../general/meta-context.mjs";
+
+export function augmentProofLakefile({ packageRoot, meta, errors, warnings }) {
+  const lakefilePath = proofLakefilePath(meta);
+  if (!lakefilePath) {
+    return;
+  }
+
+  const required = referencedStatementPackages(meta);
+  if (required.length === 0) {
+    return;
+  }
+
+  const absoluteLakefile = resolve(packageRoot, lakefilePath);
+  if (!existsSync(absoluteLakefile)) {
+    return;
+  }
+  if (extname(absoluteLakefile) !== ".lean") {
+    errors.push(`cannot augment non-Lean proof lakefile: ${lakefilePath}`);
+    return;
+  }
+
+  const submissions = loadSubmissionRows({ packageRoot, errors });
+  const byPackage = new Map(submissions.map((submission) => [submission.statementPackage, submission]));
+  const source = readFileSync(absoluteLakefile, "utf8");
+  const existing = existingRequireNames(source);
+  const additions = [];
+
+  for (const packageName of required) {
+    if (existing.has(packageName)) {
+      continue;
+    }
+
+    const submission = byPackage.get(packageName);
+    if (!submission) {
+      errors.push(`cannot add proof lakefile dependency ${packageName}: no matching submissions.jsonl row`);
+      continue;
+    }
+
+    additions.push(requireBlock(packageName, submission));
+    existing.add(packageName);
+  }
+
+  if (additions.length === 0) {
+    return;
+  }
+
+  writeFileSync(absoluteLakefile, insertRequireBlocks(source, additions), "utf8");
+  warnings.push(`added proof lakefile statement dependencies: ${additions.map((item) => item.name).join(", ")}`);
+}
+
+function referencedStatementPackages(meta) {
+  const packages = new Set();
+
+  for (const proof of meta.proofs ?? []) {
+    addReferencePackage(packages, proof?.Theorem);
+    for (const reference of proof?.DeclarationReferences ?? []) {
+      addReferencePackage(packages, reference);
+    }
+  }
+
+  return [...packages].sort();
+}
+
+function addReferencePackage(packages, reference) {
+  if (!reference || reference.CurrentSubmission === true) {
+    return;
+  }
+  if (reference.SubmissionSlug) {
+    packages.add(`${slugToPascal(reference.SubmissionSlug)}.Statements`);
+  }
+}
+
+function existingRequireNames(source) {
+  const names = new Set();
+  const requirePattern = /^\s*require\s+([A-Za-z_][A-Za-z0-9_'.]*)\b/gm;
+  for (const match of source.matchAll(requirePattern)) {
+    names.add(match[1]);
+  }
+  return names;
+}
+
+function requireBlock(packageName, submission) {
+  const ref = submission.sourceCommit || submission.sourceBranch;
+  const subDir = submission.statementFolder ? ` / ${JSON.stringify(submission.statementFolder)}` : "";
+  return {
+    name: packageName,
+    text: `require ${packageName} from git\n  ${JSON.stringify(submission.repoUrl)} @ ${JSON.stringify(ref)}${subDir}`
+  };
+}
+
+function insertRequireBlocks(source, additions) {
+  const text = additions.map((item) => item.text).join("\n\n");
+  const insertAt = source.search(/^\s*(?:lean_lib|@[^\n]*\n\s*lean_lib)\b/m);
+  if (insertAt === -1) {
+    return `${trimTrailingNewline(source)}\n\n${text}\n`;
+  }
+
+  const before = trimTrailingNewline(source.slice(0, insertAt));
+  const after = source.slice(insertAt).replace(/^\n+/, "");
+  return `${before}\n\n${text}\n\n${after}`;
+}
+
+function loadSubmissionRows({ packageRoot, errors }) {
+  const path = findSubmissionsJsonl(packageRoot);
+  if (!path || !existsSync(path)) {
+    return [];
+  }
+
+  return readFileSync(path, "utf8")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line, index) => parseSubmissionRow(line, path, index + 1, errors))
+    .filter(Boolean);
+}
+
+function parseSubmissionRow(line, path, lineNumber, errors) {
+  let row;
+  try {
+    row = JSON.parse(line);
+  } catch (error) {
+    errors.push(`${path}:${lineNumber} is not valid JSON: ${error.message}`);
+    return null;
+  }
+
+  const validation = validateSubmissionRow(row);
+  if (!validation.valid) {
+    errors.push(
+      `${path}:${lineNumber} does not match submissions.jsonl schema: ${validation.errors.map((error) => `${error.instancePath || "/"} ${error.message}`).join("; ")}`
+    );
+  }
+
+  const normalized = normalizeKeys(row);
+  const slug = stringValue(normalized.submissionslug);
+  const statementPackage = slug ? `${slugToPascal(slug)}.Statements` : null;
+  const statementFolder = normalizePath(
+    normalized.lakestatementpackage ??
+      normalized.statementfolder ??
+      dirnamePath(normalized.statementlakefilepath)
+  );
+
+  const submission = {
+    statementPackage,
+    repoUrl: stringValue(normalized.repourl ?? normalized.gitrepo ?? normalized.githubrepo),
+    sourceBranch: stringValue(normalized.sourcebranch),
+    sourceCommit: stringValue(normalized.sourcecommit),
+    statementFolder
+  };
+
+  for (const [key, value] of Object.entries({
+    statementPackage: submission.statementPackage,
+    repoUrl: submission.repoUrl,
+    sourceBranch: submission.sourceBranch,
+    sourceCommit: submission.sourceCommit
+  })) {
+    if (!value) {
+      errors.push(`${path}:${lineNumber} is missing ${key}`);
+    }
+  }
+
+  return submission.statementPackage ? submission : null;
+}
+
+function findSubmissionsJsonl(packageRoot) {
+  let dir = resolve(packageRoot);
+  while (true) {
+    const candidate = join(dir, "submissions.jsonl");
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+
+    const parent = dirname(dir);
+    if (parent === dir) {
+      return null;
+    }
+    dir = parent;
+  }
+}
+
+function normalizeKeys(row) {
+  return Object.fromEntries(
+    Object.entries(row).map(([key, value]) => [key.toLowerCase().replace(/[^a-z0-9]/g, ""), value])
+  );
+}
+
+function dirnamePath(path) {
+  const normalized = normalizePath(path);
+  const index = normalized.lastIndexOf("/");
+  return index === -1 ? "" : normalized.slice(0, index);
+}
+
+function normalizePath(path) {
+  return String(path ?? "").trim().replace(/^\.?\//, "").replace(/\/$/g, "");
+}
+
+function stringValue(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function trimTrailingNewline(value) {
+  return String(value ?? "").replace(/\n+$/, "");
+}

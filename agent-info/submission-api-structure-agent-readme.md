@@ -4,41 +4,61 @@ Use this README as an implementation target for the Lean Meta Library
 submission-structure rework. Keep this file self-contained and update it as the
 structure discussion evolves.
 
-## Goal
+## Ground Truth Order
 
-The target model uses Statement Package terminology:
+When updating code, fixtures, or prose, use this order:
+
+1. `meta.config.yaml` for metadata field names and schema shape.
+2. `import-submission-expectations.md` for repository-content policy.
+3. `.github/actions/test/` and `test-imports/` for currently implemented
+   checker behavior.
+
+If these disagree, prefer the earlier source and update the later source.
+
+## Current Model
+
+The model uses statement package terminology:
 
 - A submission is the Lean Meta Library entry, not the source repository.
-- A submission may contain up to two Lake packages: a statement-package and a
-  proof-package.
-- The public statement side is the statement package.
+- A submission may contain up to two Lake packages: a statement package and a
+  proof package.
 - Public entries are `Definition` or `Axiom`.
-- Axiom entries are Lean axioms only; theorem declarations belong to proof
+- `Definition` entries introduce Lean `def`s.
+- `Axiom` entries introduce Lean `axiom`s; theorem declarations belong to proof
   artifacts, not statement files.
 - Proof artifacts discharge statements with `proof`, `conditional-proof`, or
   `reduction` entries.
 
-Separate statement and proof packages are no longer required for
-every submission. If either package is present, its package-specific checks
-should run. A proof package that depends locally on a statement package remains
-allowed, but it is not required.
+Statement-package and proof-package presence is optional: a submission may have
+only a statement package, only a proof package, or both. When both are present,
+they remain separate packages and must not mix statement and proof content. If
+either package is present, its package-specific checks run. A proof package that
+depends locally on a present statement package remains allowed.
 
 ## Naming Model
 
 Use `meta.config.yaml` as the source of truth for field names and metadata
-shape. The schema currently uses:
+shape. The schema uses:
 
-- Statement Package terminology.
-- `statementLakefilePath` instead of `surfaceLakefilePath`.
-- `submissionSlug` instead of `namespaceSlug`.
-- `submissionTitle` instead of `paperTitle`.
-- `bibtex-entries` instead of `bibtex`.
-- `statements` instead of `declarations`.
-- `Statement`, `DeclarationReferences`, `CurrentSubmission`,
-  `SubmissionSlug`, `LeanStatement`, `LatexDefinition`, and `Name` instead of
-  older used-surface-file records.
-- Statement entry types `Definition` and `Axiom`; do not keep `Statement` as an
-  allowed entry type.
+- `abstractPath`
+- `submissionTitle`
+- `submissionSlug`
+- `bibtex-entries`
+- `statementLakefilePath`
+- `statementLeanToolchainPath`
+- `proofLakefilePath`
+- `proofLeanToolchainPath`
+- `statements`
+- `proofs`
+- `Statement`
+- `Theorem`
+- `Proof`
+- `DeclarationReferences`
+- `CurrentSubmission`
+- `SubmissionSlug`
+- `LeanStatement`
+- `LatexDefinition`
+- `Name`
 
 Created metadata fields are `githubRepo`, `submittedBy`, `LakeProofPackage`,
 `LakeStatementPackage`, `submissionIssueNumber`, and `submissionIssueUrl`.
@@ -48,9 +68,15 @@ present, they must satisfy the schema, for example `githubRepo` must be a URI.
 Each present package has its own `lean-toolchain` file. Metadata records those
 files with `statementLeanToolchainPath` and `proofLeanToolchainPath`.
 
+The expected Lake package/library names are derived from `submissionSlug` by
+converting it to Pascal case:
+
+- `<SubmissionSlugAsPascal>.Statements`
+- `<SubmissionSlugAsPascal>.Proofs`
+
 ## Metadata Shape
 
-Statement entries should use the checklist shape:
+Statement entries use this shape:
 
 ```yaml
 statements:
@@ -60,61 +86,61 @@ statements:
       CurrentSubmission: true
       LeanStatement: statements/MainStatement.lean
       LatexDefinition: statements/MainStatement.tex
-      Name: SubmissionSlug.Statement.MainStatement.main_statement
+      Name: SubmissionSlug.Statements.MainStatement.main_statement
     DeclarationReferences:
-      - SubmissionSlug: OtherSubmission
+      - SubmissionSlug: other-submission
         LeanStatement: statements/OtherStatement.lean
         LatexDefinition: statements/OtherStatement.tex
-        Name: OtherPackage.Statement.OtherStatement.other_statement
+        Name: OtherSubmission.Statements.OtherStatement.other_statement
 ```
 
-Proof entries should use structured theorem, proof, and declaration-reference
-records:
+Proof entries use structured theorem, proof, and declaration-reference records:
 
 ```yaml
 proofs:
   - Name: MainStatementProof
     Type: proof
     Theorem:
-      SubmissionSlug: SubmissionSlug
-      File: statements/MainStatement.lean
-      Name: SubmissionSlug.Statement.MainStatement.main_statement
+      CurrentSubmission: true
+      LeanStatement: statements/MainStatement.lean
+      LatexDefinition: statements/MainStatement.tex
+      Name: SubmissionSlug.Statements.MainStatement.main_statement
     Proof:
       File: proofs/MainStatementProof.lean
       Name: SubmissionSlug.Proofs.MainStatement.main_statement
     DeclarationReferences:
-      - SubmissionSlug: OtherSubmission
+      - SubmissionSlug: other-submission
         LeanStatement: statements/OtherStatement.lean
         LatexDefinition: statements/OtherStatement.tex
-        Name: OtherPackage.Statement.OtherStatement.other_statement
+        Name: OtherSubmission.Statements.OtherStatement.other_statement
 ```
 
-Proof-level `DeclarationReferences` metadata must be supported. The checker
-model must allow proof entries to declare their own referenced declarations.
+`DeclarationReferences` metadata is supported on both statement and proof
+entries. Reference records must use exactly one of `CurrentSubmission: true` or
+`SubmissionSlug`, plus `LeanStatement`, `LatexDefinition`, and `Name`.
 
 ## Needed Files And Packages
 
-Package checks should be conditional:
+Package checks are conditional:
 
-- If a statement package is present, require its `lakefile.lean`.
-- For each theorem or definition recorded in metadata, require its Lean file and
+- If `statements` is present, require `statementLakefilePath` and
+  `statementLeanToolchainPath`.
+- If `proofs` is present, require `proofLakefilePath` and
+  `proofLeanToolchainPath`.
+- If a statement package is present, require each statement's Lean file and
   LaTeX file.
-- If a proof package is present, require its `lakefile.lean`.
-- Lake build checks should build only packages that are present.
+- If a proof package is present, require each proof entry's `Proof.File`.
+- Lake build checks build only packages that are present.
 
 Do not require statement folders to be direct children of a fixed package
-folder. Do not require a unique Lean library for each
-statement folder. Each statement must still be included in the shared statement
-library.
-
-The target package names are `Slug.Statements` and `Slug.Proofs`, resolved from
-the submission slug.
+folder. Do not require a unique Lean library for each statement folder. Each
+statement must still be included in the shared statement library.
 
 ## Statement Declaration Inspection
 
-Statement Packages should contain only expected files. Current
-filetype checks allow any permitted extension anywhere in the package; update
-them so package contents match the statement package model.
+Statement packages contain only expected Lean and LaTeX files: metadata-listed
+statement files, current-submission declaration reference files, and the
+statement package `lakefile.lean`.
 
 Use Lean-level inspection for statement files:
 
@@ -125,46 +151,64 @@ Use Lean-level inspection for statement files:
   syntax, `unsafe`, `run_cmd`, `#eval`, `#print`, `extern`, and `IO` are not
   submitted statement content.
 
+The current syntax checker warns for command kinds outside the first-run
+whitelist and rejects the explicitly forbidden syntax above.
+
 ## Dependency Model
 
 Check two dependency graphs:
 
-- Declared dependencies from metadata, including proof-level
-  `DeclarationReferences` records.
-- Actual dependencies from Lean axiom collection on the proof term.
+- declared dependencies from metadata, including proof-level
+  `DeclarationReferences` records;
+- actual dependencies from Lean axiom collection on proof terms.
 
-Require declared dependencies to include actual dependencies. Build the
-axiom-remapping substitution from declared dependencies only. Do not use a
-global substitution; undeclared axioms should survive and be caught by the axiom
-gate.
+Declared dependencies must cover actual dependencies except for allowed base
+axioms. Build the axiom-remapping substitution from declared dependencies only.
+Do not use a global substitution; undeclared axioms should survive and be caught
+by the axiom gate.
 
 Imported submission information comes from metadata files and
 `submissions.jsonl`. Import registry rows should preserve enough source
-repository information to locate both statement and proof package
-modes for an imported submission.
+repository information to locate statement and proof package modes for an
+imported submission.
 
-## Final Proof Build Rework
+## Current Final Proof Build
 
-The final proof-build stage should no longer only copy the package, run
-`lake update`, `lake clean`, cache fetch, `lake build`, reject `sorry`/`sorryAx`,
-and inspect proof-target axioms against statement axioms plus base axioms.
+The current final proof build:
 
-The new approach must:
+1. Copies the metadata-root package tree into an isolated directory.
+2. Runs `lake update`, `lake clean`, a best-effort `lake exe cache get`, and
+   `lake build`.
+3. Rejects build output that reports `sorry` or `sorryAx`.
+4. Builds a composed Lean module from metadata proof entries.
+5. Orders composition by statement dependencies listed in each proof entry's
+   `DeclarationReferences`.
+6. Rewrites declared proved statement dependencies to their composed constants.
+7. Accepts only allowed base axioms from `lml-env.json` by Lean name and type,
+   plus declared conjecture axioms from `Type: reduction` entries.
+8. Runs `lean4checker` over the composed `.olean` output when available.
 
-1. Import all nested imported submissions into the root Lake file.
-2. Read submission and source checkout information from metadata files and
+The current implementation does not yet make trusted-base acceptance depend on
+source module/provenance.
+
+## Target Final Proof Build Rework
+
+The target system should extend the current build so it:
+
+1. Imports all nested imported submissions into the root Lake file.
+2. Reads submission and source checkout information from metadata files and
    `submissions.jsonl`.
-3. During the Lean build, run a script that recursively follows metadata
-   references.
-4. Change proofs so they reference the proof counterpart of a referenced
+3. During the Lean build, recursively follows metadata references.
+4. Changes proofs so they reference the proof counterpart of a referenced
    statement instead of its statement axiom when that referenced statement is
    not a conjecture.
-5. Use the resulting `.olean` files for axiom testing and related checks.
-6. Return computed dependency and conjecture information.
-7. Compare the computed information to the version recorded in metadata; a
+5. Uses the resulting `.olean` files for axiom testing and related checks.
+6. Returns computed dependency and conjecture information.
+7. Compares the computed information to the version recorded in metadata; a
    mismatch is a failure.
 
-Composed proof outputs should rely only on trusted base axioms and conjectures.
+Composed proof outputs should rely only on trusted base axioms and declared
+conjectures.
 
 ## Statement-Level Proof Certificates
 
@@ -194,10 +238,13 @@ it emits a term with extra axioms, the axiom gate must catch it.
 
 ## Axiom Gate
 
-The axiom gate must match axioms by name, type, and source module, not by name
-alone. The whitelist must be pinned to a canonical signed trusted base, and the
-recheck must run against that pinned base rather than an adversary-supplied
-environment.
+Current behavior accepts configured base axioms by Lean name and type and
+accepts declared conjecture axioms from `Type: reduction` entries.
+
+The target axiom gate must match trusted base axioms by name, type, and source
+module/provenance, not by name alone. The whitelist must be pinned to a
+canonical signed trusted base, and the recheck must run against that pinned base
+rather than an adversary-supplied environment.
 
 Accepted composed proofs should bottom out only in trusted base axioms and
 declared conjectures.
@@ -206,21 +253,21 @@ declared conjectures.
 
 Lean must own anything that touches Lean semantics:
 
-- The `discharges` attribute.
-- Reading terms, definitional equality, and type comparison.
-- Axiom sets and term rewriting.
-- Adding composed declarations.
-- Statement-graph construction and acyclicity checks.
-- Typed bridge generation.
-- The name/type/module axiom gate.
+- the `discharges` attribute;
+- reading terms, definitional equality, and type comparison;
+- axiom sets and term rewriting;
+- adding composed declarations;
+- statement-graph construction and acyclicity checks;
+- typed bridge generation;
+- the name/type/module axiom gate.
 
 Python, Lake, Nix, or other glue should only orchestrate:
 
-- Discover libraries.
-- Compute library build order.
-- Run `lake build` per library in sandboxes.
-- Shuttle `.olean` files to isolated `lean4checker`.
-- Aggregate results.
+- discover libraries;
+- compute library build order;
+- run `lake build` per library in sandboxes;
+- shuttle `.olean` files to isolated `lean4checker`;
+- aggregate results.
 
 Glue must not compute the axiom-remapping substitution or the whitelist
 decision. The small trusted glue exception is signature/hash verification and
@@ -230,40 +277,49 @@ ensuring the recheck runs against the pinned base.
 
 Trusted:
 
-- The Lean kernel.
-- `lean4checker`.
-- The canonical signed trusted base.
-- The guarantee that verification runs against that base.
-- The name/type/module axiom gate.
-- The small provenance glue.
+- the Lean kernel;
+- `lean4checker`;
+- the canonical signed trusted base;
+- the guarantee that verification runs against that base;
+- the name/type/module axiom gate;
+- the small provenance glue.
 
 Not trusted:
 
-- The composer.
-- Orchestration glue.
-- Every paper's proof file.
+- the composer;
+- orchestration glue;
+- every submission's proof file.
 
 ## Tests And Fixtures
 
-Update tests that currently require the old package split or direct fixed
-statement-folder children. Remove tests that require or enforce a separate
-proof-package and statement-package structure.
+The current fixture suite in `test-imports/` covers:
 
-Update proof metadata tests that currently require theorem names to contain
-`.Surface.Statement.` and proof names to contain `.Proofs.Statement.`. They
-should validate the structured `Theorem` and `Proof` fields instead.
+- package build failure;
+- conditional statement/proof build preparation;
+- metadata/schema failure;
+- metadata path existence;
+- statement-package disk closure;
+- pinned toolchain and Mathlib version checks;
+- namespace/package-name checks;
+- folder and file size limits;
+- file type policy;
+- statement syntax policy;
+- proof type matching with Lean `isDefEq`;
+- `sorryAx` and local proof-axiom rejection;
+- extra statement declaration rejection;
+- unauthorized statement imports;
+- final proof-build forbidden axiom checks.
 
-Add or update fixtures for:
+Future fixture work should add or strengthen coverage for:
 
-- Optional package presence.
-- Missing required files only when a package is present.
-- `Definition` and `Axiom` statement entries.
-- Rejection of statement theorem declarations.
-- Proof-level `DeclarationReferences` metadata.
-- Declared dependencies covering actual Lean axiom dependencies.
-- Statement-level dependency DAG acyclicity.
-- Axiom-gate matching by name, type, and source module.
-- Final proof-build composition and metadata dependency/conjecture comparison.
+- submissions with only a statement package;
+- submissions with only a proof package;
+- rejection of statement theorem declarations;
+- proof-level `DeclarationReferences` with external imported submissions;
+- declared dependencies covering actual Lean axiom dependencies;
+- statement-level dependency DAG acyclicity;
+- axiom-gate matching by name, type, and source module;
+- final proof-build metadata dependency/conjecture comparison.
 
 ## Suggested Milestone
 

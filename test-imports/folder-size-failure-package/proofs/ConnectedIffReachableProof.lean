@@ -1,11 +1,11 @@
-import ConnectedIffReachable.Surface
+import FolderSizeFailure.Statements.ConnectedIffReachable
 
 namespace FolderSizeFailure.Proofs.Statement.ConnectedIffReachable
 
 theorem connected_iff_reachable (n : Nat) :
-    FolderSizeFailure.Surface.Definition.ConnectedGraph.IsConnectedGraph n ↔ True :=
+    FolderSizeFailure.Statements.ConnectedGraph.IsConnectedGraph n ↔ True :=
   by
-    unfold FolderSizeFailure.Surface.Definition.ConnectedGraph.IsConnectedGraph
+    unfold FolderSizeFailure.Statements.ConnectedGraph.IsConnectedGraph
     constructor
     · intro _h
       trivial

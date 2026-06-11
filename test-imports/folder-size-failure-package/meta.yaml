@@ -1,6 +1,5 @@
-pinnedLeanToolchain: leanprover/lean4:v4.30.0
 proofLakefilePath: lakefile.lean
-statementLakefilePath: surface-package/lakefile.lean
+statementLakefilePath: statements/lakefile.lean
 abstractPath: abstract.tex
 submissionTitle: Folder Size Failure Fixture
 statements:
@@ -8,28 +7,31 @@ statements:
     Type: Definition
     Statement:
       CurrentSubmission: true
-      Name: FolderSizeFailure.Surface.Definition.ConnectedGraph.IsConnectedGraph
-      LeanStatement: surface-package/ConnectedGraph/Surface.lean
-      LatexDefinition: surface-package/ConnectedGraph/latex-file.tex
+      Name: FolderSizeFailure.Statements.ConnectedGraph.IsConnectedGraph
+      LeanStatement: statements/FolderSizeFailure/Statements/ConnectedGraph.lean
+      LatexDefinition: statements/FolderSizeFailure/Statements/ConnectedGraph.tex
     DeclarationReferences: []
   - Name: ConnectedIffReachable
     Type: Axiom
     Statement:
       CurrentSubmission: true
-      Name: FolderSizeFailure.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
-      LeanStatement: surface-package/ConnectedIffReachable/Surface.lean
-      LatexDefinition: surface-package/ConnectedIffReachable/latex-file.tex
+      Name: FolderSizeFailure.Statements.ConnectedIffReachable.connected_iff_reachable
+      LeanStatement: statements/FolderSizeFailure/Statements/ConnectedIffReachable.lean
+      LatexDefinition: statements/FolderSizeFailure/Statements/ConnectedIffReachable.tex
     DeclarationReferences: []
 proofs:
   - Name: ConnectedIffReachableProof
     Type: proof
     Theorem:
-      SubmissionSlug: folder-size-failure
-      File: surface-package/ConnectedIffReachable/Surface.lean
-      Name: FolderSizeFailure.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
+      Name: FolderSizeFailure.Statements.ConnectedIffReachable.connected_iff_reachable
+      LeanStatement: statements/FolderSizeFailure/Statements/ConnectedIffReachable.lean
+      LatexDefinition: statements/FolderSizeFailure/Statements/ConnectedIffReachable.tex
+      CurrentSubmission: true
     Proof:
       File: proofs/ConnectedIffReachableProof.lean
       Name: FolderSizeFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
     DeclarationReferences: []
 bibtex-entries: []
 submissionSlug: folder-size-failure
+proofLeanToolchainPath: lean-toolchain
+statementLeanToolchainPath: statements/lean-toolchain

@@ -170,6 +170,7 @@ jobs:
       - name: Prepare Lean build/cache
         env:
           META_PATH: ${{ steps.issue.outputs.meta-path }}
+          LML_CHECK_RUN_ID: import-${{ github.run_id }}-${{ github.run_attempt }}
         run: |
           node "$GITHUB_WORKSPACE/.github/actions/test/statements/prepare-build-cache.mjs" "$GITHUB_WORKSPACE/submission/$META_PATH"
           node "$GITHUB_WORKSPACE/.github/actions/test/proofs/prepare-build-cache.mjs" "$GITHUB_WORKSPACE/submission/$META_PATH"
@@ -190,6 +191,7 @@ jobs:
       - name: Run submission checks
         env:
           META_PATH: ${{ steps.issue.outputs.meta-path }}
+          LML_CHECK_RUN_ID: import-${{ github.run_id }}-${{ github.run_attempt }}
         run: |
           node "$GITHUB_WORKSPACE/.github/actions/test/run-all.mjs" --skip-build-cache "$GITHUB_WORKSPACE/submission/$META_PATH"
 
@@ -332,12 +334,14 @@ jobs:
             "Source Commit": sourceCommit,
             "Metadata File": metadataPath,
             githubRepo: repoUrl,
-            "Surface Folder": legacySurfaceFolder(meta, metadataPath),
             "Statement Folder": packageFolder(meta, metadataPath, "statementLakefilePath"),
             "Declaration Folder": packageFolder(meta, metadataPath, "statementLakefilePath"),
             "Proof Folder": packageFolder(meta, metadataPath, "proofLakefilePath"),
             "Lake Statement Package": meta["Lake Statement Package"] || packageFolder(meta, metadataPath, "statementLakefilePath"),
             "Lake Proof Package": meta["Lake Proof Package"] || packageFolder(meta, metadataPath, "proofLakefilePath"),
+            LakeStatementPackage: meta.LakeStatementPackage || packageFolder(meta, metadataPath, "statementLakefilePath"),
+            LakeProofPackage: meta.LakeProofPackage || packageFolder(meta, metadataPath, "proofLakefilePath"),
+            submittedBy: submitterLogin,
             "User Id": Number(submitterId),
             "User Login": submitterLogin,
             "Issue Id": Number(process.env.ISSUE_ID),
@@ -371,22 +375,6 @@ jobs:
             const metadataDir = path.dirname(normalizePath(metadataPathValue)).replace(/^\.$/, "");
             if (metadata[lakefileKey]) {
               return repoRelativePath(metadataDir, path.dirname(normalizePath(metadata[lakefileKey])));
-            }
-            return metadataDir;
-          }
-
-          function legacySurfaceFolder(metadata, metadataPathValue) {
-            const metadataDir = path.dirname(normalizePath(metadataPathValue)).replace(/^\.$/, "");
-            if (metadata.statementLakefilePath) {
-              return repoRelativePath(metadataDir, path.dirname(normalizePath(metadata.statementLakefilePath)));
-            }
-            if (metadata.surfaceLakefilePath) {
-              return repoRelativePath(metadataDir, path.dirname(normalizePath(metadata.surfaceLakefilePath)));
-            }
-            const firstEntryFolder = metadata.declarations?.find((entry) => entry.folder)?.folder;
-            if (firstEntryFolder) {
-              const surfaceDir = normalizePath(firstEntryFolder).split("/").slice(0, -1).join("/") || firstEntryFolder;
-              return repoRelativePath(metadataDir, surfaceDir);
             }
             return metadataDir;
           }

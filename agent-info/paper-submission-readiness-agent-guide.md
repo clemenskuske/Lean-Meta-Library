@@ -6,14 +6,10 @@ files. The goal is to produce a submission package that accurately reflects the
 user's mathematical intent and passes the checks exposed by the Lean Meta
 Library CLI.
 
-If generated starter files or checker messages use older package vocabulary,
-translate that wording to the Statement Package model below when planning new
-work.
-
 Use submission terminology for the Lean Meta Library entry itself. A submission
-is not the source repository; it may contain up to two Lake packages, the
-statement-package and the proof-package. Reserve repository terminology for the
-source checkout or GitHub repository that hosts the submission.
+is not the source repository; it may contain a statement package, a proof
+package, or both. Reserve repository terminology for the source checkout or
+GitHub repository that hosts the submission.
 
 ## Core Principle
 
@@ -42,57 +38,64 @@ Before writing the submission package, gather these decisions from the user:
 - Which declarations should be public statement entries.
 - For each public entry, whether it is a `Definition` or an `Axiom`.
 - For each axiom, whether the proof entry type is `proof`,
-  `conditional-proof`, or `reduction`, and which proof file in the source
-  project should establish it.
-- Which conjectures are expected to be true and should be called `assumptions`.
+  `conditional-proof`, or `reduction`, and which proof declaration establishes
+  it.
+- Which conjectures are expected to be true and should be treated as
+  assumptions.
 - Whether any entry depends on another entry in this submission.
 - Whether any entry or proof depends on a previously imported Lean Meta Library
-  package listed in `submissions.jsonl`.
-- Bibliographic fields, if known: arXiv URL, DOI, online source, ORCIDs, venue,
-  keywords, and BibTeX entries.
+  submission listed in `submissions.jsonl`.
+- BibTeX entries and any bibliographic context the user wants preserved.
 
 If the user is unsure, inspect the source project and propose a small statement
 plan, then ask the user to confirm or revise it.
 
 ## Package Shape To Create
 
-Create one submission package folder, normally named `<slug>-package/`. Prefer
+Create one metadata-root folder, normally named `<slug>-package/`. Prefer
 starting from the CLI skeleton when it matches the current checker policy:
 
 ```sh
 lml create-paper <slug>
 ```
 
-The structure rework no longer requires separate proof and statement packages in
-every submission. A statement package and a proof package are both
-allowed, but checks that require their Lake files and internal contents should
-run only when the corresponding package is present.
+A submission may contain only a statement package, only a proof package, or
+both. When both are present, keep them separate:
 
-When present, a statement package should contain its `lakefile.lean`
-plus, for each definition or axiom, a Lean file and a LaTeX file explaining the
-entry in paper-facing language. When present, a proof package should contain its
-`lakefile.lean` plus the proof files referenced by metadata.
+- The statement package contains its `lakefile.lean`, `lean-toolchain`, and the
+  Lean/LaTeX statement files named by metadata.
+- The proof package contains its `lakefile.lean`, `lean-toolchain`, proof files
+  named by metadata, and any internal proof development needed to build those
+  proof targets.
 
 Do not require a unique Lean library for each statement folder. Each statement
-must still be included in the shared statement library.
+must still be included in the shared statement package library. The expected
+package/library names are derived from `submissionSlug` as
+`<SubmissionSlugAsPascal>.Statements` and `<SubmissionSlugAsPascal>.Proofs`.
 
 ## Metadata File
 
 Create `meta.yaml` with the user. It is the source of truth for the CLI checks.
-Use `meta.config.yaml` as the schema source of truth. The author-created
-metadata should use the exact field names below; workflow-created fields such as
-`githubRepo`, `submittedBy`, `LakeStatementPackage`, `LakeProofPackage`,
-`submissionIssueNumber`, and `submissionIssueUrl` should normally be omitted
-until tooling writes them.
+Use `meta.config.yaml` as the schema source of truth. Workflow-created fields
+such as `githubRepo`, `submittedBy`, `LakeStatementPackage`,
+`LakeProofPackage`, `submissionIssueNumber`, and `submissionIssueUrl` should
+normally be omitted until tooling writes them.
+
+The author-supplied required top-level fields are:
 
 ```yaml
+abstractPath: abstract.tex
 submissionTitle: User Confirmed Title
-submissionSlug: UserSlug
+submissionSlug: user-slug
+bibtex-entries: []
+```
+
+A statement package adds `statements`, `statementLakefilePath`, and
+`statementLeanToolchainPath` together:
+
+```yaml
 statementLakefilePath: statements/lakefile.lean
 statementLeanToolchainPath: statements/lean-toolchain
-proofLakefilePath: proofs/lakefile.lean
-proofLeanToolchainPath: proofs/lean-toolchain
-abstractPath: abstract.tex
 statements:
   - Name: MainDefinition
     Type: Definition
@@ -100,7 +103,7 @@ statements:
       CurrentSubmission: true
       LeanStatement: statements/MainDefinition.lean
       LatexDefinition: statements/MainDefinition.tex
-      Name: UserSlug.Definition.MainDefinition.main_definition
+      Name: UserSlug.Statements.MainDefinition.main_definition
     DeclarationReferences: []
   - Name: MainStatement
     Type: Axiom
@@ -108,32 +111,37 @@ statements:
       CurrentSubmission: true
       LeanStatement: statements/MainStatement.lean
       LatexDefinition: statements/MainStatement.tex
-      Name: UserSlug.Statement.MainStatement.main_statement
+      Name: UserSlug.Statements.MainStatement.main_statement
     DeclarationReferences: []
+```
+
+A proof package adds `proofs`, `proofLakefilePath`, and
+`proofLeanToolchainPath` together:
+
+```yaml
+proofLakefilePath: proofs/lakefile.lean
+proofLeanToolchainPath: proofs/lean-toolchain
 proofs:
   - Name: MainStatementProof
     Type: proof
     Theorem:
-      SubmissionSlug: UserSlug
-      File: statements/MainStatement.lean
-      Name: UserSlug.Statement.MainStatement.main_statement
+      CurrentSubmission: true
+      LeanStatement: statements/MainStatement.lean
+      LatexDefinition: statements/MainStatement.tex
+      Name: UserSlug.Statements.MainStatement.main_statement
     Proof:
       File: proofs/MainStatementProof.lean
       Name: UserSlug.Proofs.MainStatement.main_statement
     DeclarationReferences: []
-bibtex-entries: []
 ```
 
 Use `Type: proof` for a fully formal proof, `Type: conditional-proof` for a
 proof relying only on assumptions, and `Type: reduction` for a reduction that
-uses unresolved conjectures. An `assumption` is a conjecture expected to be
-true. A statement with `proof` or `conditional-proof` is classified as a
-theorem. A statement with `reduction` is classified as a conjecture.
+uses unresolved conjectures. A statement with `proof` or `conditional-proof` is
+classified as a theorem. A statement with `reduction` is classified as a
+conjecture.
 
-The schema requires `statements`, `statementLakefilePath`, and
-`statementLeanToolchainPath` to appear together, and `proofs`,
-`proofLakefilePath`, and `proofLeanToolchainPath` to appear together. All
-repository paths must be relative paths that stay inside the repository root.
+All repository paths must be relative paths that stay inside the metadata root.
 Metadata strings should stay simple ASCII text accepted by the CLI checks.
 
 ## Statement Files
@@ -143,22 +151,25 @@ minimal, trustworthy, and user-confirmed.
 
 Each submitted statement file must:
 
-- Import only the pinned Mathlib base modules from `lml-env.json`, Std modules
+- import only pinned Mathlib base modules from `lml-env.json`, Std modules
   provided by the fixed Lean version, local statement modules, or authorized
-  imported package APIs.
-- Introduce exactly one direct public declaration recorded by metadata.
-- Avoid helper declarations, private declarations, instances, structures,
-  classes, inductives, macros, custom syntax, `unsafe`, `run_cmd`, `#eval`,
-  `#print`, `extern`, and `IO`.
+  imported statement packages;
+- introduce exactly one direct public declaration recorded by metadata;
+- use a Lean declaration name beginning with the namespace root derived from
+  `submissionSlug`;
+- avoid helper declarations, private declarations, generated declarations,
+  instances, structures, classes, inductives, macros, custom syntax, `unsafe`,
+  `run_cmd`, `#eval`, `#print`, `extern`, and `IO`.
 
 The direct declaration rules are:
 
 - `Definition` entries must introduce one `def`.
 - `Axiom` entries must introduce one `axiom`.
-- Statement/declaration entries must not introduce theorems.
+- Statement entries must not introduce theorems.
 
-Every entry should also have a LaTeX file explaining it in paper-facing
-language.
+The statement package may not contain extra `.lean` or `.tex` files beyond the
+metadata-listed statement/reference files and `lakefile.lean`. Every statement
+entry should also have a LaTeX file explaining it in paper-facing language.
 
 ## Dependencies
 
@@ -167,52 +178,65 @@ must use the schema shape:
 
 ```yaml
 DeclarationReferences:
-  - SubmissionSlug: OtherSlug
+  - SubmissionSlug: other-slug
     LeanStatement: statements/OtherEntry.lean
     LatexDefinition: statements/OtherEntry.tex
-    Name: OtherSlug.Statement.OtherEntry.other_statement
+    Name: OtherSlug.Statements.OtherEntry.other_statement
 ```
 
+Use `CurrentSubmission: true` for references inside the current submission and
+`SubmissionSlug` for references to another imported submission. A declaration
+reference must not use both. `LeanStatement` and `LatexDefinition` should be in
+the same folder.
+
 Proof entries may include proof-level `DeclarationReferences` as well as
-statement-level `DeclarationReferences`. Actual dependencies come from Lean
-axiom collection and must be included in declared dependencies. Build
-axiom-remapping substitutions from declared dependencies only; do not silently
-rewrite undeclared axioms.
+statement-level `DeclarationReferences`. Actual proof dependencies come from
+Lean axiom collection and must be covered by declared dependencies, aside from
+allowed base axioms. Build axiom-remapping substitutions from declared
+dependencies only; do not silently rewrite undeclared axioms.
 
 For dependency work, run `lml update` first and read `submissions.jsonl`.
-Imported rows should preserve enough information to locate both statement and
-proof package modes for the imported submission.
+Imported rows should preserve enough information to locate statement and proof
+package modes for the imported submission.
 
 ## Proof Artifacts
 
 Proof artifacts contain typed proof evidence for submitted axioms. They may
 contain `proof`, `conditional-proof`, and `reduction` entries.
 
-Every submitted axiom that is to be discharged needs one matching metadata proof
-entry and proof file. The CLI should compare the compiled Lean type of the
-statement axiom and proof theorem with Lean `isDefEq`; textual similarity is not
-enough.
+Every current-submission axiom that is to be discharged needs one matching
+metadata proof entry and proof file. The CLI compares the compiled Lean type of
+the statement axiom and proof declaration with Lean `isDefEq`; textual
+similarity is not enough.
 
-Proof files must not contain `axiom`, `sorry`, `admit`, or `unsafe`. The
-compiled proof theorem must not depend on `sorryAx` or local proof-side axioms.
-It may rely on definitions, declared dependencies, Std, and Mathlib.
+Proof packages may contain helper files and internal declarations, but submitted
+proof targets must be clean:
 
-## Final Proof Build Target
+- proof files named by metadata must elaborate;
+- submitted proof targets must not depend on `sorryAx`;
+- submitted proof targets must not depend on local proof-namespace axioms;
+- actual axiom dependencies must be covered by metadata `DeclarationReferences`,
+  except for allowed base axioms.
 
-The final proof-build stage is being reworked. The target design is:
+## Final Proof Build
 
-1. Import all nested imported submissions into the root Lake file using
-   metadata and `submissions.jsonl`.
-2. During the Lean build, recursively follow metadata references.
-3. Replace references to proved dependency statement axioms with the proof
-   counterpart; leave conjectures as declared conjectures.
-4. Use the resulting `.olean` files for axiom testing and related checks.
-5. Return computed dependency and conjecture information, then compare it to the
-   version recorded in metadata.
+The current final proof build copies the metadata-root package tree into an
+isolated directory, runs `lake update`, `lake clean`, a best-effort cache fetch,
+and `lake build`, then rejects build output that reports `sorry` or `sorryAx`.
 
-Composed proof outputs should rely only on trusted base axioms and conjectures.
-The axiom gate must match allowed axioms by name, type, and source module
-against a canonical signed trusted base.
+It then composes submitted proof targets in statement-dependency order using the
+proof entries' `DeclarationReferences`. Composed outputs may rely only on:
+
+- allowed base axioms listed in `lml-env.json`'s `checks.allowedMathlibAxioms`,
+  matched by Lean name and type; and
+- declared conjecture axioms from `Type: reduction` entries.
+
+When `lean4checker` is available, the final checker also rechecks the composed
+`.olean` output.
+
+The target rework is to extend this into a fully provenance-aware
+statement-level proof certificate system whose trusted-base axiom gate also
+matches source module.
 
 ## Converting An Existing Lean Project
 
@@ -231,8 +255,8 @@ For an arbitrary project, use this workflow:
 9. Run the CLI checks, fix failures, and repeat until clean.
 
 Do not carry over a large project wholesale if a smaller submission package
-proves the chosen statements. Smaller packages are easier for the user to review
-and easier for the CLI to accept.
+proves the chosen statements. Smaller packages are easier for the user to
+review and easier for the CLI to accept.
 
 ## Required Checks Before Calling The Work Done
 
@@ -252,7 +276,7 @@ Also check:
 - Any present Lake files keep the Mathlib source URL and revision required by
   the pinned Mathlib base import unless the CLI explicitly instructs otherwise.
 - `lake update` and `lake build` work for each present package.
-- Every metadata path exists and stays inside the package.
+- Every metadata path exists and stays inside the metadata root.
 - No file exceeds the limits reported by `lml test`.
 - File extensions are accepted by `lml test`.
 - The package contains no `.DS_Store`, generated build caches, or unrelated
@@ -263,11 +287,11 @@ Also check:
 Before submitting or asking the user to submit, confirm:
 
 - The user has approved the title, submission slug, abstract, statement entries,
-  proof entry types, and bibliographic metadata.
+  proof entry types, dependencies, and bibliographic metadata.
 - Every `Definition` and `Axiom` has a matching statement file and LaTeX file.
 - Every discharged axiom has a matching typed proof file and metadata entry.
 - Statement files contain exactly one direct public declaration each.
-- Proof files contain no forbidden placeholders or local axioms.
+- Proof targets contain no forbidden placeholders or local proof-package axioms.
 - Imports and `DeclarationReferences` metadata explain all declared
   dependencies.
 - Any external dependency is backed by a matching row in `submissions.jsonl`.

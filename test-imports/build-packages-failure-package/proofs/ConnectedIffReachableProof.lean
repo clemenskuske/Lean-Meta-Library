@@ -1,9 +1,9 @@
-import ConnectedIffReachable.Surface
+import BuildPackagesFailure.Statements.ConnectedIffReachable
 
 namespace BuildPackagesFailure.Proofs.Statement.ConnectedIffReachable
 
 theorem connected_iff_reachable (n : Nat) :
-    BuildPackagesFailure.Surface.Definition.ConnectedGraph.IsConnectedGraph n ↔ True :=
+    BuildPackagesFailure.Statements.ConnectedGraph.IsConnectedGraph n ↔ True :=
   by
     exact missingIdentifier
 

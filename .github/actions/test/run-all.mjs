@@ -1,30 +1,33 @@
 #!/usr/bin/env node
 // Runs the full first-run submission checker suite.
 // It prepares the Lake build/cache first, then runs independent static and Lean checks in parallel groups.
+import { randomUUID } from "node:crypto";
 import { spawn } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const { runnerOptions, checkerArgs } = parseRunnerArgs(process.argv.slice(2));
+const checkRunId = process.env.LML_CHECK_RUN_ID || `run-all:${randomUUID()}`;
 const prepareChecks = runnerOptions.skipBuildCache ? [] : [
   "statements/prepare-build-cache.mjs",
   "proofs/prepare-build-cache.mjs"
 ];
 const staticChecks = [
-  "files-present.mjs",
-  "metadata-check.mjs",
-  "mathlib-version.mjs",
-  "namespaces-correct.mjs",
-  "folder-size.mjs",
-  "filetypes.mjs",
-  "surface-file-context.mjs",
-  "dependency-check.mjs"
+  "general/files-present.mjs",
+  "statements/no-extra-files.mjs",
+  "general/metadata-check.mjs",
+  "general/base-import-versions.mjs",
+  "general/namespaces-correct.mjs",
+  "general/folder-size.mjs",
+  "general/filetypes.mjs",
+  "statements/file-context.mjs",
+  "statements/imports.mjs"
 ];
 const leanChecks = [
-  "proofs-axioms-sorrys.mjs",
-  "declarations-to-proofs.mjs",
-  "surface-declarations.mjs"
+  "proofs/no-forbidden-axioms.mjs",
+  "proofs/type-matches-statements.mjs",
+  "statements/introduced-declarations.mjs"
 ];
 
 let failed = false;
@@ -68,7 +71,8 @@ async function runSerial(checks) {
 function runCheck(check) {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [join(here, check), ...checkerArgs], {
-      encoding: "utf8"
+      encoding: "utf8",
+      env: { ...process.env, LML_CHECK_RUN_ID: checkRunId }
     });
     const chunks = [];
 

@@ -26,78 +26,72 @@ const fixtures = [
   {
     name: "prepare-build-cache-failure-package",
     checker: "statements/prepare-build-cache.mjs",
-    expected: /statement package lake build failed|statement\/declaration package lake build failed|surface package lake build failed|Unknown identifier|MissingName|unexpected identifier/,
+    expected: /statement package lake build failed|Unknown identifier|MissingName|unexpected identifier/,
     stripMathlibDependencyForCheck: true
   },
   {
     name: "missing-proof-file-package",
-    checker: "files-present.mjs",
-    expected: /proof file missing/
+    checker: "general/files-present.mjs",
+    expected: /Proof\.File missing|proof file missing/
   },
   {
     name: "metadata-disk-state-failure-package",
-    checker: "files-present.mjs",
-    expected: /statement\/declaration file is present on disk but not listed in metadata|declaration folder is present on disk but not listed in metadata/
+    checker: "statements/no-extra-files.mjs",
+    expected: /statement file is present on disk but not listed in metadata/
   },
   {
     name: "metadata-check-failure-package",
-    checker: "metadata-check.mjs",
+    checker: "general/metadata-check.mjs",
     expected: /metadata schema .*must have required property 'bibtex-entries'|metadata schema .*must NOT have additional properties/
   },
   {
     name: "mathlib-version-failure-package",
-    checker: "mathlib-version.mjs",
-    expected: /proof package lean-toolchain must be|root lean-toolchain must be/
+    checker: "general/base-import-versions.mjs",
+    expected: /proof package lean-toolchain must be/
   },
   {
     name: "namespaces-correct-failure-package",
-    checker: "namespaces-correct.mjs",
-    expected: /proof lakefile should declare package|declaration namespace should start/,
+    checker: "general/namespaces-correct.mjs",
+    expected: /proof lakefile should declare package|statement lakefile should declare package/,
     stripMathlibDependencyForCheck: true
   },
   {
     name: "folder-size-failure-package",
-    checker: "folder-size.mjs",
+    checker: "general/folder-size.mjs",
     expected: /file is too large/
   },
   {
     name: "filetypes-failure-package",
-    checker: "filetypes.mjs",
+    checker: "general/filetypes.mjs",
     expected: /file type is not allowed/
   },
   {
-    name: "surface-file-context-failure-package",
-    checker: "surface-file-context.mjs",
+    name: "statement-file-context-failure-package",
+    checker: "statements/file-context.mjs",
     expected: /forbidden eval commands/
   },
   {
     name: "mismatched-proof-type-package",
-    checker: "declarations-to-proofs.mjs",
-    expected: /proof theorem type does not match surface declaration/,
+    checker: "proofs/type-matches-statements.mjs",
+    expected: /proof theorem type does not match statement/,
     stripMathlibDependencyForCheck: true
   },
   {
     name: "sorry-proof-package",
-    checker: "proofs-axioms-sorrys.mjs",
-    expected: /proof file proofs\/ConnectedIffReachableProof\.lean reports a sorry/,
+    checker: "proofs/no-forbidden-axioms.mjs",
+    expected: /FORBIDDEN_AXIOM|compiled proof theorem depends on forbidden axioms/,
     stripMathlibDependencyForCheck: true
   },
   {
-    name: "unused-sorry-proof-package",
-    checker: "proofs-axioms-sorrys.mjs",
-    expected: /proof file proofs\/UnusedSorry\.lean reports a sorry/,
-    stripMathlibDependencyForCheck: true
-  },
-  {
-    name: "extra-surface-declaration-package",
-    checker: "surface-declarations.mjs",
+    name: "extra-statement-declaration-package",
+    checker: "statements/introduced-declarations.mjs",
     expected: /introduces extra declaration|should introduce exactly one direct declaration/,
     stripMathlibDependencyForCheck: true
   },
   {
     name: "final-proof-build-failure-package",
     checker: "final-proof-build.mjs",
-    expected: /FORBIDDEN_AXIOM|final proof build has forbidden axioms/,
+    expected: /UNDECLARED_AXIOM|final proof composition failed|FORBIDDEN_AXIOM|final proof build has forbidden axioms/,
     stripMathlibDependencyForCheck: true
   },
   {
@@ -107,9 +101,9 @@ const fixtures = [
     stripMathlibDependencyForCheck: true
   },
   {
-    name: "unauthorized-surface-import-package",
-    checker: "dependency-check.mjs",
-    expected: /not listed in that entry's DeclarationReferences metadata|only allows its own surface statement module/
+    name: "unauthorized-statement-import-package",
+    checker: "statements/imports.mjs",
+    expected: /statement lakefile does not declare an authorized dependency|not listed in that statement entry's DeclarationReferences metadata/
   }
 ];
 
@@ -219,7 +213,7 @@ function materializeFixture({ name, stripMathlibDependencyForCheck }) {
 function candidateLakefiles(fixtureDir) {
   return [
     join(fixtureDir, "lakefile.lean"),
-    join(fixtureDir, "surface-package", "lakefile.lean"),
+    join(fixtureDir, "statements", "lakefile.lean"),
     join(fixtureDir, "statements", "lakefile.lean"),
     join(fixtureDir, "proofs", "lakefile.lean")
   ];

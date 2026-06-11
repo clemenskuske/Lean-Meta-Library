@@ -1,11 +1,11 @@
-import ConnectedIffReachable.Surface
+import FiletypesFailure.Statements.ConnectedIffReachable
 
 namespace FiletypesFailure.Proofs.Statement.ConnectedIffReachable
 
 theorem connected_iff_reachable (n : Nat) :
-    FiletypesFailure.Surface.Definition.ConnectedGraph.IsConnectedGraph n ↔ True :=
+    FiletypesFailure.Statements.ConnectedGraph.IsConnectedGraph n ↔ True :=
   by
-    unfold FiletypesFailure.Surface.Definition.ConnectedGraph.IsConnectedGraph
+    unfold FiletypesFailure.Statements.ConnectedGraph.IsConnectedGraph
     constructor
     · intro _h
       trivial

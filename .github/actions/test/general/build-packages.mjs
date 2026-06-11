@@ -14,8 +14,14 @@ import {
 const { packageRoot, meta } = loadContext();
 const errors = [];
 
-if (spawnSync("lake", ["--version"], { encoding: "utf8" }).error) {
-  errors.push("lake executable not found on PATH");
+const lakeVersion = spawnSync("lake", ["--version"], {
+  encoding: "utf8",
+  maxBuffer: maxBuildOutputBytes
+});
+if (lakeVersion.error) {
+  errors.push(`lake executable not found on PATH: ${lakeVersion.error.message}`);
+} else if (lakeVersion.status !== 0) {
+  errors.push(`lake --version failed\n${lakeVersion.stdout}${lakeVersion.stderr}`.trim());
 } else {
   for (const item of packageRoots()) {
     runLakeBuild(item.cwd, item.label);
@@ -25,7 +31,7 @@ if (spawnSync("lake", ["--version"], { encoding: "utf8" }).error) {
 function packageRoots() {
   const items = [];
   const seen = new Set();
-  addPackage("statement/declaration package", statementLakefilePath(meta));
+  addPackage("statement package", statementLakefilePath(meta));
   addPackage("proof package", proofLakefilePath(meta));
   return items;
 
@@ -49,6 +55,10 @@ function runLakeBuild(cwd, label) {
     maxBuffer: maxBuildOutputBytes
   });
 
+  if (result.error) {
+    errors.push(`${label} lake build failed to start: ${result.error.message}`);
+    return;
+  }
   if (result.status !== 0) {
     errors.push(`${label} failed to build\n${result.stdout}${result.stderr}`.trim());
   }

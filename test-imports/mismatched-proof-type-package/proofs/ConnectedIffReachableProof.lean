@@ -1,4 +1,4 @@
-import ConnectedIffReachable.Surface
+import MismatchedProofType.Statements.ConnectedIffReachable
 
 namespace MismatchedProofType.Proofs.Statement.ConnectedIffReachable
 

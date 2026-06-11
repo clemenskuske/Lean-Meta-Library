@@ -5,20 +5,18 @@ import {
   cpSync,
   existsSync,
   mkdtempSync,
+  mkdirSync,
   readdirSync,
   readFileSync,
   rmSync,
   writeFileSync
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, join, relative, sep } from "node:path";
+import { basename, dirname, join, relative, sep } from "node:path";
 import lmlEnv from "../../../lml-env.json" with { type: "json" };
 import { loadContext } from "./general/meta-context.mjs";
 import {
   maxBuildOutputBytes,
-  metadataProofs,
-  proofNameForProofEntry,
-  theoremNameForProofEntry,
   report,
   walkFiles
 } from "./common.mjs";
@@ -115,47 +113,96 @@ function checkBuildOutputForSorry(result) {
 }
 
 function checkCompiledAxioms() {
-  const proofTargets = proofTargetNames();
-  const allowedConjectures = conjectureAxiomNames();
-  if (proofTargets.length === 0) {
+  const compositionTargets = proofCompositionTargets();
+  const allowedConjectures = unresolvedConjectureAxiomNames(compositionTargets);
+  if (compositionTargets.length === 0) {
     warnings.push("no proof targets were found for final axiom inspection");
     return;
   }
 
   const modules = builtModuleNames();
-  const inspector = join(isolatedPackageRoot, "FinalProofBuildInspect.lean");
+  const composedModuleName = "LmlComposed";
+  const composedSource = join(isolatedPackageRoot, `${composedModuleName}.lean`);
+  const composedOlean = join(isolatedPackageRoot, ".lake", "build", "lib", "lean", `${composedModuleName}.olean`);
+  mkdirSync(dirname(composedOlean), { recursive: true });
   writeFileSync(
-    inspector,
-    finalProofBuildInspector({ modules, proofTargets, allowedMathlibAxioms, allowedConjectures }),
+    composedSource,
+    finalProofBuildComposer({ modules, compositionTargets, allowedMathlibAxioms, allowedConjectures }),
     "utf8"
   );
 
-  const result = spawnSync("lake", ["lean", inspector], {
+  const composeResult = spawnSync("lake", ["env", "lean", "-o", composedOlean, composedSource], {
     cwd: isolatedPackageRoot,
     encoding: "utf8",
     maxBuffer: maxBuildOutputBytes
   });
 
-  if (result.error) {
-    errors.push(`could not run final axiom inspector: ${result.error.message}`);
+  if (composeResult.error) {
+    errors.push(`could not compile composed proof module: ${composeResult.error.message}`);
     return;
   }
-  if (result.status !== 0) {
-    errors.push(`final proof build has forbidden axioms or sorries\n${result.stdout}${result.stderr}`.trim());
+  if (composeResult.status !== 0) {
+    errors.push(`final proof composition failed\n${composeResult.stdout}${composeResult.stderr}`.trim());
+    return;
+  }
+
+  runLean4Checker(composedOlean);
+  if (errors.length > 0) {
+    return;
+  }
+
+  const verifier = join(isolatedPackageRoot, "FinalProofBuildVerify.lean");
+  writeFileSync(
+    verifier,
+    finalProofBuildVerifier({ composedModuleName, compositionTargets, allowedMathlibAxioms, allowedConjectures }),
+    "utf8"
+  );
+
+  const verifyResult = spawnSync("lake", ["env", "lean", verifier], {
+    cwd: isolatedPackageRoot,
+    encoding: "utf8",
+    maxBuffer: maxBuildOutputBytes
+  });
+
+  if (verifyResult.error) {
+    errors.push(`could not run final composed axiom verifier: ${verifyResult.error.message}`);
+    return;
+  }
+  if (verifyResult.status !== 0) {
+    errors.push(`final composed proof build has forbidden axioms\n${verifyResult.stdout}${verifyResult.stderr}`.trim());
   }
 }
 
-function proofTargetNames() {
-  return metadataProofs(context.meta)
-    .map(proofNameForProofEntry)
-    .filter(isLeanName);
+function proofCompositionTargets() {
+  return (context.meta.proofs ?? [])
+    .map((proof) => {
+      const statement = proof?.Theorem?.Name ?? null;
+      const proofTarget = proof?.Proof?.Name ?? null;
+      return {
+        statement,
+        proof: proofTarget,
+        composed: composedNameForStatement(statement),
+        deps: (proof?.DeclarationReferences ?? []).map((dependency) => dependency.Name).filter(isLeanName)
+      };
+    })
+    .filter((entry) => isLeanName(entry.statement) && isLeanName(entry.proof) && isLeanName(entry.composed));
 }
 
-function conjectureAxiomNames() {
-  return metadataProofs(context.meta)
-    .filter((proof) => proof.type === "reduction")
-    .map(theoremNameForProofEntry)
-    .filter(isLeanName);
+function unresolvedConjectureAxiomNames(compositionTargets) {
+  const composedStatements = new Set(compositionTargets.map((entry) => entry.statement));
+  const conjectures = new Set();
+  for (const entry of compositionTargets) {
+    for (const dep of entry.deps) {
+      if (!composedStatements.has(dep)) {
+        conjectures.add(dep);
+      }
+    }
+  }
+  return [...conjectures].filter(isLeanName).sort();
+}
+
+function composedNameForStatement(statementName) {
+  return isLeanName(statementName) ? `${statementName}._lml_composed` : null;
 }
 
 function builtModuleNames() {
@@ -290,17 +337,46 @@ function isIgnoredDependencyModule(moduleName) {
   return moduleName === "Cache" || moduleName.startsWith("Cache.");
 }
 
-function finalProofBuildInspector({ modules, proofTargets, allowedMathlibAxioms, allowedConjectures }) {
+function runLean4Checker(composedOlean) {
+  const result = spawnSync("lake", ["env", "lean4checker", composedOlean], {
+    cwd: isolatedPackageRoot,
+    encoding: "utf8",
+    maxBuffer: maxBuildOutputBytes
+  });
+
+  if (result.error) {
+    warnings.push(`lean4checker could not start; composed olean was not independently rechecked: ${result.error.message}`);
+    return;
+  }
+  if (result.status === 255 && /could not execute external process 'lean4checker'/.test(`${result.stdout}${result.stderr}`)) {
+    warnings.push("lean4checker not found; composed olean was not independently rechecked");
+    return;
+  }
+  if (result.status !== 0) {
+    errors.push(`lean4checker rejected composed olean\n${result.stdout}${result.stderr}`.trim());
+  }
+}
+
+function finalProofBuildComposer({ modules, compositionTargets, allowedMathlibAxioms, allowedConjectures }) {
   const imports = modules.map((moduleName) => `import ${moduleName}`).join("\n");
   return `import Lean
 import Lean.Util.CollectAxioms
 ${imports}
 
-open Lean
+open Lean Meta Elab Command
+
+namespace LmlFinalProofBuildComposer
 
 def allowedBaseAxioms : Array Name := ${leanNameArray(allowedMathlibAxioms)}
 def allowedConjectureAxioms : Array Name := ${leanNameArray(allowedConjectures)}
-def checkedProofTargets : Array Name := ${leanNameArray(proofTargets)}
+
+structure ProofEntry where
+  statement : Name
+  proof : Name
+  composed : Name
+  deps : Array Name
+
+def proofEntries : Array ProofEntry := ${leanProofEntryArray(compositionTargets)}
 
 def sameAxiomType (candidate allowed : ConstantInfo) : CoreM Bool := do
   if candidate.levelParams.length != allowed.levelParams.length then
@@ -332,6 +408,97 @@ def isAllowedConjectureAxiom (name : Name) : CoreM Bool := do
       return true
   | _ => return false
 
+def findProofEntry? (statement : Name) : Option ProofEntry :=
+  proofEntries.find? (fun entry => entry.statement == statement)
+
+def constValue? : ConstantInfo -> Option Expr
+  | .thmInfo value => some value.value
+  | .defnInfo value => some value.value
+  | _ => none
+
+def remapProofTerm (sigma : Array (Name × Name)) (expr : Expr) : Expr :=
+  expr.replace fun
+    | .const name levels =>
+        match sigma.find? (fun pair => pair.fst == name) with
+        | some pair => some (.const pair.snd levels)
+        | none => none
+    | _ => none
+
+partial def visitEntry (entry : ProofEntry) (visiting visited : Array Name) (order : Array ProofEntry) :
+    CoreM (Array Name × Array ProofEntry) := do
+  if visited.contains entry.statement then
+    return (visited, order)
+  if visiting.contains entry.statement then
+    IO.eprintln s!"STATEMENT_CYCLE\\t{entry.statement}"
+    throwError "statement dependency graph contains a cycle"
+  let visiting := visiting.push entry.statement
+  let mut currentVisited := visited
+  let mut currentOrder := order
+  for dep in entry.deps do
+    match findProofEntry? dep with
+    | some depEntry =>
+        let (nextVisited, nextOrder) <- visitEntry depEntry visiting currentVisited currentOrder
+        currentVisited := nextVisited
+        currentOrder := nextOrder
+    | none => pure ()
+  currentVisited := currentVisited.push entry.statement
+  currentOrder := currentOrder.push entry
+  return (currentVisited, currentOrder)
+
+def topologicalProofEntries : CoreM (Array ProofEntry) := do
+  let mut visited := #[]
+  let mut order := #[]
+  for entry in proofEntries do
+    let (nextVisited, nextOrder) <- visitEntry entry #[] visited order
+    visited := nextVisited
+    order := nextOrder
+  return order
+
+def composeOne (sigma : Array (Name × Name)) (entry : ProofEntry) : MetaM Unit := do
+  let env <- getEnv
+  let some statementInfo := env.find? entry.statement
+    | throwError "missing statement axiom {entry.statement}"
+  match statementInfo with
+  | .axiomInfo _ => pure ()
+  | _ => throwError "statement target is not an axiom: {entry.statement}"
+  let some proofInfo := env.find? entry.proof
+    | throwError "missing proof theorem {entry.proof}"
+  let some proofValue := constValue? proofInfo
+    | throwError "proof target has no body: {entry.proof}"
+  if statementInfo.levelParams.length != proofInfo.levelParams.length then
+    throwError "level parameter mismatch between {entry.statement} and {entry.proof}"
+  let levels := statementInfo.levelParams.map Level.param
+  let value := proofValue.instantiateLevelParams proofInfo.levelParams levels
+  let value := remapProofTerm sigma value
+  addDecl <| .thmDecl {
+    name := entry.composed
+    levelParams := statementInfo.levelParams
+    type := statementInfo.type
+    value := value
+  }
+
+def declaredRemap (entry : ProofEntry) (composed : Array (Name × Name)) : Array (Name × Name) :=
+  entry.deps.filterMap fun dep =>
+    composed.find? (fun pair => pair.fst == dep)
+
+def isAllowedDeclaredAxiom (entry : ProofEntry) (axiomName : Name) : CoreM Bool := do
+  if (← isAllowedBaseAxiomByNameAndType axiomName) then
+    return true
+  if allowedConjectureAxioms.contains axiomName then
+    return entry.deps.contains axiomName
+  if (findProofEntry? axiomName).isSome then
+    return entry.deps.contains axiomName
+  return false
+
+def checkDeclaredAxiomCoverage (entry : ProofEntry) : CoreM Bool := do
+  let mut failed := false
+  let axioms <- collectAxioms entry.proof
+  for axiomName in axioms do
+    if !(← isAllowedDeclaredAxiom entry axiomName) then
+      IO.eprintln s!"UNDECLARED_AXIOM\\t{entry.proof}\\t{axiomName}"
+      failed := true
+  return failed
+
 def checkAxiom (label : String) (owner : Name) (axiomName : Name) : CoreM Bool := do
   if (← isAllowedConjectureAxiom axiomName) then
     return false
@@ -343,28 +510,118 @@ def checkAxiom (label : String) (owner : Name) (axiomName : Name) : CoreM Bool :
   IO.eprintln s!"FORBIDDEN_AXIOM\\t{label}\\t{owner}\\t{axiomName}\\t{typeText}"
   return true
 
+elab "#lml_compose_proofs" : command => do
+  liftCoreM do
+    let mut failed := false
+    let order <- topologicalProofEntries
+    let mut composed : Array (Name × Name) := #[]
+
+    for entry in order do
+      if (← checkDeclaredAxiomCoverage entry) then
+        failed := true
+      try
+        let sigma := declaredRemap entry composed
+        Meta.MetaM.run' do
+          composeOne sigma entry
+        composed := composed.push (entry.statement, entry.composed)
+      catch error =>
+        let message <- error.toMessageData.toString
+        IO.eprintln s!"COMPOSE_FAILED\\t{entry.statement}\\t{entry.proof}\\t{message}"
+        failed := true
+
+    if failed then
+      throwError "final proof build has failed proof composition, forbidden axioms, or missing proof targets"
+
+#lml_compose_proofs
+
+end LmlFinalProofBuildComposer
+`;
+}
+
+function finalProofBuildVerifier({ composedModuleName, compositionTargets, allowedMathlibAxioms, allowedConjectures }) {
+  return `import Lean
+import Lean.Util.CollectAxioms
+import ${composedModuleName}
+
+open Lean Meta
+
+namespace LmlFinalProofBuildVerifier
+
+def allowedBaseAxioms : Array Name := ${leanNameArray(allowedMathlibAxioms)}
+def allowedConjectureAxioms : Array Name := ${leanNameArray(allowedConjectures)}
+def composedTargets : Array Name := ${leanNameArray(compositionTargets.map((entry) => entry.composed))}
+
+def sameAxiomType (candidate allowed : ConstantInfo) : CoreM Bool := do
+  if candidate.levelParams.length != allowed.levelParams.length then
+    return false
+  let levels := (List.range candidate.levelParams.length).map (fun index => Level.param (Name.mkSimple s!"u{index}"))
+  let candidateType := candidate.type.instantiateLevelParams candidate.levelParams levels
+  let allowedType := allowed.type.instantiateLevelParams allowed.levelParams levels
+  Meta.MetaM.run' do
+    Meta.isExprDefEq candidateType allowedType
+
+def isAllowedBaseAxiomByNameAndType (name : Name) : CoreM Bool := do
+  let info <- getConstInfo name
+  match info with
+  | .axiomInfo _ =>
+      for allowedName in allowedBaseAxioms do
+        if name == allowedName then
+          let allowedInfo <- getConstInfo allowedName
+          if (← sameAxiomType info allowedInfo) then
+            return true
+      return false
+  | _ => return false
+
+def isAllowedConjectureAxiom (name : Name) : CoreM Bool := do
+  if !(allowedConjectureAxioms.contains name) then
+    return false
+  let info <- getConstInfo name
+  match info with
+  | .axiomInfo _ => return true
+  | _ => return false
+
+def checkAxiom (owner : Name) (axiomName : Name) : CoreM Bool := do
+  if (← isAllowedConjectureAxiom axiomName) then
+    return false
+  if (← isAllowedBaseAxiomByNameAndType axiomName) then
+    return false
+  let axiomInfo <- getConstInfo axiomName
+  let typeText <- Meta.MetaM.run' do
+    Meta.ppExpr axiomInfo.type
+  IO.eprintln s!"FORBIDDEN_AXIOM\\tcomposed\\t{owner}\\t{axiomName}\\t{typeText}"
+  return true
+
 #eval show CoreM Unit from do
   let mut failed := false
-
-  for proofName in checkedProofTargets do
+  for composedName in composedTargets do
     try
-      let _ <- getConstInfo proofName
-      let axioms <- collectAxioms proofName
+      let axioms <- collectAxioms composedName
       for axiomName in axioms do
-        if (← checkAxiom "dependency" proofName axiomName) then
+        if (← checkAxiom composedName axiomName) then
           failed := true
     catch error =>
       let message <- error.toMessageData.toString
-      IO.eprintln s!"PROOF_TARGET_NOT_FOUND\\t{proofName}\\t{message}"
+      IO.eprintln s!"COMPOSED_TARGET_NOT_FOUND\\t{composedName}\\t{message}"
       failed := true
 
   if failed then
-    throwError "final proof build has forbidden axioms or missing proof targets"
+    throwError "final composed proof build has forbidden axioms or missing composed targets"
+
+end LmlFinalProofBuildVerifier
 `;
 }
 
 function leanNameArray(names) {
   return `#[${names.filter(isLeanName).map((name) => `\`${name}`).join(", ")}]`;
+}
+
+function leanProofEntryArray(entries) {
+  return `#[${entries.map((entry) => `{
+  statement := \`${entry.statement},
+  proof := \`${entry.proof},
+  composed := \`${entry.composed},
+  deps := ${leanNameArray(entry.deps)}
+}`).join(", ")}]`;
 }
 
 function isLeanName(name) {

@@ -1,0 +1,5 @@
+namespace MetadataDiskStateFailure.Statements.UnlistedStatement
+
+axiom unlisted_statement : True
+
+end MetadataDiskStateFailure.Statements.UnlistedStatement

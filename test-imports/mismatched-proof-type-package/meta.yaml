@@ -1,6 +1,5 @@
-pinnedLeanToolchain: leanprover/lean4:v4.30.0
 proofLakefilePath: lakefile.lean
-statementLakefilePath: surface-package/lakefile.lean
+statementLakefilePath: statements/lakefile.lean
 abstractPath: abstract.tex
 submissionTitle: Mismatched Proof Type Fixture
 statements:
@@ -8,28 +7,31 @@ statements:
     Type: Definition
     Statement:
       CurrentSubmission: true
-      Name: MismatchedProofType.Surface.Definition.ConnectedGraph.IsConnectedGraph
-      LeanStatement: surface-package/ConnectedGraph/Surface.lean
-      LatexDefinition: surface-package/ConnectedGraph/latex-file.tex
+      Name: MismatchedProofType.Statements.ConnectedGraph.IsConnectedGraph
+      LeanStatement: statements/MismatchedProofType/Statements/ConnectedGraph.lean
+      LatexDefinition: statements/MismatchedProofType/Statements/ConnectedGraph.tex
     DeclarationReferences: []
   - Name: ConnectedIffReachable
     Type: Axiom
     Statement:
       CurrentSubmission: true
-      Name: MismatchedProofType.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
-      LeanStatement: surface-package/ConnectedIffReachable/Surface.lean
-      LatexDefinition: surface-package/ConnectedIffReachable/latex-file.tex
+      Name: MismatchedProofType.Statements.ConnectedIffReachable.connected_iff_reachable
+      LeanStatement: statements/MismatchedProofType/Statements/ConnectedIffReachable.lean
+      LatexDefinition: statements/MismatchedProofType/Statements/ConnectedIffReachable.tex
     DeclarationReferences: []
 proofs:
   - Name: ConnectedIffReachableProof
     Type: proof
     Theorem:
-      SubmissionSlug: mismatched-proof-type
-      File: surface-package/ConnectedIffReachable/Surface.lean
-      Name: MismatchedProofType.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
+      Name: MismatchedProofType.Statements.ConnectedIffReachable.connected_iff_reachable
+      LeanStatement: statements/MismatchedProofType/Statements/ConnectedIffReachable.lean
+      LatexDefinition: statements/MismatchedProofType/Statements/ConnectedIffReachable.tex
+      CurrentSubmission: true
     Proof:
       File: proofs/ConnectedIffReachableProof.lean
       Name: MismatchedProofType.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
     DeclarationReferences: []
 bibtex-entries: []
 submissionSlug: mismatched-proof-type
+proofLeanToolchainPath: lean-toolchain
+statementLeanToolchainPath: statements/lean-toolchain

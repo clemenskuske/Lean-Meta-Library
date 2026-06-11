@@ -23,10 +23,10 @@ export function createSubmissionPackage({ cwd, slug }) {
   mkdirSync(statementsRoot, { recursive: true });
   write(statementsRoot, "lean-toolchain", `${leanToolchain}\n`);
   write(statementsRoot, "lakefile.lean", statementLakefile(namespace, mathlib));
-  write(statementsRoot, "ConnectedGraph.tex", "A connected graph is a simple graph that is connected in the sense of mathlib.\n");
-  write(statementsRoot, "ConnectedIffReachable.tex", "A graph is connected exactly when it has a vertex type and every pair of vertices is joined by a path.\n");
   write(statementsRoot, `${namespace}/Statements/ConnectedGraph.lean`, connectedGraphStatement(namespace));
+  write(statementsRoot, `${namespace}/Statements/ConnectedGraph.tex`, "A connected graph is a simple graph that is connected in the sense of mathlib.\n");
   write(statementsRoot, `${namespace}/Statements/ConnectedIffReachable.lean`, connectedIffReachableStatement(namespace));
+  write(statementsRoot, `${namespace}/Statements/ConnectedIffReachable.tex`, "A graph is connected exactly when it has a vertex type and every pair of vertices is joined by a path.\n");
 
   write(root, `${namespace}/Proofs/ConnectedIffReachableProof.lean`, connectedIffReachableProof(namespace));
 
@@ -99,7 +99,7 @@ statements:
       CurrentSubmission: true
       Name: ${namespace}.Definition.ConnectedGraph.IsConnectedGraph
       LeanStatement: statements/${namespace}/Statements/ConnectedGraph.lean
-      LatexDefinition: statements/ConnectedGraph.tex
+      LatexDefinition: statements/${namespace}/Statements/ConnectedGraph.tex
     DeclarationReferences: []
   - Name: ConnectedIffReachable
     Type: Axiom
@@ -107,14 +107,15 @@ statements:
       CurrentSubmission: true
       Name: ${namespace}.Axiom.ConnectedIffReachable.connected_iff_reachable
       LeanStatement: statements/${namespace}/Statements/ConnectedIffReachable.lean
-      LatexDefinition: statements/ConnectedIffReachable.tex
+      LatexDefinition: statements/${namespace}/Statements/ConnectedIffReachable.tex
     DeclarationReferences: []
 proofs:
   - Name: ConnectedIffReachableProof
     Type: proof
     Theorem:
-      SubmissionSlug: ${slug}
-      File: statements/${namespace}/Statements/ConnectedIffReachable.lean
+      CurrentSubmission: true
+      LeanStatement: statements/${namespace}/Statements/ConnectedIffReachable.lean
+      LatexDefinition: statements/${namespace}/Statements/ConnectedIffReachable.tex
       Name: ${namespace}.Axiom.ConnectedIffReachable.connected_iff_reachable
     Proof:
       File: ${namespace}/Proofs/ConnectedIffReachableProof.lean

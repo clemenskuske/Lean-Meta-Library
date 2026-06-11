@@ -1,6 +1,5 @@
-pinnedLeanToolchain: leanprover/lean4:v4.30.0
 proofLakefilePath: lakefile.lean
-statementLakefilePath: surface-package/lakefile.lean
+statementLakefilePath: statements/lakefile.lean
 abstractPath: abstract.tex
 submissionTitle: Prepare Build Cache Failure Fixture
 statements:
@@ -8,28 +7,31 @@ statements:
     Type: Definition
     Statement:
       CurrentSubmission: true
-      Name: PrepareBuildCacheFailure.Surface.Definition.ConnectedGraph.IsConnectedGraph
-      LeanStatement: surface-package/ConnectedGraph/Surface.lean
-      LatexDefinition: surface-package/ConnectedGraph/latex-file.tex
+      Name: PrepareBuildCacheFailure.Statements.ConnectedGraph.IsConnectedGraph
+      LeanStatement: statements/PrepareBuildCacheFailure/Statements/ConnectedGraph.lean
+      LatexDefinition: statements/PrepareBuildCacheFailure/Statements/ConnectedGraph.tex
     DeclarationReferences: []
   - Name: ConnectedIffReachable
     Type: Axiom
     Statement:
       CurrentSubmission: true
-      Name: PrepareBuildCacheFailure.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
-      LeanStatement: surface-package/ConnectedIffReachable/Surface.lean
-      LatexDefinition: surface-package/ConnectedIffReachable/latex-file.tex
+      Name: PrepareBuildCacheFailure.Statements.ConnectedIffReachable.connected_iff_reachable
+      LeanStatement: statements/PrepareBuildCacheFailure/Statements/ConnectedIffReachable.lean
+      LatexDefinition: statements/PrepareBuildCacheFailure/Statements/ConnectedIffReachable.tex
     DeclarationReferences: []
 proofs:
   - Name: ConnectedIffReachableProof
     Type: proof
     Theorem:
-      SubmissionSlug: prepare-build-cache-failure
-      File: surface-package/ConnectedIffReachable/Surface.lean
-      Name: PrepareBuildCacheFailure.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
+      Name: PrepareBuildCacheFailure.Statements.ConnectedIffReachable.connected_iff_reachable
+      LeanStatement: statements/PrepareBuildCacheFailure/Statements/ConnectedIffReachable.lean
+      LatexDefinition: statements/PrepareBuildCacheFailure/Statements/ConnectedIffReachable.tex
+      CurrentSubmission: true
     Proof:
       File: proofs/ConnectedIffReachableProof.lean
       Name: PrepareBuildCacheFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
     DeclarationReferences: []
 bibtex-entries: []
 submissionSlug: prepare-build-cache-failure
+proofLeanToolchainPath: lean-toolchain
+statementLeanToolchainPath: statements/lean-toolchain

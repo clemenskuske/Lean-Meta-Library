@@ -1,7 +1,7 @@
 # Metadata Disk State Failure
 
 This package is a negative import fixture. The disk contains an additional
-statement declaration folder that is not listed in `meta.yaml`.
+statement file that is not listed in `meta.yaml`.
 
-Expected rejection: `files present` reports that the declaration folder is
-present on disk but not listed in metadata.
+Expected rejection: `statements/no-extra-files.mjs` reports that the statement
+file is present on disk but not listed in metadata.

@@ -42,23 +42,25 @@ export function runLeanJson({ source, args = [], label, errors, cwd = null, lake
   }
 }
 
-export function inspectIntroducedDeclarations({ packageDir, moduleName, imports, label, errors }) {
+export function inspectIntroducedDeclarations({ packageDir, moduleName, imports, label, errors, build = true }) {
   if (!isLeanName(moduleName) || !imports.every(isLeanName)) {
     errors.push(`invalid Lean module name while inspecting ${label}`);
     return null;
   }
 
-  const build = spawnSync("lake", ["--dir", packageDir, "build", moduleName], {
-    encoding: "utf8",
-    maxBuffer: maxBuildOutputBytes
-  });
-  if (build.error) {
-    errors.push(`could not build ${moduleName} before inspecting ${label}: ${build.error.message}`);
-    return null;
-  }
-  if (build.status !== 0) {
-    errors.push(`Lean failed to build ${moduleName} before inspecting ${label}\n${build.stdout}${build.stderr}`.trim());
-    return null;
+  if (build) {
+    const result = spawnSync("lake", ["--dir", packageDir, "build", moduleName], {
+      encoding: "utf8",
+      maxBuffer: maxBuildOutputBytes
+    });
+    if (result.error) {
+      errors.push(`could not build ${moduleName} before inspecting ${label}: ${result.error.message}`);
+      return null;
+    }
+    if (result.status !== 0) {
+      errors.push(`Lean failed to build ${moduleName} before inspecting ${label}\n${result.stdout}${result.stderr}`.trim());
+      return null;
+    }
   }
 
   return runLeanJson({

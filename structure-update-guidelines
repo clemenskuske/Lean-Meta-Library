@@ -1,6 +1,6 @@
 # Structure Update Guidelines
 
-This file records user-provided notes for upcoming structure changes.
+This file records user-provided notes for structure changes.
 
 Use it as a working handoff document for agents that will implement those
 changes later. Add only changes and constraints explicitly provided by the user.
@@ -14,8 +14,8 @@ discussion evolves.
 - Use "submission" for the artificial Lean Meta Library entry. Do not call this
   a repo. Use "repository" only when referring to the actual source-code
   repository or GitHub repository URL.
-- A submission can contain two Lake packages: a statement-package and a
-  proof-package.
+- A submission can contain up to two Lake packages: a statement-package and a
+  proof-package. Either package may be absent.
 - Statement-package and proof-package are Lake packages inside a submission, not
   submissions themselves.
 
@@ -27,7 +27,7 @@ discussion evolves.
 - A proof package depending locally on the statement package is no longer
   expected, but it remains allowed.
 - Do not require a unique Lean library for each statement folder. Each statement
-  must still be included in the shared Surface/Statement library.
+  must still be included in the shared statement library.
 - Use statement terminology for public definitions, public axioms, and their
   Lean and LaTeX files.
 - Do not add this point prominently to the README, because presenting package
@@ -35,32 +35,33 @@ discussion evolves.
 
 ## Statement Declarations
 
-- Surface/Statement entries must only allow axioms. They should no longer allow
-  theorems.
+- Public statement entries are `Definition` or `Axiom`.
+- `Definition` entries introduce Lean `def`s.
+- `Axiom` entries introduce Lean `axiom`s. They must not introduce theorem
+  declarations.
 
 ## Checklist Differences To Implement
 
-These notes record items from the current update checklist that are handled
-differently by the existing implementation.
+These notes record items from the current update checklist and whether they are
+implemented or still target work.
 
 ### Naming
 
 - Use Statement Package terminology.
-- Metadata and checker terminology should move from the old
-  older metadata shape to the new names from the
-  checklist: `statementLakefilePath`, `submissionSlug`, `submissionTitle`,
-  `bibtex-entries`, `statements`, and `DeclarationReferences`.
-- Replace declaration entry type `Statement` with `Axiom`. The allowed statement
-  entry types are `Definition` and `Axiom`.
+- Metadata and checker terminology uses the names from `meta.config.yaml`:
+  `statementLakefilePath`, `statementLeanToolchainPath`, `proofLakefilePath`,
+  `proofLeanToolchainPath`, `submissionSlug`, `submissionTitle`,
+  `bibtex-entries`, `statements`, `proofs`, `Statement`, `Theorem`, `Proof`,
+  and `DeclarationReferences`.
+- Declaration entry type `Statement` has been replaced by `Axiom`. The allowed
+  statement entry types are `Definition` and `Axiom`.
 
 ### Needed Files
 
-- Statement and Proof packages are optional in the checklist. Current
-  checks require both package shapes unconditionally; update them so package
-  checks run only when the corresponding package is present.
-- If a Statement Package is present, it should require its
-  `lakefile.lean`, its `lean-toolchain`, and, for each theorem or definition, a
-  LaTeX file and Lean file.
+- Statement and proof package checks are conditional and run only when the
+  corresponding package is present in metadata.
+- If a statement package is present, it requires its `lakefile.lean`, its
+  `lean-toolchain`, and, for each statement entry, a LaTeX file and Lean file.
 - If a Proof package is present, it should require its `lakefile.lean` and its
   `lean-toolchain`.
 
@@ -75,14 +76,12 @@ differently by the existing implementation.
 - Declaration reference records should use `CurrentSubmission` or
   `SubmissionSlug`, plus `LeanStatement`, `LatexDefinition`, and `Name`.
 - Proof entries should use the checklist shape: `Name`, `Type`, `Theorem`
-  (`SubmissionSlug`, `File`, `Name`), `Proof` (`File`, `Name`), and
+  as a declaration reference, `Proof` (`File`, `Name`), and
   `DeclarationReferences`.
-- Proof-level declaration reference metadata should be supported. Current checks
-  authorize proof imports through the referenced declaration's
-  declaration dependency metadata instead.
-- Created metadata fields should include `githubRepo`, `LakeProofPackage`,
-  and `LakeStatementPackage`, in addition to `submissionIssueNumber` and
-  `submissionIssueUrl`.
+- Proof-level declaration reference metadata is supported.
+- Created metadata fields include `githubRepo`, `submittedBy`,
+  `LakeProofPackage`, and `LakeStatementPackage`, in addition to
+  `submissionIssueNumber` and `submissionIssueUrl`.
 - Metadata should record each present package's `lean-toolchain` file with
   `statementLeanToolchainPath` or `proofLeanToolchainPath`.
 
@@ -98,36 +97,30 @@ differently by the existing implementation.
 
 ### Package Names
 
-- Update package-name checks so the checklist expects `Slug.Statements` and
-  `Slug.Proofs`.
-- The Statement Package section also says the statement package name must be
-  `SubmissionTitle.Statements`, and the Proof Package section says the proof
-  package name must be `SubmissionTitle.Proofs`. Resolve this with the checklist
-  naming model.
+- Package-name checks expect `<SubmissionSlugAsPascal>.Statements` and
+  `<SubmissionSlugAsPascal>.Proofs`.
 
 ### Tests And Package Contents
 
-- Update tests that currently require statement folders to be direct children of
-  a fixed package folder so they follow the Statement Package model.
-- Update proof metadata tests that currently require theorem names to contain
-  `.Surface.Statement.` and proof names to contain `.Proofs.Statement.` so they
-  validate the new structured `Theorem` and `Proof` fields.
-- Statement Packages should contain only the expected files. Current
-  filetype checks allow any permitted extension anywhere in the package.
-- Lake build checks should build both packages only when they are present.
+- Tests follow the statement package model and validate structured `Theorem` and
+  `Proof` fields.
+- Statement packages contain only expected Lean/LaTeX files and the Lake file.
+- Lake build checks build only packages that are present.
 
 ## Final Proof Build Rework
 
-- Rework the final proof-build stage. It should no longer only copy the package,
-  run `lake update`, `lake clean`, cache fetch, `lake build`, reject
-  `sorry`/`sorryAx`, and inspect proof-target axioms against statement
-  axioms plus base axioms.
+- The final proof-build stage now copies the package, runs `lake update`,
+  `lake clean`, cache fetch, `lake build`, rejects `sorry`/`sorryAx`, composes
+  proof targets from declared metadata dependencies, and checks composed proof
+  axioms against allowed base axioms and declared conjectures.
+- Remaining target work: extend the final proof-build stage beyond that local
+  composition model.
 - The new approach must first import all nested imported submissions into the
   root Lake file. The information for those imported submissions comes from
   metadata files and `submissions.jsonl`.
 - During the Lean build, run a script that recursively follows references in the
   metadata files. It must change proofs so they reference the proof counterpart
-  of a referenced statement instead of its statement/surface axiom, when that
+  of a referenced statement instead of its statement axiom, when that
   referenced statement is not a conjecture.
 - Use the resulting `.olean` files for axiom testing and related checks.
 - Composed proof outputs should rely only on trusted base axioms and
@@ -142,7 +135,7 @@ differently by the existing implementation.
   statements or statements from other papers.
 - Paper-level dependency cycles are allowed, but the statement dependency graph
   must be acyclic.
-- A statement is a surface/statement axiom with no value.
+- A statement axiom has no value.
 - A discharger is a theorem annotated with which statement it discharges, for
   example with a `discharges` attribute.
 - The discharger theorem's type must be definitionally equal to the statement
@@ -177,8 +170,8 @@ differently by the existing implementation.
 ## Declared And Actual Dependencies
 
 - Check two dependency graphs: declared dependencies and actual dependencies.
-- Declared dependencies, such as proof imports or dependency metadata,
-  define the security boundary.
+- Declared dependencies, recorded in `DeclarationReferences`, define the
+  security boundary.
 - Actual dependencies come from Lean axiom collection on the proof term and
   drive composition.
 - Require declared dependencies to include the actual dependencies.

@@ -1,13 +1,13 @@
-import ConnectedIffReachable.Surface
+import FinalProofBuildFailure.Statements.ConnectedIffReachable
 
 namespace FinalProofBuildFailure.Proofs.Statement.ConnectedIffReachable
 
 axiom secretEquality (n : Nat) : n = n
 
 theorem connected_iff_reachable (n : Nat) :
-    FinalProofBuildFailure.Surface.Definition.ConnectedGraph.IsConnectedGraph n ↔ True :=
+    FinalProofBuildFailure.Statements.ConnectedGraph.IsConnectedGraph n ↔ True :=
   by
-    unfold FinalProofBuildFailure.Surface.Definition.ConnectedGraph.IsConnectedGraph
+    unfold FinalProofBuildFailure.Statements.ConnectedGraph.IsConnectedGraph
     constructor
     · intro _h
       trivial

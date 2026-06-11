@@ -6,7 +6,8 @@ Lean Meta Library workspace.
 
 The beta CLI package is available as [lean-meta-library-cli.tgz](lean-meta-library-cli.tgz).
 
-For repository users who want only the npm package without cloning the repository:
+For repository users who want only the npm package without cloning the
+repository:
 
 ```sh
 gh api "repos/clemenskuske/Lean-Meta-Library/contents/lean-meta-library-cli.tgz?ref=main" --jq .content | base64 --decode > lean-meta-library-cli.tgz
@@ -16,85 +17,105 @@ lml --help
 
 ## Project Environment
 
-Repository-level values that may change later but are fixed for all projects right now live in `lml-env.json`.
-CLI tooling and submission checks import this file for the fixed Lean version,
-the pinned Mathlib base import, trusted-base axiom policy, default metadata
-path, allowed submission file policy, first-run size limits, and checker output
-limits. Package toolchains live in package-local `lean-toolchain` files recorded
-by metadata and must match the fixed Lean version; Std is provided by that Lean
-version.
+Repository-level values that may change later but are fixed for all projects
+right now live in `lml-env.json`. CLI tooling and submission checks import this
+file for the fixed Lean version, pinned Mathlib base import, trusted-base axiom
+policy, default metadata path, allowed submission file policy, first-run size
+limits, and checker output limits.
+
+Each present Lake package has its own package-local `lean-toolchain` file
+recorded by metadata. Checkers compare those files against the fixed Lean
+version and compare Lake Mathlib dependencies against the pinned Mathlib
+revision. Std is provided by the fixed Lean version and is not listed separately
+as a base import.
 
 `meta.config.yaml` is the source of truth for submission metadata shape. It is
-the JSON Schema used by `metadata-check.mjs`; documentation and generated
-examples should follow its field names, required fields, created fields, and
-dependency record shapes.
+the JSON Schema used by `general/metadata-check.mjs`; documentation, generated
+examples, and checker-facing instructions should follow its exact field names,
+required fields, created fields, and declaration-reference shape.
+
+`import-submission-expectations.md` records the repository-content policy that
+the import checks enforce.
 
 ## Submission Contract
 
-A submission is the Lean Meta Library entry, not the source repository. It
-consists of public statement entries, proof artifacts, and metadata,
-and it may contain up to two Lake packages: a statement-package and a
-proof-package. The structure rework moves the checker and CLI vocabulary toward
-statement packages, structured proof metadata, and statement-level
-proof certificates.
+A submission is the Lean Meta Library entry, not the source repository. A source
+repository may host a submission, and a submission may contain up to two Lake
+packages: a statement package and a proof package. Package presence is optional,
+but when both are present their roles stay separate.
 
-Statement entries use the new metadata vocabulary:
+Author-supplied metadata requires:
 
-- `Definition` entries introduce Lean `def`s.
-- `Axiom` entries introduce Lean `axiom`s. Statement files must not introduce
-  theorem declarations as submitted statement content.
-- Metadata uses `submissionSlug`, `submissionTitle`, `statementLakefilePath`,
-  `statementLeanToolchainPath`, `proofLeanToolchainPath`, `statements`, and
-  `bibtex-entries` rather than the older surface-oriented names.
-- The author-supplied required top-level fields are `abstractPath`,
-  `submissionTitle`, `submissionSlug`, and `bibtex-entries`.
-  `statements` requires `statementLakefilePath` and
-  `statementLeanToolchainPath` when present; `proofs` requires
-  `proofLakefilePath` and `proofLeanToolchainPath` when present.
-- Tooling-created fields include `githubRepo`, `submittedBy`,
-  `LakeStatementPackage`, `LakeProofPackage`, `submissionIssueNumber`, and
-  `submissionIssueUrl`. Authors should normally omit them until workflows add
-  them.
+- `abstractPath`
+- `submissionTitle`
+- `submissionSlug`
+- `bibtex-entries`
 
-```lean
-axiom Statements.Entry.entry : SomeStatement
+Statement metadata, when present, uses `statements`,
+`statementLakefilePath`, and `statementLeanToolchainPath` together. Proof
+metadata, when present, uses `proofs`, `proofLakefilePath`, and
+`proofLeanToolchainPath` together. Workflow-created fields include
+`githubRepo`, `submittedBy`, `LakeStatementPackage`, `LakeProofPackage`,
+`submissionIssueNumber`, and `submissionIssueUrl`.
+
+Public statement entries are:
+
+- `Definition`: introduces one Lean `def`.
+- `Axiom`: introduces one Lean `axiom`.
+
+Statement files must not introduce theorem declarations as submitted statement
+content. Each statement entry uses a structured `Statement` record with exactly
+one of `CurrentSubmission: true` or `SubmissionSlug`, plus `LeanStatement`,
+`LatexDefinition`, and `Name`. `DeclarationReferences` records use the same
+shape and may appear on statements and proofs.
+
+```yaml
+statements:
+  - Name: MainStatement
+    Type: Axiom
+    Statement:
+      CurrentSubmission: true
+      LeanStatement: statements/MainStatement.lean
+      LatexDefinition: statements/MainStatement.tex
+      Name: MySlug.Statements.MainStatement.main_statement
+    DeclarationReferences: []
 ```
 
-Proof entries have type `proof`, `conditional-proof`, or `reduction`. They name
-the discharged theorem and proof target with structured `Theorem` and `Proof`
-records. The theorem target records `SubmissionSlug`, `File`, and `Name`; the
-proof target records `File` and `Name`. The proof target must have the same
-Lean type as the statement axiom:
+Proof entries have `Type: proof`, `Type: conditional-proof`, or
+`Type: reduction`. They name the discharged statement through `Theorem` and the
+proof-side declaration through `Proof`. The checker asks Lean `isDefEq` to
+compare the compiled statement type and proof target type.
 
-```lean
-theorem Proofs.Entry.entry : SomeStatement := by
-  ...
+```yaml
+proofs:
+  - Name: MainStatementProof
+    Type: proof
+    Theorem:
+      CurrentSubmission: true
+      LeanStatement: statements/MainStatement.lean
+      LatexDefinition: statements/MainStatement.tex
+      Name: MySlug.Statements.MainStatement.main_statement
+    Proof:
+      File: proofs/MainStatementProof.lean
+      Name: MySlug.Proofs.MainStatement.main_statement
+    DeclarationReferences: []
 ```
 
-When `lml test` runs, each proof metadata entry lets Lean compare the compiled
-types with `isDefEq`. A statement is classified as a theorem when it has a
-`proof` or `conditional-proof`; it is classified as a conjecture when it has a
-`reduction`. An `assumption` is a conjecture expected to be true, and a
-`conditional-proof` is a proof that relies only on assumptions. Proof files may
-rely on definitions, declared dependencies, Std, and Mathlib, but submitted proof
-targets must not depend on `sorryAx` or local proof-side axioms.
+A statement with a `proof` or `conditional-proof` entry is classified as a
+theorem. A statement with a `reduction` entry is classified as a conjecture. An
+assumption is a conjecture expected to be true, and a `conditional-proof` is a
+proof that relies only on assumptions.
 
-The final proof-build design is being reworked around statement-level proof
-certificates. The build must recursively follow metadata references through
-`submissions.jsonl`, compose proof outputs in statement-dependency order, and
-verify that composed proofs bottom out only in the trusted base axioms and
-declared conjectures. The axiom gate must match trusted axioms by name, type,
-and source module against a pinned trusted base.
-
-Declared dependency metadata defines the security boundary. Declaration
-references use `CurrentSubmission` or `SubmissionSlug`, plus `LeanStatement`,
-`LatexDefinition`, and `Name`; proof entries may also record proof-level
-`DeclarationReferences`. Actual dependencies come from Lean axiom collection
-and must be included in the declared dependencies.
+Proof files may rely on definitions, declared dependencies, Std, and Mathlib,
+but submitted proof targets must not depend on `sorryAx` or local proof-package
+axioms. The final proof build composes submitted proof outputs in declared
+statement-dependency order and accepts only allowed base axioms plus declared
+conjectures.
 
 ## CLI Tooling
 
-The command line source lives in `.cli-tooling`; npm package metadata lives at the repository root.
+The command line source lives in `.cli-tooling`; npm package metadata lives at
+the repository root.
 
 Install it locally from the repository root:
 
@@ -119,54 +140,63 @@ lml login
 lml logout
 lml init
 lml update
+lml create-paper
 lml test --meta=path/to/meta.yaml
 lml submit --meta=path/to/meta.yaml
 lml submission-status path/to/meta.yaml
-lml create-paper
 ```
 
-The `agent-introduction` command prints `agent-info/README.md`, a general startup guide for agents working with the Lean Meta Library setup, `submissions.jsonl`, and the CLI.
+The `agent-introduction` command prints `agent-info/README.md`, a general
+startup guide for agents working with the Lean Meta Library setup,
+`submissions.jsonl`, and the CLI.
 
-The `agent-submission-guide` command prints `agent-info/paper-submission-readiness-agent-guide.md`, the guide for agents turning an arbitrary Lean project into a submission package whose statements, metadata, and proofs are user-approved and checker-ready.
+The `agent-submission-guide` command prints
+`agent-info/paper-submission-readiness-agent-guide.md`, the guide for agents
+turning an arbitrary Lean project into a submission package whose statements,
+metadata, and proofs are user-approved and checker-ready.
 
-The `test` command runs `.github/actions/test/run-all.mjs` using the metadata file as the source of submission information:
+The `test` command runs `.github/actions/test/run-all.mjs` using the metadata
+file as the source of submission information:
 
 ```sh
 lml test --meta=path/to/meta.yaml
 ```
 
-The first-run checker prepares the Lean build/cache first with separate
-statement and proof package preparation scripts, runs static checks in parallel,
-and then runs the Lean inspector checks in parallel. In the import workflow,
-the preparation runs as its own `Prepare Lean build/cache` step before
-`Run submission checks`.
-The checker files are being pruned into `.github/actions/test/general/`,
-`.github/actions/test/statements/`, `.github/actions/test/proofs/`, and
-`.github/actions/test/lean-checker/`; general package and metadata-context
-checks move first while shared root helpers remain until they are reviewed.
+If no metadata path is provided, the checks use `meta.yaml` in the current
+working directory. Pass exactly one metadata file path; directories are not
+accepted.
 
-```yaml
-proofs:
-  - Name: SomeEntryReduction
-    Type: reduction
-    Theorem:
-      SubmissionSlug: MySlug
-      File: Statements/SomeEntry.lean
-      Name: MySlug.Statement.SomeEntry.some_statement
-    Proof:
-      File: proofs/SomeEntryReduction.lean
-      Name: MySlug.Proofs.SomeEntry.some_statement
-    DeclarationReferences: []
-```
+`run-all.mjs` prepares statement and proof Lake build/cache output first unless
+`--skip-build-cache` is passed, runs static checks in parallel, and then runs
+Lean inspector checks in parallel. Preparation writes package-local marker
+files under each present Lake package's `.lake/` directory, keyed by
+`LML_CHECK_RUN_ID`, so post-build checker scripts can reuse the build prepared
+for the same run.
 
-The `submit` command runs the submission checks first, then dispatches `.github/workflows/submit.yml` for the current repository, branch, commit, and metadata file:
+The checker groups are:
+
+- `general`: metadata shape, required files, package builds, toolchain/Mathlib
+  pins, namespace shape, file size, and file type policy.
+- `statements`: statement-package closure, statement syntax policy, statement
+  imports, and introduced declaration inspection.
+- `proofs`: proof build preparation, proof theorem type matching, and forbidden
+  proof axiom checks.
+- root helpers: shared Lean import/inspection code and the final proof-build
+  composition check.
+
+The `submit` command runs the submission checks first, then dispatches
+`.github/workflows/submit.yml` for the current repository, branch, commit, and
+metadata file:
 
 ```sh
 lml submit --meta=path/to/meta.yaml
 lml submit --no-prior-test --meta=path/to/meta.yaml
 ```
 
-The `submission-status` command reports whether the metadata file has been submitted or imported, whether a related workflow is currently uploading, testing, or finalizing the submission, and how the recorded source commit compares with the current commit and statement files:
+The `submission-status` command reports whether the metadata file has been
+submitted or imported, whether a related workflow is currently uploading,
+testing, or finalizing the submission, and how the recorded source commit
+compares with the current commit and statement files:
 
 ```sh
 lml submission-status path/to/meta.yaml
@@ -174,12 +204,25 @@ lml submission-status path/to/meta.yaml
 
 ## Submission Workflow
 
-The `Submit` GitHub Actions workflow can be run manually with a metadata path. It creates a submission issue when `submissionIssueNumber` is missing, or updates that issue when the field is present. The workflow labels the issue `submission`, names it with the submission title, starts the issue body with the submission abstract, records the submitting account login plus the repository URL, source branch, source commit, metadata file path, and generated source URLs, then writes `submissionIssueNumber` and `submissionIssueUrl` back to the metadata file.
+The `Submit` GitHub Actions workflow can be run manually with a metadata path.
+It creates a submission issue when `submissionIssueNumber` is missing, or
+updates that issue when the field is present. The workflow labels the issue
+`submission`, names it with the submission title, starts the issue body with the
+submission abstract, records the submitting account login plus the repository
+URL, source branch, source commit, metadata file path, and generated source
+URLs, then writes `submissionIssueNumber` and `submissionIssueUrl` back to the
+metadata file.
 
-The `Import Submission` workflow starts from issues labeled `submission`. It checks out the submitted repository at the recorded branch and commit, runs `.github/actions/test/run-all.mjs` against the metadata file path from the issue, then adds or updates the corresponding `submissions.jsonl` row with the submitted-by account and closes the issue.
+The `Import Submission` workflow starts from issues labeled `submission`. It
+checks out the submitted repository at the recorded branch and commit, prepares
+Lean build/cache output, runs `.github/actions/test/run-all.mjs
+--skip-build-cache` against the metadata file path from the issue, then adds or
+updates the corresponding `submissions.jsonl` row with source and submitted-by
+provenance. After a successful import, it comments on and closes the issue.
 
-During import, the workflow posts issue comments after completed milestones. Each progress comment says which step
-worked, how many steps remain, and which step will run next.
+During import, the workflow posts issue comments after completed milestones. Each
+progress comment says which step worked, how many steps remain, and which step
+will run next.
 
 For a one-off run without linking:
 

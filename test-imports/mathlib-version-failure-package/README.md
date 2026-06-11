@@ -1,5 +1,6 @@
 # Mathlib Version Failure
 
-This package is a negative import fixture for the `mathlib-version.mjs` checker.
+This package is a negative import fixture for the `general/base-import-versions.mjs` checker.
 
-Expected rejection: `mathlib version` reports the wrong root Lean toolchain.
+Expected rejection: `general/base-import-versions.mjs` reports a package
+`lean-toolchain` that does not match `lml-env.json`.

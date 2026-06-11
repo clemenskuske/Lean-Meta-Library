@@ -1,0 +1,37 @@
+proofLakefilePath: lakefile.lean
+statementLakefilePath: statements/lakefile.lean
+abstractPath: abstract.tex
+submissionTitle: Statement File Context Failure Fixture
+statements:
+  - Name: ConnectedGraph
+    Type: Definition
+    Statement:
+      CurrentSubmission: true
+      Name: StatementFileContextFailure.Statements.ConnectedGraph.IsConnectedGraph
+      LeanStatement: statements/StatementFileContextFailure/Statements/ConnectedGraph.lean
+      LatexDefinition: statements/StatementFileContextFailure/Statements/ConnectedGraph.tex
+    DeclarationReferences: []
+  - Name: ConnectedIffReachable
+    Type: Axiom
+    Statement:
+      CurrentSubmission: true
+      Name: StatementFileContextFailure.Statements.ConnectedIffReachable.connected_iff_reachable
+      LeanStatement: statements/StatementFileContextFailure/Statements/ConnectedIffReachable.lean
+      LatexDefinition: statements/StatementFileContextFailure/Statements/ConnectedIffReachable.tex
+    DeclarationReferences: []
+proofs:
+  - Name: ConnectedIffReachableProof
+    Type: proof
+    Theorem:
+      Name: StatementFileContextFailure.Statements.ConnectedIffReachable.connected_iff_reachable
+      LeanStatement: statements/StatementFileContextFailure/Statements/ConnectedIffReachable.lean
+      LatexDefinition: statements/StatementFileContextFailure/Statements/ConnectedIffReachable.tex
+      CurrentSubmission: true
+    Proof:
+      File: proofs/ConnectedIffReachableProof.lean
+      Name: StatementFileContextFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
+    DeclarationReferences: []
+bibtex-entries: []
+submissionSlug: statement-file-context-failure
+proofLeanToolchainPath: lean-toolchain
+statementLeanToolchainPath: statements/lean-toolchain

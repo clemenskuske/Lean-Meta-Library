@@ -1,9 +1,9 @@
-import ConnectedIffReachable.Surface
+import SorryProof.Statements.ConnectedIffReachable
 
 namespace SorryProof.Proofs.Statement.ConnectedIffReachable
 
 theorem connected_iff_reachable (n : Nat) :
-    SorryProof.Surface.Definition.ConnectedGraph.IsConnectedGraph n ↔ True :=
+    SorryProof.Statements.ConnectedGraph.IsConnectedGraph n ↔ True :=
   by
     sorry
 

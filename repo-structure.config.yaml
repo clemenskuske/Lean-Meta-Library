@@ -1,13 +1,13 @@
 version: 1
 $id: "https://lean-meta-library.local/config/repo-structure.config.yaml"
-title: "Lean Meta Library import repository structure"
+title: "Lean Meta Library import submission structure"
 description: >
   Self-contained description of the expected file layout for a source
   repository submitted to the Lean Meta Library import workflow. The structure
   is rooted at the directory containing the submission metadata file.
 
 root:
-  role: import-repository-root
+  role: import-submission-root
   description: "Directory containing the submission metadata file."
   files:
     metadata:
@@ -152,8 +152,9 @@ buildAndCheckPolicy:
     - "Check statement declarations with Lean inspection."
     - "Check proof declarations, definitional equality, axioms, and sorry usage with Lean inspection."
   finalProofBuildTarget:
-    - "Recursively follow metadata references through submissions.jsonl."
-    - "Rewrite proved dependency statements to their proof counterparts while leaving conjectures as conjectures."
-    - "Use resulting .olean files for axiom testing."
-    - "Compare computed dependency and conjecture information to metadata."
-    - "Accepted composed proofs bottom out only in trusted base axioms and declared conjectures."
+    - "Copy the metadata-root package tree into isolation."
+    - "Run lake update, lake clean, best-effort cache fetch, and lake build."
+    - "Reject build output that reports sorry or sorryAx."
+    - "Compose submitted proof targets using metadata DeclarationReferences."
+    - "Accepted composed proofs bottom out only in allowed base axioms and declared conjectures."
+    - "Remaining target work: recursively follow imported submission metadata, rewrite proved dependency statements to proof counterparts, and compare computed dependency/conjecture information to metadata."

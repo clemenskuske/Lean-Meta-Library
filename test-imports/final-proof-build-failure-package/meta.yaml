@@ -1,6 +1,5 @@
-pinnedLeanToolchain: leanprover/lean4:v4.30.0
 proofLakefilePath: lakefile.lean
-statementLakefilePath: surface-package/lakefile.lean
+statementLakefilePath: statements/lakefile.lean
 abstractPath: abstract.tex
 submissionTitle: Final Proof Build Failure Fixture
 statements:
@@ -8,28 +7,31 @@ statements:
     Type: Definition
     Statement:
       CurrentSubmission: true
-      Name: FinalProofBuildFailure.Surface.Definition.ConnectedGraph.IsConnectedGraph
-      LeanStatement: surface-package/ConnectedGraph/Surface.lean
-      LatexDefinition: surface-package/ConnectedGraph/latex-file.tex
+      Name: FinalProofBuildFailure.Statements.ConnectedGraph.IsConnectedGraph
+      LeanStatement: statements/FinalProofBuildFailure/Statements/ConnectedGraph.lean
+      LatexDefinition: statements/FinalProofBuildFailure/Statements/ConnectedGraph.tex
     DeclarationReferences: []
   - Name: ConnectedIffReachable
     Type: Axiom
     Statement:
       CurrentSubmission: true
-      Name: FinalProofBuildFailure.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
-      LeanStatement: surface-package/ConnectedIffReachable/Surface.lean
-      LatexDefinition: surface-package/ConnectedIffReachable/latex-file.tex
+      Name: FinalProofBuildFailure.Statements.ConnectedIffReachable.connected_iff_reachable
+      LeanStatement: statements/FinalProofBuildFailure/Statements/ConnectedIffReachable.lean
+      LatexDefinition: statements/FinalProofBuildFailure/Statements/ConnectedIffReachable.tex
     DeclarationReferences: []
 proofs:
   - Name: ConnectedIffReachableProof
     Type: proof
     Theorem:
-      SubmissionSlug: final-proof-build-failure
-      File: surface-package/ConnectedIffReachable/Surface.lean
-      Name: FinalProofBuildFailure.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
+      Name: FinalProofBuildFailure.Statements.ConnectedIffReachable.connected_iff_reachable
+      LeanStatement: statements/FinalProofBuildFailure/Statements/ConnectedIffReachable.lean
+      LatexDefinition: statements/FinalProofBuildFailure/Statements/ConnectedIffReachable.tex
+      CurrentSubmission: true
     Proof:
       File: proofs/ConnectedIffReachableProof.lean
       Name: FinalProofBuildFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
     DeclarationReferences: []
 bibtex-entries: []
 submissionSlug: final-proof-build-failure
+proofLeanToolchainPath: lean-toolchain
+statementLeanToolchainPath: statements/lean-toolchain

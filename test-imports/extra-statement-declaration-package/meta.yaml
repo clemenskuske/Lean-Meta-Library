@@ -1,0 +1,37 @@
+proofLakefilePath: lakefile.lean
+statementLakefilePath: statements/lakefile.lean
+abstractPath: abstract.tex
+submissionTitle: Extra Statement Declaration Fixture
+statements:
+  - Name: ConnectedGraph
+    Type: Definition
+    Statement:
+      CurrentSubmission: true
+      Name: ExtraStatementDeclaration.Statements.ConnectedGraph.IsConnectedGraph
+      LeanStatement: statements/ExtraStatementDeclaration/Statements/ConnectedGraph.lean
+      LatexDefinition: statements/ExtraStatementDeclaration/Statements/ConnectedGraph.tex
+    DeclarationReferences: []
+  - Name: ConnectedIffReachable
+    Type: Axiom
+    Statement:
+      CurrentSubmission: true
+      Name: ExtraStatementDeclaration.Statements.ConnectedIffReachable.connected_iff_reachable
+      LeanStatement: statements/ExtraStatementDeclaration/Statements/ConnectedIffReachable.lean
+      LatexDefinition: statements/ExtraStatementDeclaration/Statements/ConnectedIffReachable.tex
+    DeclarationReferences: []
+proofs:
+  - Name: ConnectedIffReachableProof
+    Type: proof
+    Theorem:
+      Name: ExtraStatementDeclaration.Statements.ConnectedIffReachable.connected_iff_reachable
+      LeanStatement: statements/ExtraStatementDeclaration/Statements/ConnectedIffReachable.lean
+      LatexDefinition: statements/ExtraStatementDeclaration/Statements/ConnectedIffReachable.tex
+      CurrentSubmission: true
+    Proof:
+      File: proofs/ConnectedIffReachableProof.lean
+      Name: ExtraStatementDeclaration.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
+    DeclarationReferences: []
+bibtex-entries: []
+submissionSlug: extra-statement-declaration
+proofLeanToolchainPath: lean-toolchain
+statementLeanToolchainPath: statements/lean-toolchain
