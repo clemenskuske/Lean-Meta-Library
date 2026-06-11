@@ -19,6 +19,7 @@ export function runLeanJson({ source, args = [], label, errors, cwd = null, lake
     const result = spawnSync(command, commandArgs, {
       cwd: cwd ?? undefined,
       encoding: "utf8",
+      env: { ...process.env, MATHLIB_NO_CACHE_ON_UPDATE: "1" },
       maxBuffer: maxBuildOutputBytes
     });
 

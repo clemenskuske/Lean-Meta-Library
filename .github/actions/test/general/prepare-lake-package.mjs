@@ -220,6 +220,7 @@ function runLake(cwd, args, label, options) {
   const result = spawnSync("lake", args, {
     cwd,
     encoding: "utf8",
+    env: lakeEnv(),
     maxBuffer: maxBuildOutputBytes
   });
 
@@ -233,6 +234,10 @@ function runLake(cwd, args, label, options) {
   }
 
   return result;
+}
+
+function lakeEnv() {
+  return { ...process.env, MATHLIB_NO_CACHE_ON_UPDATE: "1" };
 }
 
 function addProblem(message, { required, errors, warnings }) {

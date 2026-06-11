@@ -74,6 +74,7 @@ function runLake(args, label) {
   const result = spawnSync("lake", args, {
     cwd: isolatedPackageRoot,
     encoding: "utf8",
+    env: lakeEnv(),
     maxBuffer: maxBuildOutputBytes
   });
 
@@ -98,6 +99,7 @@ function fetchBuildCache() {
   const result = spawnSync("lake", ["exe", "cache", "get", ...cacheArgs], {
     cwd: isolatedPackageRoot,
     encoding: "utf8",
+    env: lakeEnv(),
     maxBuffer: maxBuildOutputBytes
   });
 
@@ -108,6 +110,10 @@ function fetchBuildCache() {
   if (result.status !== 0) {
     warnings.push("lake exe cache get failed; final proof build will build from source");
   }
+}
+
+function lakeEnv() {
+  return { ...process.env, MATHLIB_NO_CACHE_ON_UPDATE: "1" };
 }
 
 function finalProofCacheArgs() {
