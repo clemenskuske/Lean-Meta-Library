@@ -1,6 +1,6 @@
 // Shared Lake package preparation for statement and proof checks.
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
 import { maxBuildOutputBytes } from "../common.mjs";
 
@@ -74,6 +74,7 @@ export function ensurePreparedLakePackage({ packageRoot, lakefilePath, label, ki
         packageDir: resolved.cwd,
         preparedAt: new Date().toISOString()
       });
+      pruneLakePackagesForCi(resolved.cwd, warnings);
     }
 
     return { ...resolved, markerPath, skipped: false };
@@ -234,4 +235,44 @@ function addProblem(message, { required, errors, warnings }) {
   } else {
     warnings.push(message);
   }
+}
+
+function pruneLakePackagesForCi(cwd, warnings) {
+  if (process.env.GITHUB_ACTIONS !== "true" && process.env.LML_PRUNE_LAKE_PACKAGES !== "1") {
+    return;
+  }
+
+  const packagesDir = join(cwd, ".lake", "packages");
+  if (!existsSync(packagesDir)) {
+    return;
+  }
+
+  for (const entry of readdirSync(packagesDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+    const packageDir = join(packagesDir, entry.name);
+    try {
+      pruneDependencyPackage(packageDir);
+    } catch (error) {
+      warnings.push(`could not prune Lake dependency package ${entry.name}: ${error.message}`);
+    }
+  }
+}
+
+function pruneDependencyPackage(packageDir) {
+  for (const entry of readdirSync(packageDir, { withFileTypes: true })) {
+    if (shouldKeepDependencyEntry(entry.name)) {
+      continue;
+    }
+    rmSync(join(packageDir, entry.name), { recursive: true, force: true });
+  }
+}
+
+function shouldKeepDependencyEntry(name) {
+  return name === ".lake" ||
+    name === "lakefile.lean" ||
+    name === "lakefile.toml" ||
+    name === "lean-toolchain" ||
+    name === "lake-manifest.json";
 }
