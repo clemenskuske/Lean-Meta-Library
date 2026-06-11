@@ -93,6 +93,9 @@ Important fields include:
   statements when present.
 - `LakeStatementPackage` and `LakeProofPackage`: created metadata fields for
   locating the statement and proof package folders.
+- `statementLeanToolchainPath` and `proofLeanToolchainPath`: repository-relative
+  paths to the package-local `lean-toolchain` files when the corresponding
+  package is present.
 - `statements`: target public `Definition` and `Axiom` entries recorded for
   that submission.
 - `proofs`: typed proof targets using `proof`, `conditional-proof`, or `reduction`.

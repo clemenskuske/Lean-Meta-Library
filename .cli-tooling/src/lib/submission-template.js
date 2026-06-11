@@ -5,6 +5,8 @@ import { lmlEnv } from "./project-env.js";
 export function createSubmissionPackage({ cwd, slug }) {
   const packageName = `${slug.replace(/-paper$/, "")}-package`;
   const namespace = toPascal(slug);
+  const mathlib = lmlEnv.baseImports.Mathlib;
+  const leanToolchain = leanToolchainFromVersion(lmlEnv.lean?.version);
   const root = join(cwd, packageName);
 
   if (existsSync(root)) {
@@ -12,15 +14,15 @@ export function createSubmissionPackage({ cwd, slug }) {
   }
 
   mkdirSync(root, { recursive: true });
-  write(root, "lean-toolchain", `${lmlEnv.lean.toolchain}\n`);
-  write(root, "lakefile.lean", proofLakefile(namespace));
+  write(root, "lean-toolchain", `${leanToolchain}\n`);
+  write(root, "lakefile.lean", proofLakefile(namespace, mathlib));
   write(root, "meta.yaml", metaYaml({ slug, namespace }));
   write(root, "abstract.tex", abstractTex());
 
   const statementsRoot = join(root, "statements");
   mkdirSync(statementsRoot, { recursive: true });
-  write(statementsRoot, "lean-toolchain", `${lmlEnv.lean.toolchain}\n`);
-  write(statementsRoot, "lakefile.lean", statementLakefile(namespace));
+  write(statementsRoot, "lean-toolchain", `${leanToolchain}\n`);
+  write(statementsRoot, "lakefile.lean", statementLakefile(namespace, mathlib));
   write(statementsRoot, "ConnectedGraph.tex", "A connected graph is a simple graph that is connected in the sense of mathlib.\n");
   write(statementsRoot, "ConnectedIffReachable.tex", "A graph is connected exactly when it has a vertex type and every pair of vertices is joined by a path.\n");
   write(statementsRoot, `${namespace}/Statements/ConnectedGraph.lean`, connectedGraphStatement(namespace));
@@ -45,14 +47,19 @@ function toPascal(slug) {
     .join("");
 }
 
-function proofLakefile(namespace) {
+function leanToolchainFromVersion(version) {
+  const normalized = String(version ?? "").trim();
+  return normalized ? `leanprover/lean4:${normalized}` : "";
+}
+
+function proofLakefile(namespace, mathlib) {
   return `import Lake
 open Lake DSL
 
 package ${namespace}.Proofs where
 
 require mathlib from git
-  "https://github.com/${lmlEnv.mathlib.repository}.git" @ "${lmlEnv.mathlib.revision}"
+  "https://github.com/${mathlib.repository}.git" @ "${mathlib.revision}"
 
 require ${namespace}.Statements from "./statements"
 
@@ -62,14 +69,14 @@ lean_lib ${namespace}.Proofs where
 `;
 }
 
-function statementLakefile(namespace) {
+function statementLakefile(namespace, mathlib) {
   return `import Lake
 open Lake DSL
 
 package ${namespace}.Statements where
 
 require mathlib from git
-  "https://github.com/${lmlEnv.mathlib.repository}.git" @ "${lmlEnv.mathlib.revision}"
+  "https://github.com/${mathlib.repository}.git" @ "${mathlib.revision}"
 
 @[default_target]
 lean_lib ${namespace}.Statements where
@@ -78,32 +85,35 @@ lean_lib ${namespace}.Statements where
 }
 
 function metaYaml({ slug, namespace }) {
-  return `pinnedLeanToolchain: ${lmlEnv.lean.toolchain}
-proofLakefilePath: lakefile.lean
+  return `proofLakefilePath: lakefile.lean
+proofLeanToolchainPath: lean-toolchain
 statementLakefilePath: statements/lakefile.lean
+statementLeanToolchainPath: statements/lean-toolchain
 abstractPath: abstract.tex
 submissionTitle: Your Submission Paper
-packageSlug: ${slug}
+submissionSlug: ${slug}
 statements:
   - Name: ConnectedGraph
     Type: Definition
     Statement:
+      CurrentSubmission: true
       Name: ${namespace}.Definition.ConnectedGraph.IsConnectedGraph
-      File: statements/${namespace}/Statements/ConnectedGraph.lean
-      LatexFile: statements/ConnectedGraph.tex
+      LeanStatement: statements/${namespace}/Statements/ConnectedGraph.lean
+      LatexDefinition: statements/ConnectedGraph.tex
     DeclarationReferences: []
   - Name: ConnectedIffReachable
     Type: Axiom
     Statement:
+      CurrentSubmission: true
       Name: ${namespace}.Axiom.ConnectedIffReachable.connected_iff_reachable
-      File: statements/${namespace}/Statements/ConnectedIffReachable.lean
-      LatexFile: statements/ConnectedIffReachable.tex
+      LeanStatement: statements/${namespace}/Statements/ConnectedIffReachable.lean
+      LatexDefinition: statements/ConnectedIffReachable.tex
     DeclarationReferences: []
 proofs:
   - Name: ConnectedIffReachableProof
     Type: proof
     Theorem:
-      Package: ${namespace}.Statements
+      SubmissionSlug: ${slug}
       File: statements/${namespace}/Statements/ConnectedIffReachable.lean
       Name: ${namespace}.Axiom.ConnectedIffReachable.connected_iff_reachable
     Proof:
@@ -111,13 +121,6 @@ proofs:
       Name: ${namespace}.Proofs.ConnectedIffReachable.connected_iff_reachable
     DeclarationReferences: []
 bibtex-entries: []
-paper:
-  arxivUrl: ""
-  onlineSource: ""
-  doi: ""
-  orcids: []
-  journalOrConference: ""
-  keywords: []
 `;
 }
 

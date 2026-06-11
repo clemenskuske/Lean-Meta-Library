@@ -90,11 +90,12 @@ jobs:
             const issueNumberValue = readTopLevelScalar(metaText, issueNumberField);
             const issueNumber = issueNumberValue ? Number.parseInt(issueNumberValue, 10) : null;
             const submissionTitle = readTopLevelScalar(metaText, "submissionTitle");
+            const submissionSlug = readTopLevelScalar(metaText, "submissionSlug");
             const packageSlug = readTopLevelScalar(metaText, "packageSlug");
             const paperTitle = readTopLevelScalar(metaText, "paperTitle");
             const namespaceSlug = readTopLevelScalar(metaText, "namespaceSlug");
             const abstractPath = readTopLevelScalar(metaText, "abstractPath");
-            const title = submissionTitle || packageSlug || paperTitle || namespaceSlug || metaPath;
+            const title = submissionTitle || submissionSlug || packageSlug || paperTitle || namespaceSlug || metaPath;
             issueAbstract = readAbstract(metaPath, abstractPath);
 
             await ensureLabel();

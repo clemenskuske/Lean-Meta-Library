@@ -7,7 +7,10 @@ import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const { runnerOptions, checkerArgs } = parseRunnerArgs(process.argv.slice(2));
-const prepareChecks = runnerOptions.skipBuildCache ? [] : ["prepare-build-cache.mjs"];
+const prepareChecks = runnerOptions.skipBuildCache ? [] : [
+  "statements/prepare-build-cache.mjs",
+  "proofs/prepare-build-cache.mjs"
+];
 const staticChecks = [
   "files-present.mjs",
   "metadata-check.mjs",

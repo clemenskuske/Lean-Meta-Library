@@ -4,11 +4,14 @@ title: "Lean Meta Library metadata"
 description: >
   Schema for Lean Meta Library meta.yaml files. Fields marked as created fields
   are populated by tooling/workflows rather than supplied by the initial author.
+$comment: >
+  Each present Lake package has its own lean-toolchain file. lml-env.json pins
+  the Lean version and base imports such as Mathlib and Std; package toolchain
+  files are checked against that fixed Lean version.
 type: object
 additionalProperties: false
 
 required:
-  - pinnedLeanToolchain
   - abstractPath
   - submissionTitle
   - submissionSlug
@@ -17,19 +20,24 @@ required:
 dependentRequired:
   proofs:
     - proofLakefilePath
+    - proofLeanToolchainPath
   proofLakefilePath:
     - proofs
+    - proofLeanToolchainPath
+  proofLeanToolchainPath:
+    - proofs
+    - proofLakefilePath
   statements:
     - statementLakefilePath
+    - statementLeanToolchainPath
   statementLakefilePath:
     - statements
+    - statementLeanToolchainPath
+  statementLeanToolchainPath:
+    - statements
+    - statementLakefilePath
 
 properties:
-  pinnedLeanToolchain:
-    type: string
-    minLength: 1
-    description: "Pinned Lean toolchain. Must match the Lean toolchain information in lml-env.json."
-
   proofLakefilePath:
     $ref: "#/$defs/repoRelativePath"
     description: >
@@ -37,11 +45,22 @@ properties:
       proof entries discharge axioms from this submission or from other
       submissions.
 
+  proofLeanToolchainPath:
+    $ref: "#/$defs/repoRelativePath"
+    description: >
+      Repository-relative path to the lean-toolchain file for the proof package.
+
   statementLakefilePath:
     $ref: "#/$defs/repoRelativePath"
     description: >
       Repository-relative path to the Lake file for the package whose
       statement entries publish public definitions and axiom statements.
+
+  statementLeanToolchainPath:
+    $ref: "#/$defs/repoRelativePath"
+    description: >
+      Repository-relative path to the lean-toolchain file for the statement
+      package.
 
   abstractPath:
     $ref: "#/$defs/repoRelativePath"
@@ -50,6 +69,8 @@ properties:
       summary of the submission's results.
 
   submissionTitle:
+    allOf:
+      - $ref: "#/$defs/safeText"
     type: string
     minLength: 1
     description: "Human-readable submission title."
@@ -64,7 +85,7 @@ properties:
       BibTeX references for papers whose results are fully or partly formalized
       in this submission.
     items:
-      type: string
+      $ref: "#/$defs/safeText"
 
   statements:
     type: array
@@ -94,6 +115,8 @@ properties:
       issue used to manage this submission.
 
   submissionIssueUrl:
+    allOf:
+      - $ref: "#/$defs/safeText"
     type: string
     format: uri
     description: >
@@ -101,12 +124,16 @@ properties:
       to manage this submission.
 
   githubRepo:
+    allOf:
+      - $ref: "#/$defs/safeText"
     type: string
     format: uri
     minLength: 1
     description: "Created automatically by tooling/workflows. Full repository URL."
 
   submittedBy:
+    allOf:
+      - $ref: "#/$defs/safeText"
     type: string
     minLength: 1
     description: "Created automatically by the submit workflow. User who initiated the submission."
@@ -120,17 +147,40 @@ properties:
     description: "Repository-relative path to the Lake statement package folder."
 
 $defs:
+  safeText:
+    type: string
+    pattern: "^[\\t\\r\\n\\x20-\\x7E]*$"
+    not:
+      anyOf:
+        - pattern: "`"
+        - pattern: "\\$\\("
+        - pattern: "\\$\\{"
+        - pattern: ";"
+        - pattern: "&&"
+        - pattern: "\\|\\|"
+        - pattern: "[<>]"
+    description: >
+      Plain ASCII text accepted by the metadata checkers. Rejects suspicious
+      shell tokens such as backticks, command substitutions, shell separators,
+      and angle brackets.
+
   repoRelativePath:
+    allOf:
+      - $ref: "#/$defs/safeText"
     type: string
     minLength: 1
     pattern: "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
     description: "Relative path that must stay inside the repository root."
 
   leanName:
+    allOf:
+      - $ref: "#/$defs/safeText"
     type: string
     pattern: "^[A-Za-z_][A-Za-z0-9_']*(\\.[A-Za-z_][A-Za-z0-9_']*)*$"
 
   submissionSlug:
+    allOf:
+      - $ref: "#/$defs/safeText"
     type: string
     minLength: 1
     pattern: "^[A-Za-z][A-Za-z0-9-]*$"
@@ -147,6 +197,8 @@ $defs:
       - Statement
     properties:
       Name:
+        allOf:
+          - $ref: "#/$defs/safeText"
         type: string
         minLength: 1
         description: "Metadata entry name for this public declaration."
@@ -177,6 +229,8 @@ $defs:
       - DeclarationReferences
     properties:
       Name:
+        allOf:
+          - $ref: "#/$defs/safeText"
         type: string
         minLength: 1
         description: "Metadata entry name for this proof/reduction."

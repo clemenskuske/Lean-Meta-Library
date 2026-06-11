@@ -17,8 +17,12 @@ lml --help
 ## Project Environment
 
 Repository-level values that may change later but are fixed for all projects right now live in `lml-env.json`.
-CLI tooling and submission checks import this file for the Lean toolchain, mathlib revision, default metadata path,
-allowed submission file/import policy, first-run size limits, checker output limits, and final proof-build base axiom signatures.
+CLI tooling and submission checks import this file for the fixed Lean version,
+pinned base imports such as Mathlib and Std, trusted-base axiom policy, default
+metadata path, allowed submission file policy, first-run size limits, and
+checker output limits. Package toolchains live in package-local
+`lean-toolchain` files recorded by metadata and must match the fixed Lean
+version.
 
 `meta.config.yaml` is the source of truth for submission metadata shape. It is
 the JSON Schema used by `metadata-check.mjs`; documentation and generated
@@ -40,12 +44,13 @@ Statement entries use the new metadata vocabulary:
 - `Axiom` entries introduce Lean `axiom`s. Statement files must not introduce
   theorem declarations as submitted statement content.
 - Metadata uses `submissionSlug`, `submissionTitle`, `statementLakefilePath`,
-  `statements`, and `bibtex-entries` rather than the older surface-oriented
-  names.
-- The author-supplied required top-level fields are `pinnedLeanToolchain`,
-  `abstractPath`, `submissionTitle`, `submissionSlug`, and `bibtex-entries`.
-  `statements` requires `statementLakefilePath` when present; `proofs` requires
-  `proofLakefilePath` when present.
+  `statementLeanToolchainPath`, `proofLeanToolchainPath`, `statements`, and
+  `bibtex-entries` rather than the older surface-oriented names.
+- The author-supplied required top-level fields are `abstractPath`,
+  `submissionTitle`, `submissionSlug`, and `bibtex-entries`.
+  `statements` requires `statementLakefilePath` and
+  `statementLeanToolchainPath` when present; `proofs` requires
+  `proofLakefilePath` and `proofLeanToolchainPath` when present.
 - Tooling-created fields include `githubRepo`, `submittedBy`,
   `LakeStatementPackage`, `LakeProofPackage`, `submissionIssueNumber`, and
   `submissionIssueUrl`. Authors should normally omit them until workflows add
@@ -130,7 +135,15 @@ The `test` command runs `.github/actions/test/run-all.mjs` using the metadata fi
 lml test --meta=path/to/meta.yaml
 ```
 
-The first-run checker prepares the Lean build/cache first, runs static checks in parallel, and then runs the Lean inspector checks in parallel. In the import workflow, the preparation runs as its own `Prepare Lean build/cache` step before `Run submission checks`.
+The first-run checker prepares the Lean build/cache first with separate
+statement and proof package preparation scripts, runs static checks in parallel,
+and then runs the Lean inspector checks in parallel. In the import workflow,
+the preparation runs as its own `Prepare Lean build/cache` step before
+`Run submission checks`.
+The checker files are being pruned into `.github/actions/test/general/`,
+`.github/actions/test/statements/`, `.github/actions/test/proofs/`, and
+`.github/actions/test/lean-checker/`; general package and metadata-context
+checks move first while shared root helpers remain until they are reviewed.
 
 ```yaml
 proofs:

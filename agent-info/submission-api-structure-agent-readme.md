@@ -45,6 +45,9 @@ Created metadata fields are `githubRepo`, `submittedBy`, `LakeProofPackage`,
 Authors should normally omit these until tooling/workflows populate them. If
 present, they must satisfy the schema, for example `githubRepo` must be a URI.
 
+Each present package has its own `lean-toolchain` file. Metadata records those
+files with `statementLeanToolchainPath` and `proofLeanToolchainPath`.
+
 ## Metadata Shape
 
 Statement entries should use the checklist shape:

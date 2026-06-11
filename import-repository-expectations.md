@@ -1,10 +1,7 @@
 # Import Repository Expectations
 
 This file records repository-content expectations for a source repository being
-imported into the Lean Meta Library. It is separate from
-`repo-structure.config.yaml`: that file describes the physical file layout,
-while this file explains the extra checker and policy expectations attached to
-those files.
+imported into the Lean Meta Library.
 
 The submission metadata file remains the source of truth for the submitted
 entries and paths. It must validate against `meta.config.yaml`.
@@ -15,86 +12,61 @@ entries and paths. It must validate against `meta.config.yaml`.
   provided, the default is `meta.yaml`.
 - The metadata must use the exact field names and shapes from
   `meta.config.yaml`.
-- All metadata paths must be repository-relative and stay inside the repository
-  root.
-- `statements` and `statementLakefilePath` must appear together.
-- `proofs` and `proofLakefilePath` must appear together.
-- `abstractPath`, all statement Lean/LaTeX files, theorem target files, proof
-  files, and present Lake files must exist on disk.
-- A proof entry must target a metadata statement, and that target statement must
-  have `Type: Axiom`.
-- `DeclarationReferences` records must use either `CurrentSubmission: true` or
-  `SubmissionSlug`, plus `LeanStatement`, `LatexDefinition`, and `Name`.
-- The `LeanStatement` and `LatexDefinition` paths in a declaration reference
-  must be in the same folder.
-- Metadata text should be plain ASCII accepted by the checkers. Suspicious shell
-  tokens such as backticks, command substitutions, shell separators, and angle
-  brackets are rejected.
 
 ## Statement Package
 
 The statement package is intentionally strict. When present, it contains only
-the files mentioned by metadata plus the statement package Lake file:
-
+the files mentioned by metadata plus its Lake file:
 - `statementLakefilePath`
 - each `statements[].Statement.LeanStatement`
 - each `statements[].Statement.LatexDefinition`
 
-No other Lean or LaTeX files may be present in the statement package. Each
-metadata statement Lean/LaTeX reference must resolve to a file, and each
-statement package Lean/LaTeX file must be referenced by metadata. In particular,
-extra statement/declaration folders or unlisted statement files are rejected.
+No other Lean or LaTeX files may be present in the statement package.
 
 The statement package Lake file must:
 
 - be buildable by Lake;
-- declare the statement package/library for the submission;
-- expose exactly the metadata-referenced statement Lean files through the shared
-  statement library;
-- use the namespace/package shape implied by `submissionSlug`, namely
-  `<SubmissionSlugAsPascal>.Statements`;
-- declare a Lean library named `<SubmissionSlugAsPascal>.Statements`.
+- declare a Lean library  anduse the namespace/package shape implied by `submissionSlug`, namely
+  `<SubmissionSlug>.Statements`;
 
+
+Each statement LaTeX file is the paper-facing text for the matching Lean
+statement or definition.
+
+### Statement Lean Files
 Each statement Lean file must:
-
 - build as a Lean module exposed by the statement package Lake file;
-- introduce exactly one direct public declaration for its metadata entry;
-- introduce a Lean `def` when the metadata entry has `Type: Definition`;
-- introduce a Lean `axiom` when the metadata entry has `Type: Axiom`;
-- not use theorem declarations for `Axiom` entries;
-- not introduce extra public, private, generated, instance, helper, or hidden
-  declarations;
-- not use abbreviations for submitted definitions;
-- not use unsafe declarations;
-- not register the submitted declaration as a typeclass instance;
-- use a Lean name beginning with the namespace root derived from
-  `submissionSlug`;
-- avoid the old `.Surface.` namespace marker.
+- introduce exactly one direct and public declaration for its metadata entry;
+  - of type `def` when the metadata entry has `Type: Definition`;
+  - of type `axiom` when the metadata entry has `Type: Axiom`;
 
 Statement files are checked with a conservative syntax policy. They may use
-ordinary imports, namespaces, sections, opens, universes, variables,
-declarations, and `noncomputable`; they must not use:
-
-- macros;
-- custom syntax;
-- elaborators;
-- custom commands;
-- `unsafe`;
-- `run_cmd`;
-- `#eval`;
-- `#print`;
-- `extern`;
-- `IO`.
+namespaces, sections, opens, universes, variables, declarations, and noncomputable;
+They:
+- must not introduce extra public, private, generated, instance, helper, or hidden
+  declarations;
+- must not use unsafe declarations;
+- must not register the submitted declaration as a typeclass instance;
+- must use a Lean name beginning with the namespace root derived from `submissionSlug`;
+- must not contain the following syntax:
+  - macros;
+  - custom syntax;
+  - elaborators;
+  - custom commands;
+  - `unsafe`;
+  - `run_cmd`;
+  - `#eval`;
+  - `#print`;
+  - `extern`;
+  - `IO`.
 
 Statement imports are restricted. A statement file may directly import:
-
-- allowed base prefixes from `lml-env.json`, currently `Mathlib.` and `Std.`;
+- pinned base imports from `lml-env.json`, currently `Mathlib.` and `Std.`;
 - local statement modules from the same submission;
 - external imported-submission packages that are declared in that statement's
   `DeclarationReferences` metadata.
 
-Each statement LaTeX file is the paper-facing text for the matching Lean
-statement or definition.
+
 
 ## Proof Package
 
@@ -102,20 +74,18 @@ The proof package is more flexible than the statement package. It may contain
 ordinary proof development needed to build the submitted proof targets, but the
 submitted proof targets named in metadata are the security boundary.
 
-When present, the proof package must have `proofLakefilePath`, and that Lake file
-must:
+When present, the proof package must have `proofLakefilePath`, and that Lake file must:
 
 - be buildable by Lake;
 - declare the proof package/library for the submission;
 - build the proof package, including every proof file listed by
   `proofs[].Proof.File`;
-- use the namespace/package shape implied by `submissionSlug`, namely
-  `<SubmissionSlugAsPascal>.Proofs`;
-- declare a Lean library named `<SubmissionSlugAsPascal>.Proofs`;
+- declare a Lean library using the namespace/package shape implied by `submissionSlug`, namely
+  `<SubmissionSlug>.Proofs`;
 - may import any modules needed for the proof package to build. For repositories
-  already recorded in `submissions.jsonl`, proof code should prefer importing
-  the statement/surface files and referencing their axioms rather than importing
-  whole proof packages, but this is guidance rather than an enforced rule.
+  already recorded in `submissions.jsonl`, the proof code should prefer importing
+  the statement packge and referencing their axioms rather than importing
+  whole proof packages.
 
 The proof package is not closed under metadata in the way the statement package
 is. It may contain additional Lean files, helper declarations, intermediate
@@ -123,35 +93,18 @@ theorems, tactics, and internal proof development that are not listed in the
 metadata. Those extra files and declarations are not submitted proof targets
 unless a metadata proof entry names them.
 
-Each metadata proof entry must:
-
-- have `Type: proof`, `Type: conditional-proof`, or `Type: reduction`;
-- name a theorem target with `Theorem.SubmissionSlug`, `Theorem.File`, and
-  `Theorem.Name`;
-- name a proof declaration with `Proof.File` and `Proof.Name`;
-- have the file named by `Proof.File` present in the proof package;
-- have the declaration named by `Proof.Name` present in that proof file;
-- have a proof declaration whose compiled type is definitionally equal to the
-  target statement's compiled type.
-
-Each listed proof file must:
-
+### Lean Proof-Theorems
+Each listed proof must:
 - elaborate with Lean;
 - contain a theorem named by `Proof.Name`;
-- import the target statement module;
 - use a proof name beginning with the namespace root derived from
-  `submissionSlug`;
-- not report `sorry` or `sorryAx` in Lean output for submitted proof targets.
+  `submissionSlug.Proofs`;
 
 For submitted proof targets, the compiled axiom tree must be controlled:
-
 - The proof target must not depend on `sorryAx`.
 - The proof target must not depend on local proof-namespace axioms.
 - Actual Lean axiom dependencies must be covered by declared dependencies in
-  metadata.
-- For final proof checking, allowed axioms are trusted base Mathlib axioms from
-  `lml-env.json` plus declared conjecture axioms from `reduction` entries.
-- Any other axiom in a submitted proof target is rejected.
+  metadata besides the base Mathlib axioms listed in `lml-env.json`.
 
 Proof package imports are allowed insofar as the package builds and the
 submitted proof targets pass the axiom-dependency gate. The important check is
@@ -160,14 +113,8 @@ proof entry is present and that the actual axiom dependencies of each submitted
 proof target are declared by metadata.
 
 ## Toolchain And Mathlib
-
-The current checker suite still verifies package toolchain and mathlib policy,
-even though `lean-toolchain` files are not part of the physical layout contract
-in `repo-structure.config.yaml`.
-
 - Any statement or proof Lake package used by the submission must use the Lean
-  toolchain configured in `lml-env.json`; the metadata's `pinnedLeanToolchain`
-  must record that same configured toolchain.
+  toolchain configured in `lml-env.json`.
 - Each present Lake file must have exactly one git dependency named `mathlib`.
 - The mathlib dependency URL must be the repository from `lml-env.json`.
 - The mathlib dependency revision must be exactly `lml-env.json`'s

@@ -34,10 +34,11 @@ node .github/actions/test/run-all.mjs --meta=test-imports/<fixture>/meta.yaml
 Fixtures:
 
 - `build-packages-failure-package`: proof package Lean build fails, so
-  `build-packages.mjs` should reject it.
+  `general/build-packages.mjs` and `proofs/prepare-build-cache.mjs` should
+  reject it.
 - `prepare-build-cache-failure-package`: statement package Lean build fails
-  during preparation, so `prepare-build-cache.mjs` should reject it while that
-  package is present.
+  during preparation, so `statements/prepare-build-cache.mjs` should reject it
+  while that package is present.
 - `missing-proof-file-package`: metadata references a statement proof file that is
   absent, so `files-present.mjs` should reject it.
 - `metadata-disk-state-failure-package`: the disk contains a declaration folder
@@ -83,5 +84,5 @@ conditional package checks, dependency/conjecture metadata comparison, and
 axiom-gate matching by name, type, and source module.
 
 Helper modules in `.github/actions/test/`, such as `common.mjs`,
-`lake-config.mjs`, `lean-imports.mjs`, and `lean-inspect.mjs`, do not have
+`general/meta-context.mjs`, `lake-config.mjs`, `lean-imports.mjs`, and `lean-inspect.mjs`, do not have
 standalone fixtures because they are exercised through the checker scripts above.

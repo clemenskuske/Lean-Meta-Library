@@ -5,9 +5,9 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import lmlEnv from "../../../lml-env.json" with { type: "json" };
 import { validateSubmissionRow } from "../submission-schema.mjs";
+import { loadContext } from "./general/meta-context.mjs";
 import {
   leanFiles,
-  loadContext,
   metadataProofs,
   metadataStatements,
   namespaceOfDeclaration,
@@ -29,7 +29,9 @@ const { packageRoot, meta, namespaceRoot } = loadContext();
 const errors = [];
 const warnings = [];
 const submissionDependencies = loadSubmissionDependencies();
-const allowedImportPrefixes = lmlEnv.submission?.allowedImportPrefixes ?? [];
+const baseImports = lmlEnv.baseImports ?? {};
+const allowedBaseImportPrefixes = Object.values(baseImports).map((item) => item?.importPrefix).filter(Boolean);
+const mathlib = baseImports.Mathlib ?? {};
 const statementRoot = statementLakefilePath(meta) ? packageRootForLakefile(packageRoot, statementLakefilePath(meta)) : null;
 const proofRoot = proofLakefilePath(meta) ? packageRootForLakefile(packageRoot, proofLakefilePath(meta)) : null;
 const statementLakeConfig = statementRoot ? loadLakeConfig(statementRoot, "statement/declaration lakefile", errors) : null;
@@ -114,11 +116,11 @@ function checkLakefile(config, label, allowedExternalImports) {
 }
 
 function checkMathlibDependency(dependency, label) {
-  if (normalizeGitUrl(dependency.url) !== normalizeGitUrl(`https://github.com/${lmlEnv.mathlib.repository}.git`)) {
+  if (normalizeGitUrl(dependency.url) !== normalizeGitUrl(`https://github.com/${mathlib.repository}.git`)) {
     errors.push(`${label} dependency URL is not allowed for mathlib: ${dependency.url}`);
   }
-  if (dependency.ref !== lmlEnv.mathlib.revision) {
-    errors.push(`${label} dependency ref must match lml-env.json mathlib.revision: ${dependency.ref ?? "(missing)"}`);
+  if (dependency.ref !== mathlib.revision) {
+    errors.push(`${label} dependency ref must match lml-env.json baseImports.Mathlib.revision: ${dependency.ref ?? "(missing)"}`);
   }
   if (dependency.subDir) {
     errors.push(`${label} mathlib dependency should not specify a subdirectory`);
@@ -299,7 +301,7 @@ function isOwnLegacySurfaceImport(imported) {
 }
 
 function hasAllowedImportPrefix(imported) {
-  return allowedImportPrefixes.some((prefix) => {
+  return allowedBaseImportPrefixes.some((prefix) => {
     const normalized = String(prefix ?? "").trim();
     if (!normalized) {
       return false;

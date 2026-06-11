@@ -3,6 +3,7 @@
 // Metadata is also the ground truth for statement/declaration and proof file positions.
 import { existsSync, statSync } from "node:fs";
 import { basename, dirname, extname, join, resolve } from "node:path";
+import { loadContext } from "./general/meta-context.mjs";
 import {
   metadataProofs,
   metadataStatements,
@@ -15,7 +16,6 @@ import {
   statementLatexFileForEntry,
   statementLeanFileForEntry,
   theoremNameForProofEntry,
-  loadContext,
   walkFiles
 } from "./common.mjs";
 
@@ -58,7 +58,7 @@ for (const entry of statements) {
   const label = entry.name ?? entry.entryName ?? basename(dirname(leanFile ?? ""));
 
   if (!leanFile) {
-    errors.push(`statement ${label} has no Statement.File`);
+    errors.push(`statement ${label} has no Statement.LeanStatement`);
   } else {
     expectedStatementFiles.add(normalizePath(leanFile));
     if (!existsSync(join(packageRoot, leanFile))) {
@@ -67,7 +67,7 @@ for (const entry of statements) {
   }
 
   if (!latexFile) {
-    errors.push(`statement ${label} has no Statement.LatexFile`);
+    errors.push(`statement ${label} has no Statement.LatexDefinition`);
   } else {
     expectedStatementFiles.add(normalizePath(latexFile));
     if (!existsSync(join(packageRoot, latexFile))) {

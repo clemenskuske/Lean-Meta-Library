@@ -46,7 +46,7 @@ jobs:
         run: |
           curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y --default-toolchain none
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
-          "$HOME/.elan/bin/elan" default "$(node -e 'console.log(require("./lml-env.json").lean.toolchain)')"
+          "$HOME/.elan/bin/elan" default "$(node -e 'const env = require("./lml-env.json"); console.log(`leanprover/lean4:${env.lean.version}`)')"
 
       - name: Read submission issue
         id: issue
@@ -171,7 +171,8 @@ jobs:
         env:
           META_PATH: ${{ steps.issue.outputs.meta-path }}
         run: |
-          node "$GITHUB_WORKSPACE/.github/actions/test/prepare-build-cache.mjs" "$GITHUB_WORKSPACE/submission/$META_PATH"
+          node "$GITHUB_WORKSPACE/.github/actions/test/statements/prepare-build-cache.mjs" "$GITHUB_WORKSPACE/submission/$META_PATH"
+          node "$GITHUB_WORKSPACE/.github/actions/test/proofs/prepare-build-cache.mjs" "$GITHUB_WORKSPACE/submission/$META_PATH"
 
       - name: "Comment progress: build/cache prepared"
         env:

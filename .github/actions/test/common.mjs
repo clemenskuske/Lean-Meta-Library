@@ -1,111 +1,14 @@
 #!/usr/bin/env node
 // Shared helper library for the first-run submission checks.
-// It loads package metadata, walks files, parses the small metadata subset we need, and formats pass/fail output.
+// It walks files, normalizes the small metadata subset we need, and formats pass/fail output.
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, extname, isAbsolute, join, relative, resolve, sep } from "node:path";
-import YAML from "yaml";
 import lmlEnv from "../../../lml-env.json" with { type: "json" };
+import { slugToPascal } from "./general/meta-context.mjs";
 
-export const defaultMetadataPath = String(lmlEnv.submission?.defaultMetadataPath ?? "meta.yaml");
+export { parseMetaYaml } from "./general/meta-context.mjs";
+
 export const maxBuildOutputBytes = Number(lmlEnv.checks?.maxBuildOutputBytes ?? 1024 * 1024 * 20);
-
-export function loadContext(argv = process.argv.slice(2)) {
-  const metaPath = resolveMetaPath(parseMetaArg(argv));
-  if (existsSync(metaPath) && !statSync(metaPath).isFile()) {
-    throw new Error(`Metadata path must be a file: ${metaPath}`);
-  }
-
-  const packageRoot = dirname(metaPath);
-  const metaText = existsSync(metaPath) ? readFileSync(metaPath, "utf8") : "";
-  const meta = parseMetaYaml(metaText);
-  const namespaceRoot = inferNamespaceRoot(meta);
-
-  return { packageRoot, metaPath, metaText, meta, namespaceRoot };
-}
-
-function parseMetaArg(argv) {
-  const args = [...argv];
-  const positional = [];
-  let metaPath = null;
-
-  for (let index = 0; index < args.length; index += 1) {
-    const arg = args[index];
-    if (arg === "--meta") {
-      if (metaPath) {
-        throw new Error("Use one metadata file argument, for example: --meta=path/to/meta.yaml.");
-      }
-      metaPath = args[index + 1];
-      index += 1;
-      if (!metaPath) {
-        throw new Error("Missing metadata path after --meta.");
-      }
-      continue;
-    }
-    if (arg.startsWith("--meta=")) {
-      if (metaPath) {
-        throw new Error("Use one metadata file argument, for example: --meta=path/to/meta.yaml.");
-      }
-      metaPath = arg.slice("--meta=".length);
-      if (!metaPath) {
-        throw new Error("Missing metadata path after --meta=.");
-      }
-      continue;
-    }
-    if (arg.startsWith("-")) {
-      throw new Error(`Unknown checker option: ${arg}`);
-    }
-    positional.push(arg);
-  }
-
-  if (positional.length > 1 || (metaPath && positional.length > 0)) {
-    throw new Error("Use one metadata file argument, for example: --meta=path/to/meta.yaml.");
-  }
-
-  const selected = metaPath ?? positional[0] ?? defaultMetadataPath;
-  if (!isMetadataFile(selected)) {
-    throw new Error("Use a metadata .yaml or .yml file path.");
-  }
-  return selected;
-}
-
-export function resolveMetaPath(metaPath) {
-  return isAbsolute(metaPath) ? metaPath : resolve(process.cwd(), metaPath);
-}
-
-function isMetadataFile(path) {
-  return /\.ya?ml$/i.test(path);
-}
-
-export function parseMetaYaml(text) {
-  const parsed = YAML.parse(text || "") ?? {};
-  return {
-    declarations: [],
-    statements: [],
-    proofs: [],
-    paper: {},
-    ...parsed
-  };
-}
-
-export function inferNamespaceRoot(meta) {
-  const slug = meta.packageSlug ?? meta.namespaceSlug;
-  if (slug) {
-    return slugToPascal(String(slug));
-  }
-  const fromEntry = metadataStatements(meta).find((entry) => entry.name)?.name?.split(".")?.[0];
-  if (fromEntry) {
-    return fromEntry;
-  }
-  return null;
-}
-
-export function slugToPascal(slug) {
-  return String(slug)
-    .split(/[^a-zA-Z0-9]+/)
-    .filter(Boolean)
-    .map((part) => `${part[0].toUpperCase()}${part.slice(1)}`)
-    .join("");
-}
 
 export function readIfExists(path) {
   return existsSync(path) ? readFileSync(path, "utf8") : null;
@@ -170,7 +73,7 @@ export function theoremFileForProofEntry(proof) {
 }
 
 export function metadataPackageSlug(meta) {
-  return meta.packageSlug ?? meta.namespaceSlug ?? null;
+  return meta.submissionSlug ?? meta.packageSlug ?? meta.namespaceSlug ?? null;
 }
 
 export function metadataSubmissionTitle(meta) {
@@ -185,8 +88,16 @@ export function statementLakefilePath(meta) {
   return meta.statementLakefilePath ?? meta.surfaceLakefilePath ?? null;
 }
 
+export function statementLeanToolchainPath(meta) {
+  return meta.statementLeanToolchainPath ?? null;
+}
+
 export function proofLakefilePath(meta) {
   return meta.proofLakefilePath ?? null;
+}
+
+export function proofLeanToolchainPath(meta) {
+  return meta.proofLeanToolchainPath ?? null;
 }
 
 export function packageRootForLakefile(packageRoot, lakefilePath) {
@@ -214,12 +125,17 @@ export function statementLatexFileForEntry(entry) {
 
 export function normalizedUsedSurfaceFiles(items) {
   return (items ?? []).map((item) => ({
-    package: item.PackageSlug ?? item.Package ?? item.githubRepo ?? item.slug ?? null,
-    currentPackage: item.CurrentPackage === true,
-    file: item.File ?? item.surfaceFile ?? null,
+    package: item.PackageSlug ?? item.Package ?? packageForSubmissionSlug(item.SubmissionSlug) ?? item.githubRepo ?? item.slug ?? null,
+    currentPackage: item.CurrentSubmission === true || item.CurrentPackage === true,
+    file: item.LeanStatement ?? item.File ?? item.surfaceFile ?? null,
+    latexFile: item.LatexDefinition ?? item.LatexFile ?? null,
     name: item.Name ?? item.definition ?? null,
     raw: item
   }));
+}
+
+function packageForSubmissionSlug(slug) {
+  return slug ? `${slugToPascal(String(slug))}.Statements` : null;
 }
 
 function declarationReferences(entry) {
@@ -228,8 +144,8 @@ function declarationReferences(entry) {
 
 function normalizeStatementEntry(entry) {
   const statement = entry.Statement ?? {};
-  const file = statement.File ?? entry.File ?? null;
-  const latexFile = statement.LatexFile ?? entry.LatexFile ?? null;
+  const file = statement.LeanStatement ?? statement.File ?? entry.File ?? null;
+  const latexFile = statement.LatexDefinition ?? statement.LatexFile ?? entry.LatexFile ?? null;
   return {
     raw: entry,
     entryName: entry.Name ?? entry.name ?? null,
@@ -263,7 +179,7 @@ function normalizeProofEntry(proof) {
     entryName: proof.Name ?? null,
     type: proof.Type ?? proof.type ?? null,
     theorem: proof.Theorem?.Name ?? proof.theorem ?? null,
-    theoremPackage: proof.Theorem?.Package ?? null,
+    theoremPackage: packageForSubmissionSlug(proof.Theorem?.SubmissionSlug) ?? proof.Theorem?.Package ?? null,
     theoremFile: proof.Theorem?.File ?? null,
     proof: proof.Proof?.Name ?? proof.proof ?? null,
     proofFile: proof.Proof?.File ?? proof.proofFile ?? null,

@@ -3,8 +3,8 @@
 // It also rejects stray macOS metadata files and unknown extensionless files.
 import { basename, extname } from "node:path";
 import lmlEnv from "../../../lml-env.json" with { type: "json" };
+import { loadContext } from "./general/meta-context.mjs";
 import {
-  loadContext,
   metadataStatements,
   packageRootForLakefile,
   relativePath,

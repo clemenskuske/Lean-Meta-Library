@@ -2,12 +2,12 @@
 // Elaborates proof files, then checks compiled metadata proof theorem axiom dependencies.
 // Incidental proof-file declarations may be unfinished; submitted proof targets may not depend on sorryAx or local proof axioms.
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { loadContext } from "./general/meta-context.mjs";
 import {
   isLeanName,
-  loadContext,
   maxBuildOutputBytes,
   metadataProofs,
   packageRootForLakefile,
@@ -31,8 +31,11 @@ const proofFiles = new Set(
     .map((proofFile) => join(packageRoot, proofFile))
 );
 
-for (const file of walkFiles(join(packageRoot, "proofs")).filter((path) => path.endsWith(".lean"))) {
-  proofFiles.add(file);
+const conventionalProofRoot = join(packageRoot, "proofs");
+if (existsSync(conventionalProofRoot)) {
+  for (const file of walkFiles(conventionalProofRoot).filter((path) => path.endsWith(".lean"))) {
+    proofFiles.add(file);
+  }
 }
 
 for (const file of proofFiles) {

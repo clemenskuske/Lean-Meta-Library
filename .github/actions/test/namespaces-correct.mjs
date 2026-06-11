@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// Checks that package names and Lean declarations use the namespace shape implied by packageSlug.
+// Checks that package names and Lean declarations use the namespace shape implied by submissionSlug.
 import { join } from "node:path";
+import { loadContext } from "./general/meta-context.mjs";
 import {
   isLeanName,
-  loadContext,
   metadataPackageSlug,
   metadataProofs,
   metadataStatements,
@@ -35,7 +35,7 @@ if (!namespaceRoot) {
 }
 
 if (!metadataPackageSlug(meta)) {
-  errors.push("metadata must define packageSlug for namespace checks");
+  errors.push("metadata must define submissionSlug for namespace checks");
 }
 
 checkStatementLakefile(statementLakeConfig);

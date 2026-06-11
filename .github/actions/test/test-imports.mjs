@@ -13,14 +13,20 @@ const fixtureTimeoutMs = Number(process.env.LML_TEST_IMPORT_TIMEOUT_MS ?? 10 * 6
 const fixtures = [
   {
     name: "build-packages-failure-package",
-    checker: "build-packages.mjs",
+    checker: "general/build-packages.mjs",
     expected: /proof package failed to build|unknown identifier/,
     stripMathlibDependencyForCheck: true
   },
   {
+    name: "build-packages-failure-package",
+    checker: "proofs/prepare-build-cache.mjs",
+    expected: /proof package lake build failed|unknown identifier/,
+    stripMathlibDependencyForCheck: true
+  },
+  {
     name: "prepare-build-cache-failure-package",
-    checker: "prepare-build-cache.mjs",
-    expected: /statement\/declaration package lake build failed|surface package lake build failed|Unknown identifier|MissingName|unexpected identifier/,
+    checker: "statements/prepare-build-cache.mjs",
+    expected: /statement package lake build failed|statement\/declaration package lake build failed|surface package lake build failed|Unknown identifier|MissingName|unexpected identifier/,
     stripMathlibDependencyForCheck: true
   },
   {
@@ -36,7 +42,7 @@ const fixtures = [
   {
     name: "metadata-check-failure-package",
     checker: "metadata-check.mjs",
-    expected: /legacy metadata key is not allowed|bibtex-entries must be a list|bibtex must be a list/
+    expected: /metadata schema .*must have required property 'bibtex-entries'|metadata schema .*must NOT have additional properties/
   },
   {
     name: "mathlib-version-failure-package",

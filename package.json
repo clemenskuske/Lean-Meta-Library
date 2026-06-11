@@ -12,6 +12,7 @@
     ".github/actions",
     "agent-info",
     "lml-env.json",
+    "meta.config.yaml",
     "README.md"
   ],
   "scripts": {

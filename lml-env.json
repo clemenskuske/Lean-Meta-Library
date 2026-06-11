@@ -1,17 +1,24 @@
 {
   "role": "Repository-level values that may change later but are fixed for all Lean Meta Library projects right now.",
-  "mathlib": {
-    "repository": "leanprover-community/mathlib4",
-    "revision": "c5ea00351c28e24afc9f0f84379aa41082b1188f"
-  },
   "lean": {
-    "toolchain": "leanprover/lean4:v4.30.0"
+    "version": "v4.30.0"
+  },
+  "baseImports": {
+    "Mathlib": {
+      "importPrefix": "Mathlib.",
+      "lakeDependency": "mathlib",
+      "repository": "leanprover-community/mathlib4",
+      "revision": "c5ea00351c28e24afc9f0f84379aa41082b1188f"
+    },
+    "Std": {
+      "importPrefix": "Std.",
+      "source": "lean.version"
+    }
   },
   "submission": {
     "defaultMetadataPath": "meta.yaml",
     "allowedFileExtensions": [".lean", ".tex", ".yaml", ".yml", ".json", ".bib", ".md", ".txt"],
-    "allowedExtensionlessFiles": ["lean-toolchain", "LICENSE", "README"],
-    "allowedImportPrefixes": ["Mathlib.", "Std."]
+    "allowedExtensionlessFiles": ["lean-toolchain", "LICENSE", "README"]
   },
   "submissionLimits": {
     "maxPackageBytes": 5242880,

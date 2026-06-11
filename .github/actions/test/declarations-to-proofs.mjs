@@ -5,10 +5,10 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { loadContext } from "./general/meta-context.mjs";
 import {
   declarationNamespaceForEntry,
   isLeanName,
-  loadContext,
   maxBuildOutputBytes,
   metadataProofs,
   metadataStatements,

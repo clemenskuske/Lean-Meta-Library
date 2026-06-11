@@ -2,7 +2,8 @@
 // Applies a conservative first-run policy to statement/declaration Lean files.
 // It rejects macros, custom syntax, unsafe features, and other constructs outside the intended secure subset.
 import { join } from "node:path";
-import { loadContext, metadataStatements, report, statementLeanFileForEntry } from "./common.mjs";
+import { metadataStatements, report, statementLeanFileForEntry } from "./common.mjs";
+import { loadContext } from "./general/meta-context.mjs";
 import { inspectCommandSyntax } from "./lean-inspect.mjs";
 
 const { packageRoot, meta } = loadContext();

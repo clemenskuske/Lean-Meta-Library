@@ -13,10 +13,11 @@ Read this file before making changes, then preserve the existing folder roles:
 - `submissions.jsonl`: root-level JSON Lines submission log.
 - `lml-env.json`: repository-level values that may change later but are fixed for all Lean Meta Library projects right now.
 
-`lml-env.json` is the central policy file for the current Lean toolchain, pinned mathlib repository and revision,
-default submission metadata path, allowed submission file types, allowed direct import prefixes, first-run size
-limits, checker output limits, and final proof-build base axiom signatures. The Lean toolchain value carries the
-Lean version; Lake ships with that toolchain, so separate `lean.version` and `lake.version` fields are not kept.
+`lml-env.json` is the central policy file for the fixed Lean version, pinned base imports such as Mathlib and Std,
+trusted-base axiom policy, default submission metadata path, allowed submission file types, first-run size limits,
+and checker output limits. Each present Lake package has its own package-local `lean-toolchain` file recorded by
+metadata; checkers should compare those toolchain files against the fixed Lean version, and Lake files against the
+Mathlib base import pin.
 
 `meta.config.yaml` is the source of truth for submission metadata shape. Keep
 READMEs, generated examples, and checker-facing instructions aligned with its
@@ -35,7 +36,10 @@ Submission Lean files may directly import Mathlib modules, Std modules, local st
 
 ## Submission checks
 
-The `.github/actions/test/` folder contains first-run submission package checks. The metadata file is the source of submission information. Run checks with:
+The `.github/actions/test/` folder contains first-run submission package checks. These checks are being pruned into
+category folders: `general`, `statements`, `proofs`, and `lean-checker`. General package and metadata-context checks
+belong under `.github/actions/test/general/`; shared helper code that remains broadly used can stay at the test root
+until it is deliberately pruned. The metadata file is the source of submission information. Run checks with:
 
 ```sh
 node .github/actions/test/run-all.mjs --meta=path/to/meta.yaml
@@ -43,7 +47,12 @@ node .github/actions/test/run-all.mjs --meta=path/to/meta.yaml
 
 Pass only one metadata file path, preferably with `--meta=path/to/meta.yaml`. The older positional form is accepted for compatibility. If no metadata path is provided, each check falls back to `meta.yaml` in the current working directory; directories are not accepted.
 
-`run-all.mjs` first prepares the Lean packages with `.github/actions/test/prepare-build-cache.mjs`, then runs static checks in parallel, then runs Lean inspector checks in parallel against the prepared build. In the import workflow, `Prepare Lean build/cache` is a separate first step before `Run submission checks`; the check step passes `--skip-build-cache` so preparation is not repeated. The cache fetch is best-effort and reports warnings, but Lake update and build failures reject the submission.
+`run-all.mjs` first prepares the Lean packages with `.github/actions/test/statements/prepare-build-cache.mjs`
+and `.github/actions/test/proofs/prepare-build-cache.mjs`, then runs static checks in parallel, then runs Lean
+inspector checks in parallel against the prepared build. In the import workflow, `Prepare Lean build/cache` is a
+separate first step before `Run submission checks`; the check step passes `--skip-build-cache` so preparation is
+not repeated. The cache fetch is best-effort and reports warnings, but Lake availability, Lake update, and build
+failures reject the submission.
 
 `metadata-check.mjs` validates metadata structure against `meta.config.yaml` with Ajv before running repository-aware checks that the schema cannot express, such as required files existing on disk and proof entries targeting metadata `Axiom` statements.
 
@@ -109,9 +118,9 @@ The CLI `create-paper` command may still create the older starter shape until th
   `Slug.Surface`/`surface-package` naming model.
 - Do not require a unique Lean library for each statement folder; each statement must still be included in the shared statement library.
 - Use statement package terminology.
-- Metadata should use `statementLakefilePath`, `submissionSlug`, `submissionTitle`, `bibtex-entries`, `statements`, `DeclarationReferences`, `LakeStatementPackage`, and `LakeProofPackage`.
+- Metadata should use `statementLakefilePath`, `statementLeanToolchainPath`, `proofLeanToolchainPath`, `submissionSlug`, `submissionTitle`, `bibtex-entries`, `statements`, `DeclarationReferences`, `LakeStatementPackage`, and `LakeProofPackage`.
 - Statement entry types are `Definition` and `Axiom`; statement files only allow axioms for axiom entries.
-- If a statement package is present, require its `lakefile.lean` and, for each theorem or definition, a LaTeX file and Lean file.
-- If a proof package is present, require its `lakefile.lean`.
-- Generated Lake packages must pin mathlib to `lml-env.json`'s exact `mathlib.revision`, not to the floating `stable` branch.
+- If a statement package is present, require its `lakefile.lean`, `lean-toolchain`, and, for each theorem or definition, a LaTeX file and Lean file.
+- If a proof package is present, require its `lakefile.lean` and `lean-toolchain`.
+- Generated Lake packages must pin Mathlib to `lml-env.json`'s exact `baseImports.Mathlib.revision`, not to the floating `stable` branch, and package `lean-toolchain` files must match `lean.version`.
 - Every discharged statement needs one matching proof entry using structured `Theorem` and `Proof` fields, a proof `Type` of `proof`, `conditional-proof`, or `reduction`, and a matching proof file.

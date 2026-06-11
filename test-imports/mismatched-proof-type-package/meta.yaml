@@ -3,27 +3,28 @@ proofLakefilePath: lakefile.lean
 statementLakefilePath: surface-package/lakefile.lean
 abstractPath: abstract.tex
 submissionTitle: Mismatched Proof Type Fixture
-packageSlug: mismatched-proof-type
 statements:
   - Name: ConnectedGraph
     Type: Definition
     Statement:
+      CurrentSubmission: true
       Name: MismatchedProofType.Surface.Definition.ConnectedGraph.IsConnectedGraph
-      File: surface-package/ConnectedGraph/Surface.lean
-      LatexFile: surface-package/ConnectedGraph/latex-file.tex
+      LeanStatement: surface-package/ConnectedGraph/Surface.lean
+      LatexDefinition: surface-package/ConnectedGraph/latex-file.tex
     DeclarationReferences: []
   - Name: ConnectedIffReachable
     Type: Axiom
     Statement:
+      CurrentSubmission: true
       Name: MismatchedProofType.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
-      File: surface-package/ConnectedIffReachable/Surface.lean
-      LatexFile: surface-package/ConnectedIffReachable/latex-file.tex
+      LeanStatement: surface-package/ConnectedIffReachable/Surface.lean
+      LatexDefinition: surface-package/ConnectedIffReachable/latex-file.tex
     DeclarationReferences: []
 proofs:
   - Name: ConnectedIffReachableProof
     Type: proof
     Theorem:
-      Package: MismatchedProofType.Statements
+      SubmissionSlug: mismatched-proof-type
       File: surface-package/ConnectedIffReachable/Surface.lean
       Name: MismatchedProofType.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
     Proof:
@@ -31,3 +32,4 @@ proofs:
       Name: MismatchedProofType.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
     DeclarationReferences: []
 bibtex-entries: []
+submissionSlug: mismatched-proof-type

@@ -23,20 +23,26 @@ export function checkLeanAndLake({ cwd }) {
 
 function checkLeanToolchain({ cwd }) {
   const toolchainPath = join(cwd, "lean-toolchain");
+  const expectedToolchain = leanToolchainFromVersion(lmlEnv.lean?.version);
 
   if (!existsSync(toolchainPath)) {
-    console.log(`No lean-toolchain found. Expected ${lmlEnv.lean.toolchain} for current mathlib pin.`);
+    console.log(`No lean-toolchain found. Expected ${expectedToolchain} for the pinned Std base import.`);
     return;
   }
 
   const actual = readFileSync(toolchainPath, "utf8").trim();
-  if (actual !== lmlEnv.lean.toolchain) {
+  if (actual !== expectedToolchain) {
     throw new Error(
-      `lean-toolchain is ${actual}, expected ${lmlEnv.lean.toolchain} for current mathlib pin.`
+      `lean-toolchain is ${actual}, expected ${expectedToolchain} for the pinned Std base import.`
     );
   }
 
-  console.log(`lean-toolchain matches ${lmlEnv.lean.toolchain}.`);
+  console.log(`lean-toolchain matches ${expectedToolchain}.`);
+}
+
+function leanToolchainFromVersion(version) {
+  const normalized = String(version ?? "").trim();
+  return normalized ? `leanprover/lean4:${normalized}` : "";
 }
 
 function checkMathlibInstallation({ cwd }) {

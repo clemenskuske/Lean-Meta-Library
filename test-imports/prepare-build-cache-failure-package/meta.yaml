@@ -3,27 +3,28 @@ proofLakefilePath: lakefile.lean
 statementLakefilePath: surface-package/lakefile.lean
 abstractPath: abstract.tex
 submissionTitle: Prepare Build Cache Failure Fixture
-packageSlug: prepare-build-cache-failure
 statements:
   - Name: ConnectedGraph
     Type: Definition
     Statement:
+      CurrentSubmission: true
       Name: PrepareBuildCacheFailure.Surface.Definition.ConnectedGraph.IsConnectedGraph
-      File: surface-package/ConnectedGraph/Surface.lean
-      LatexFile: surface-package/ConnectedGraph/latex-file.tex
+      LeanStatement: surface-package/ConnectedGraph/Surface.lean
+      LatexDefinition: surface-package/ConnectedGraph/latex-file.tex
     DeclarationReferences: []
   - Name: ConnectedIffReachable
     Type: Axiom
     Statement:
+      CurrentSubmission: true
       Name: PrepareBuildCacheFailure.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
-      File: surface-package/ConnectedIffReachable/Surface.lean
-      LatexFile: surface-package/ConnectedIffReachable/latex-file.tex
+      LeanStatement: surface-package/ConnectedIffReachable/Surface.lean
+      LatexDefinition: surface-package/ConnectedIffReachable/latex-file.tex
     DeclarationReferences: []
 proofs:
   - Name: ConnectedIffReachableProof
     Type: proof
     Theorem:
-      Package: PrepareBuildCacheFailure.Statements
+      SubmissionSlug: prepare-build-cache-failure
       File: surface-package/ConnectedIffReachable/Surface.lean
       Name: PrepareBuildCacheFailure.Surface.Statement.ConnectedIffReachable.connected_iff_reachable
     Proof:
@@ -31,3 +32,4 @@ proofs:
       Name: PrepareBuildCacheFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
     DeclarationReferences: []
 bibtex-entries: []
+submissionSlug: prepare-build-cache-failure

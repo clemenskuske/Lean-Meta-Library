@@ -4,8 +4,8 @@
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { loadContext } from "./general/meta-context.mjs";
 import {
-  loadContext,
   maxBuildOutputBytes,
   metadataStatements,
   packageRootForLakefile,
