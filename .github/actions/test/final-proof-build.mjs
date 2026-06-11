@@ -90,7 +90,12 @@ function runLake(args, label) {
 }
 
 function fetchBuildCache() {
-  const result = spawnSync("lake", ["exe", "cache", "get"], {
+  const cacheArgs = finalProofCacheArgs();
+  if (cacheArgs.length === 0) {
+    warnings.push("no proof library target found for final proof build cache fetch");
+    return;
+  }
+  const result = spawnSync("lake", ["exe", "cache", "get", ...cacheArgs], {
     cwd: isolatedPackageRoot,
     encoding: "utf8",
     maxBuffer: maxBuildOutputBytes
@@ -103,6 +108,11 @@ function fetchBuildCache() {
   if (result.status !== 0) {
     warnings.push("lake exe cache get failed; final proof build will build from source");
   }
+}
+
+function finalProofCacheArgs() {
+  const proofLib = context.namespaceRoot ? `${context.namespaceRoot}.Proofs` : null;
+  return proofLib ? [proofLib] : [];
 }
 
 function checkBuildOutputForSorry(result) {

@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
 import { maxBuildOutputBytes } from "../common.mjs";
+import { loadLakeConfig } from "../lake-config.mjs";
 
 const markerVersion = 1;
 const lockTimeoutMs = 5 * 60 * 1000;
@@ -63,7 +64,12 @@ export function ensurePreparedLakePackage({ packageRoot, lakefilePath, label, ki
       return { ...resolved, markerPath, skipped: false };
     }
 
-    runLake(resolved.cwd, ["exe", "cache", "get"], `${label} lake exe cache get`, { required: false, errors, warnings });
+    const cacheArgs = cacheGetArgs(resolved.cwd, label, warnings);
+    if (cacheArgs.length > 0) {
+      runLake(resolved.cwd, ["exe", "cache", "get", ...cacheArgs], `${label} lake exe cache get`, { required: false, errors, warnings });
+    } else {
+      warnings.push(`${label} has no Lean library target for targeted cache fetch; skipping lake exe cache get`);
+    }
 
     const build = runLake(resolved.cwd, ["build"], `${label} lake build`, { required: true, errors, warnings });
     if (build.status === 0 && !build.error) {
@@ -258,6 +264,17 @@ function pruneLakePackagesForCi(cwd, warnings) {
       warnings.push(`could not prune Lake dependency package ${entry.name}: ${error.message}`);
     }
   }
+}
+
+function cacheGetArgs(cwd, label, warnings) {
+  const configErrors = [];
+  const config = loadLakeConfig(cwd, `${label} lakefile`, configErrors);
+  if (configErrors.length > 0) {
+    warnings.push(...configErrors);
+  }
+  return (config?.leanLibs ?? [])
+    .map((lib) => lib.name)
+    .filter(Boolean);
 }
 
 function pruneDependencyPackage(packageDir) {
