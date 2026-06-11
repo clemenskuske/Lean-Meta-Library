@@ -181,6 +181,8 @@ External submission dependencies are authorized through metadata and
 
 - Non-mathlib git dependencies in Lake files must correspond to imported
   submissions recorded in `submissions.jsonl` when that registry is available.
+- Statement/surface imports from a submission recorded in `submissions.jsonl`
+  must refer to the source commit recorded for that submission.
 - External Lake dependencies must be listed through statement-level or
   proof-level `DeclarationReferences`.
 - Undeclared imports from imported submissions are rejected.
