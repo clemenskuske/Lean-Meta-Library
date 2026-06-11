@@ -13,11 +13,11 @@ Read this file before making changes, then preserve the existing folder roles:
 - `submissions.jsonl`: root-level JSON Lines submission log.
 - `lml-env.json`: repository-level values that may change later but are fixed for all Lean Meta Library projects right now.
 
-`lml-env.json` is the central policy file for the fixed Lean version, pinned base imports such as Mathlib and Std,
-trusted-base axiom policy, default submission metadata path, allowed submission file types, first-run size limits,
-and checker output limits. Each present Lake package has its own package-local `lean-toolchain` file recorded by
-metadata; checkers should compare those toolchain files against the fixed Lean version, and Lake files against the
-Mathlib base import pin.
+`lml-env.json` is the central policy file for the fixed Lean version, pinned Mathlib base import, trusted-base axiom
+policy, default submission metadata path, allowed submission file types, first-run size limits, and checker output
+limits. Each present Lake package has its own package-local `lean-toolchain` file recorded by metadata; checkers
+should compare those toolchain files against the fixed Lean version, and Lake files against the Mathlib base import
+pin. Std is provided by the fixed Lean version and is not listed separately as a base import.
 
 `meta.config.yaml` is the source of truth for submission metadata shape. Keep
 READMEs, generated examples, and checker-facing instructions aligned with its
@@ -47,8 +47,8 @@ node .github/actions/test/run-all.mjs --meta=path/to/meta.yaml
 
 Pass only one metadata file path, preferably with `--meta=path/to/meta.yaml`. The older positional form is accepted for compatibility. If no metadata path is provided, each check falls back to `meta.yaml` in the current working directory; directories are not accepted.
 
-`run-all.mjs` first prepares the Lean packages with `.github/actions/test/statements/prepare-build-cache.mjs`
-and `.github/actions/test/proofs/prepare-build-cache.mjs`, then runs static checks in parallel, then runs Lean
+`run-all.mjs` first prepares the Lean packages with `.github/actions/test/general/prepare-statement-build-cache.mjs`
+and `.github/actions/test/general/prepare-proof-build-cache.mjs`, then runs static checks in parallel, then runs Lean
 inspector checks in parallel against the prepared build. In the import workflow, `Prepare Lean build/cache` is a
 separate first step before `Run submission checks`; the check step passes `--skip-build-cache` so preparation is
 not repeated. The cache fetch is best-effort and reports warnings, but Lake availability, Lake update, and build

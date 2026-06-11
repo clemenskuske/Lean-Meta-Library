@@ -6,8 +6,8 @@ description: >
   are populated by tooling/workflows rather than supplied by the initial author.
 $comment: >
   Each present Lake package has its own lean-toolchain file. lml-env.json pins
-  the Lean version and base imports such as Mathlib and Std; package toolchain
-  files are checked against that fixed Lean version.
+  the Lean version and the Mathlib base import; package toolchain files are
+  checked against that fixed Lean version.
 type: object
 additionalProperties: false
 

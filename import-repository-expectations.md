@@ -61,8 +61,8 @@ They:
   - `IO`.
 
 Statement imports are restricted. A statement file may directly import:
-- pinned base imports listed in `lml-env.json` under `baseImports`, using each
-  entry's `importPrefix`;
+- the pinned Mathlib base import listed in `lml-env.json` under `baseImports`;
+- Std modules provided by the fixed Lean version;
 - local statement modules from the same submission;
 - external imported-submission packages that are declared in that statement's
   `DeclarationReferences` metadata.

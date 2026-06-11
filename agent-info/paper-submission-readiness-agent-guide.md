@@ -143,8 +143,9 @@ minimal, trustworthy, and user-confirmed.
 
 Each submitted statement file must:
 
-- Import only pinned base modules from `lml-env.json` such as `Mathlib.*` and
-  `Std.*`, local statement modules, or authorized imported package APIs.
+- Import only the pinned Mathlib base modules from `lml-env.json`, Std modules
+  provided by the fixed Lean version, local statement modules, or authorized
+  imported package APIs.
 - Introduce exactly one direct public declaration recorded by metadata.
 - Avoid helper declarations, private declarations, instances, structures,
   classes, inductives, macros, custom syntax, `unsafe`, `run_cmd`, `#eval`,

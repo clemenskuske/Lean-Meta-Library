@@ -30,7 +30,11 @@ const errors = [];
 const warnings = [];
 const submissionDependencies = loadSubmissionDependencies();
 const baseImports = lmlEnv.baseImports ?? {};
-const allowedBaseImportPrefixes = Object.values(baseImports).map((item) => item?.importPrefix).filter(Boolean);
+const toolchainImportPrefixes = lmlEnv.lean?.version ? ["Std."] : [];
+const allowedBaseImportPrefixes = [
+  ...Object.values(baseImports).map((item) => item?.importPrefix).filter(Boolean),
+  ...toolchainImportPrefixes
+];
 const mathlib = baseImports.Mathlib ?? {};
 const statementRoot = statementLakefilePath(meta) ? packageRootForLakefile(packageRoot, statementLakefilePath(meta)) : null;
 const proofRoot = proofLakefilePath(meta) ? packageRootForLakefile(packageRoot, proofLakefilePath(meta)) : null;

@@ -18,10 +18,10 @@ lml --help
 
 Repository-level values that may change later but are fixed for all projects right now live in `lml-env.json`.
 CLI tooling and submission checks import this file for the fixed Lean version,
-pinned base imports such as Mathlib and Std, trusted-base axiom policy, default
-metadata path, allowed submission file policy, first-run size limits, and
-checker output limits. Package toolchains live in package-local
-`lean-toolchain` files recorded by metadata and must match the fixed Lean
+the pinned Mathlib base import, trusted-base axiom policy, default metadata
+path, allowed submission file policy, first-run size limits, and checker output
+limits. Package toolchains live in package-local `lean-toolchain` files recorded
+by metadata and must match the fixed Lean version; Std is provided by that Lean
 version.
 
 `meta.config.yaml` is the source of truth for submission metadata shape. It is

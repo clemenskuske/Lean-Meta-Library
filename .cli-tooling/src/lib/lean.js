@@ -26,14 +26,14 @@ function checkLeanToolchain({ cwd }) {
   const expectedToolchain = leanToolchainFromVersion(lmlEnv.lean?.version);
 
   if (!existsSync(toolchainPath)) {
-    console.log(`No lean-toolchain found. Expected ${expectedToolchain} for the pinned Std base import.`);
+    console.log(`No lean-toolchain found. Expected ${expectedToolchain} for the fixed Lean version.`);
     return;
   }
 
   const actual = readFileSync(toolchainPath, "utf8").trim();
   if (actual !== expectedToolchain) {
     throw new Error(
-      `lean-toolchain is ${actual}, expected ${expectedToolchain} for the pinned Std base import.`
+      `lean-toolchain is ${actual}, expected ${expectedToolchain} for the fixed Lean version.`
     );
   }
 
