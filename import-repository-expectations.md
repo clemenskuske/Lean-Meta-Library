@@ -61,7 +61,8 @@ They:
   - `IO`.
 
 Statement imports are restricted. A statement file may directly import:
-- pinned base imports from `lml-env.json`, currently `Mathlib.` and `Std.`;
+- pinned base imports listed in `lml-env.json` under `baseImports`, using each
+  entry's `importPrefix`;
 - local statement modules from the same submission;
 - external imported-submission packages that are declared in that statement's
   `DeclarationReferences` metadata.
@@ -114,11 +115,13 @@ proof target are declared by metadata.
 
 ## Toolchain And Mathlib
 - Any statement or proof Lake package used by the submission must use the Lean
-  toolchain configured in `lml-env.json`.
-- Each present Lake file must have exactly one git dependency named `mathlib`.
-- The mathlib dependency URL must be the repository from `lml-env.json`.
-- The mathlib dependency revision must be exactly `lml-env.json`'s
-  `mathlib.revision`; floating branches such as `stable` are not accepted.
+  version configured in `lml-env.json` under `lean.version`.
+- Each present Lake file must have exactly one git dependency matching the
+  `lakeDependency` configured for `baseImports.Mathlib`.
+- The Mathlib dependency URL must use the repository configured for
+  `baseImports.Mathlib`.
+- The Mathlib dependency revision must be exactly the revision configured for
+  `baseImports.Mathlib`; floating branches such as `stable` are not accepted.
 - The mathlib dependency must not use a subdirectory.
 
 ## Imported Dependencies
