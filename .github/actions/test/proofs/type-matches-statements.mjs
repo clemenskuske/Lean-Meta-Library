@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // Checks that proof metadata targets statement axioms and that proof theorem types match those statements.
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { delimiter, join, resolve } from "node:path";
 import { loadContext, slugToPascal } from "../general/meta-context.mjs";
 import {
   isLeanName,
@@ -198,8 +198,12 @@ function checkProofType({ theoremName, theoremModule, proofName, proofModule, pr
 
   try {
     writeFileSync(inspector, proofTypeInspector({ theoremModule, proofModule, theoremName, proofName }));
-    const result = spawnSync("lake", ["--dir", proofRoot, "env", "lean", inspector], {
+    const mergedLeanPath = join(tmp, "merged-lean");
+    mergeCurrentSubmissionBuilds(mergedLeanPath);
+    const leanPath = proofLeanPath(mergedLeanPath);
+    const result = spawnSync("lean", [inspector], {
       encoding: "utf8",
+      env: leanPath ? { ...process.env, LEAN_PATH: leanPath } : process.env,
       maxBuffer: maxBuildOutputBytes
     });
 
@@ -212,6 +216,51 @@ function checkProofType({ theoremName, theoremModule, proofName, proofModule, pr
     }
   } finally {
     rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
+function proofLeanPath(mergedLeanPath) {
+  const result = spawnSync("lake", ["--dir", proofRoot, "env", "printenv", "LEAN_PATH"], {
+    encoding: "utf8",
+    maxBuffer: maxBuildOutputBytes
+  });
+  if (result.error || result.status !== 0) {
+    return null;
+  }
+
+  const proofBuildPath = join(proofRoot, ".lake", "build", "lib", "lean");
+  const statementBuildPath = statementRoot
+    ? join(statementRoot, ".lake", "build", "lib", "lean")
+    : null;
+  const entries = result.stdout.trim().split(delimiter).filter(Boolean);
+  const externalEntries = entries.filter((entry) => entry !== proofBuildPath && entry !== statementBuildPath);
+  return unique([mergedLeanPath, ...externalEntries]).join(delimiter);
+}
+
+function mergeCurrentSubmissionBuilds(targetRoot) {
+  mkdirSync(targetRoot, { recursive: true });
+  if (statementRoot) {
+    linkTree(join(statementRoot, ".lake", "build", "lib", "lean"), targetRoot);
+  }
+  linkTree(join(proofRoot, ".lake", "build", "lib", "lean"), targetRoot);
+}
+
+function linkTree(sourceRoot, targetRoot) {
+  if (!existsSync(sourceRoot)) {
+    return;
+  }
+  for (const entry of readdirSync(sourceRoot, { withFileTypes: true })) {
+    const source = join(sourceRoot, entry.name);
+    const target = join(targetRoot, entry.name);
+    if (entry.isDirectory()) {
+      mkdirSync(target, { recursive: true });
+      linkTree(source, target);
+      continue;
+    }
+    if (entry.isFile() && !existsSync(target)) {
+      mkdirSync(resolve(target, ".."), { recursive: true });
+      symlinkSync(source, target);
+    }
   }
 }
 

@@ -12,10 +12,12 @@ const expectedStatementFiles = new Set();
 for (const statement of meta.statements ?? []) {
   addExpected(statement.Statement?.LeanStatement);
   addExpected(statement.Statement?.LatexDefinition);
+  addExpected(statementRootFile(statement.Statement?.Name));
   for (const reference of statement.DeclarationReferences ?? []) {
     if (reference.CurrentSubmission === true) {
       addExpected(reference.LeanStatement);
       addExpected(reference.LatexDefinition);
+      addExpected(statementRootFile(reference.Name));
     }
   }
 }
@@ -41,6 +43,14 @@ function addExpected(path) {
   if (path) {
     expectedStatementFiles.add(normalizePath(path));
   }
+}
+
+function statementRootFile(name) {
+  const parts = String(name ?? "").split(".");
+  if (parts.length < 2 || !meta.statementLakefilePath) {
+    return null;
+  }
+  return `${dirnamePath(meta.statementLakefilePath)}/${parts[0]}/${parts[1]}.lean`;
 }
 
 function isStatementPositionFile(path) {

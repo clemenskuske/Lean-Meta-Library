@@ -32,7 +32,7 @@ export function runLeanJson({ source, args = [], label, errors, cwd = null, lake
     }
 
     try {
-      return JSON.parse(result.stdout.trim() || "null");
+      return JSON.parse(jsonPayload(result.stdout));
     } catch (error) {
       errors.push(`Lean inspector for ${label} did not return valid JSON: ${error.message}\n${result.stdout}`.trim());
       return null;
@@ -40,6 +40,15 @@ export function runLeanJson({ source, args = [], label, errors, cwd = null, lake
   } finally {
     rmSync(tmp, { recursive: true, force: true });
   }
+}
+
+function jsonPayload(stdout) {
+  const trimmed = stdout.trim();
+  if (!trimmed) {
+    return "null";
+  }
+  const lines = trimmed.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  return [...lines].reverse().find((line) => line.startsWith("{") || line.startsWith("[")) ?? trimmed;
 }
 
 export function inspectIntroducedDeclarations({ packageDir, moduleName, imports, label, errors, build = true }) {
@@ -71,12 +80,13 @@ export function inspectIntroducedDeclarations({ packageDir, moduleName, imports,
   });
 }
 
-export function inspectCommandSyntax({ file, label, errors }) {
+export function inspectCommandSyntax({ file, label, errors, lakeDir = null }) {
   return runLeanJson({
     source: commandSyntaxSource(),
     args: [file],
     label,
-    errors
+    errors,
+    lakeDir
   });
 }
 
@@ -162,7 +172,10 @@ def main (args : List String) : IO UInt32 := do
     let inputCtx := Parser.mkInputContext source file
     let (_, parserState, messages) <- Parser.parseHeader inputCtx
     let header <- Lean.parseImports' source file
-    let env <- importModules header.imports {} 0
+    let env <- try
+      importModules header.imports {} 0
+    catch _ =>
+      importModules #[] {} 0
     let pmctx : Parser.ParserModuleContext := {env := env, options := {}}
     let mut state := parserState
     let mut log := messages
