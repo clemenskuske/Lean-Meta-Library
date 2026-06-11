@@ -106,12 +106,19 @@ must:
 
 - be buildable by Lake;
 - declare the proof package/library for the submission;
-- build every proof file listed by `proofs[].Proof.File`;
+- build the proof package, including every proof file listed by
+  `proofs[].Proof.File`;
 - use the namespace/package shape implied by `submissionSlug`, namely
   `<SubmissionSlugAsPascal>.Proofs`;
 - declare a Lean library named `<SubmissionSlugAsPascal>.Proofs`;
 - use only allowed local dependencies: the local statement package for the same
   submission, or the tolerated legacy local surface package during migration.
+
+The proof package is not closed under metadata in the way the statement package
+is. It may contain additional Lean files, helper declarations, intermediate
+theorems, tactics, and internal proof development that are not listed in the
+metadata. Those extra files and declarations are not submitted proof targets
+unless a metadata proof entry names them.
 
 Each metadata proof entry must:
 
@@ -119,7 +126,8 @@ Each metadata proof entry must:
 - name a theorem target with `Theorem.SubmissionSlug`, `Theorem.File`, and
   `Theorem.Name`;
 - name a proof declaration with `Proof.File` and `Proof.Name`;
-- target an `Axiom` statement, not a `Definition`;
+- have the file named by `Proof.File` present in the proof package;
+- have the declaration named by `Proof.Name` present in that proof file;
 - have a proof declaration whose compiled type is definitionally equal to the
   target statement's compiled type.
 
@@ -130,7 +138,7 @@ Each listed proof file must:
 - import the target statement module;
 - use a proof name beginning with the namespace root derived from
   `submissionSlug`;
-- not report `sorry` or `sorryAx` in Lean output.
+- not report `sorry` or `sorryAx` in Lean output for submitted proof targets.
 
 For submitted proof targets, the compiled axiom tree must be controlled:
 
@@ -142,19 +150,11 @@ For submitted proof targets, the compiled axiom tree must be controlled:
   `lml-env.json` plus declared conjecture axioms from `reduction` entries.
 - Any other axiom in a submitted proof target is rejected.
 
-Proof imports are restricted, but less narrowly than statement imports. A proof
-file may directly import:
-
-- allowed base prefixes from `lml-env.json`, currently `Mathlib.` and `Std.`;
-- local proof modules from the same submission;
-- local statement modules needed by the proof target;
-- external imported-submission packages declared in that proof entry's
-  `DeclarationReferences` metadata.
-
-During the current transition, checker behavior also scans conventional proof
-roots such as `proofs/` and the directories containing listed proof files. Lean
-files in those roots should be intentional proof files; unlisted proof files in
-those searched roots may be rejected by the file-presence checks.
+Proof package imports are allowed insofar as the package builds and the
+submitted proof targets pass the axiom-dependency gate. The important check is
+not that every proof-side file appears in metadata; it is that every metadata
+proof entry is present and that the actual axiom dependencies of each submitted
+proof target are declared by metadata.
 
 ## Toolchain And Mathlib
 
