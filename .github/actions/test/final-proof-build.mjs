@@ -9,10 +9,11 @@ import {
   readdirSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, dirname, join, relative, sep } from "node:path";
+import { basename, delimiter, join, relative, sep } from "node:path";
 import lmlEnv from "../../../lml-env.json" with { type: "json" };
 import { loadContext } from "./general/meta-context.mjs";
 import {
@@ -26,6 +27,9 @@ const errors = [];
 const warnings = [];
 const tmpRoot = mkdtempSync(join(tmpdir(), "lml-final-proof-build-"));
 const isolatedPackageRoot = join(tmpRoot, "package");
+const isolatedStatementRoot = context.meta.statementRoot
+  ? join(isolatedPackageRoot, context.meta.statementRoot)
+  : null;
 const keepTemp = process.env.LML_KEEP_FINAL_PROOF_BUILD_TMP === "1";
 const configuredAllowedMathlibAxioms = (lmlEnv.checks?.allowedMathlibAxioms ?? []).map(String);
 const allowedMathlibAxioms = configuredAllowedMathlibAxioms.filter(isLeanName);
@@ -117,8 +121,29 @@ function lakeEnv() {
 }
 
 function finalProofCacheArgs() {
+  const importedMathlibModules = mathlibImportModules(isolatedPackageRoot);
+  if (importedMathlibModules.length > 0) {
+    return importedMathlibModules;
+  }
   const proofLib = context.namespaceRoot ? `${context.namespaceRoot}.Proofs` : null;
   return proofLib ? [proofLib] : [];
+}
+
+function mathlibImportModules(root) {
+  const modules = new Set();
+  for (const file of walkFiles(root)) {
+    if (!file.endsWith(".lean")) {
+      continue;
+    }
+    const source = readFileSync(file, "utf8");
+    for (const line of source.split(/\r?\n/)) {
+      const match = line.match(/^\s*import\s+([A-Za-z_][A-Za-z0-9_']*(?:\.[A-Za-z_][A-Za-z0-9_']*)*)\s*$/);
+      if (match && match[1].startsWith("Mathlib.")) {
+        modules.add(match[1]);
+      }
+    }
+  }
+  return [...modules].sort();
 }
 
 function checkBuildOutputForSorry(result) {
@@ -147,9 +172,15 @@ function checkCompiledAxioms() {
     "utf8"
   );
 
-  const composeResult = spawnSync("lake", ["env", "lean", "-o", composedOlean, composedSource], {
+  const mergedLeanPath = join(tmpRoot, "merged-lean");
+  mergeCurrentSubmissionBuilds(mergedLeanPath);
+  const leanPath = finalProofLeanPath(mergedLeanPath);
+  const leanEnv = leanPath ? { ...process.env, LEAN_PATH: leanPath } : process.env;
+
+  const composeResult = spawnSync("lean", ["-o", composedOlean, composedSource], {
     cwd: isolatedPackageRoot,
     encoding: "utf8",
+    env: leanEnv,
     maxBuffer: maxBuildOutputBytes
   });
 
@@ -174,9 +205,10 @@ function checkCompiledAxioms() {
     "utf8"
   );
 
-  const verifyResult = spawnSync("lake", ["env", "lean", verifier], {
+  const verifyResult = spawnSync("lean", [verifier], {
     cwd: isolatedPackageRoot,
     encoding: "utf8",
+    env: leanEnv,
     maxBuffer: maxBuildOutputBytes
   });
 
@@ -319,6 +351,55 @@ function buildLibraryRoots() {
   }
 
   return roots;
+}
+
+function finalProofLeanPath(mergedLeanPath) {
+  const result = spawnSync("lake", ["env", "printenv", "LEAN_PATH"], {
+    cwd: isolatedPackageRoot,
+    encoding: "utf8",
+    maxBuffer: maxBuildOutputBytes
+  });
+  if (result.error || result.status !== 0) {
+    return null;
+  }
+
+  const proofBuildPath = join(isolatedPackageRoot, ".lake", "build", "lib", "lean");
+  const statementBuildPath = isolatedStatementRoot
+    ? join(isolatedStatementRoot, ".lake", "build", "lib", "lean")
+    : null;
+  const entries = result.stdout.trim().split(delimiter).filter(Boolean);
+  const externalEntries = entries.filter((entry) => entry !== proofBuildPath && entry !== statementBuildPath);
+  return unique([mergedLeanPath, ...externalEntries]).join(delimiter);
+}
+
+function mergeCurrentSubmissionBuilds(targetRoot) {
+  mkdirSync(targetRoot, { recursive: true });
+  if (isolatedStatementRoot) {
+    linkTree(join(isolatedStatementRoot, ".lake", "build", "lib", "lean"), targetRoot);
+  }
+  linkTree(join(isolatedPackageRoot, ".lake", "build", "lib", "lean"), targetRoot);
+}
+
+function linkTree(sourceRoot, targetRoot) {
+  if (!existsSync(sourceRoot)) {
+    return;
+  }
+  for (const entry of readdirSync(sourceRoot, { withFileTypes: true })) {
+    const source = join(sourceRoot, entry.name);
+    const target = join(targetRoot, entry.name);
+    if (entry.isDirectory()) {
+      mkdirSync(target, { recursive: true });
+      linkTree(source, target);
+      continue;
+    }
+    if (entry.isFile() && !existsSync(target)) {
+      symlinkSync(source, target);
+    }
+  }
+}
+
+function unique(items) {
+  return [...new Set(items.filter(Boolean))];
 }
 
 function walkDirs(root) {

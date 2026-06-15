@@ -2,7 +2,7 @@
 // Shared helper library for the first-run submission checks.
 // It walks files, exposes small path helpers, and formats pass/fail output.
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, extname, join, relative, resolve, sep } from "node:path";
+import { extname, join, relative, sep } from "node:path";
 import lmlEnv from "../../../lml-env.json" with { type: "json" };
 
 export { parseMetaYaml } from "./general/meta-context.mjs";
@@ -50,24 +50,12 @@ export function metadataPackageSlug(meta) {
   return meta.submissionSlug ?? meta.packageSlug ?? meta.namespaceSlug ?? null;
 }
 
-export function statementLakefilePath(meta) {
-  return meta.statementLakefilePath ?? null;
+export function statementPackageRoot(meta) {
+  return meta.statementRoot ?? null;
 }
 
-export function statementLeanToolchainPath(meta) {
-  return meta.statementLeanToolchainPath ?? null;
-}
-
-export function proofLakefilePath(meta) {
-  return meta.proofLakefilePath ?? null;
-}
-
-export function proofLeanToolchainPath(meta) {
-  return meta.proofLeanToolchainPath ?? null;
-}
-
-export function packageRootForLakefile(packageRoot, lakefilePath) {
-  return lakefilePath ? resolve(packageRoot, dirname(lakefilePath)) : null;
+export function proofPackageRoot(meta) {
+  return meta.proofRoot ?? null;
 }
 
 export function namespaceOfDeclaration(name) {

@@ -33,10 +33,10 @@ if (statementRoot && existsSync(statementRoot) && statSync(statementRoot).isDire
 }
 
 function statementRootFromMetadata() {
-  if (!meta.statementLakefilePath) {
+  if (!meta.statementRoot) {
     return null;
   }
-  return resolve(packageRoot, dirnamePath(meta.statementLakefilePath));
+  return resolve(packageRoot, meta.statementRoot);
 }
 
 function addExpected(path) {
@@ -47,10 +47,10 @@ function addExpected(path) {
 
 function statementRootFile(name) {
   const parts = String(name ?? "").split(".");
-  if (parts.length < 2 || !meta.statementLakefilePath) {
+  if (parts.length < 2 || !meta.statementRoot) {
     return null;
   }
-  return `${dirnamePath(meta.statementLakefilePath)}/${parts[0]}/${parts[1]}.lean`;
+  return `${normalizePath(meta.statementRoot)}/${parts[0]}/${parts[1]}.lean`;
 }
 
 function isStatementPositionFile(path) {

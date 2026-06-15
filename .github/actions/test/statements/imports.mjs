@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import lmlEnv from "../../../../lml-env.json" with { type: "json" };
 import { validateSubmissionRow } from "../../submission-schema.mjs";
-import { leanFiles, namespaceOfDeclaration, packageRootForLakefile, relativePath, report, statementLakefilePath } from "../common.mjs";
+import { leanFiles, namespaceOfDeclaration, relativePath, report, statementPackageRoot } from "../common.mjs";
 import { lakeDependencies, lakeModuleForFile, loadLakeConfig } from "../lake-config.mjs";
 import { parseLeanImports } from "../lean-imports.mjs";
 import { loadContext, slugToPascal } from "../general/meta-context.mjs";
@@ -17,8 +17,8 @@ const allowedBaseImportPrefixes = [
   ...Object.values(baseImports).map((item) => item?.importPrefix).filter(Boolean),
   ...(lmlEnv.lean?.version ? ["Std."] : [])
 ];
-const statementLakefile = statementLakefilePath(meta);
-const statementRoot = statementLakefile ? packageRootForLakefile(packageRoot, statementLakefile) : null;
+const stmtPkgRoot = statementPackageRoot(meta);
+const statementRoot = stmtPkgRoot ? resolve(packageRoot, stmtPkgRoot) : null;
 const statementLakeConfig = statementRoot ? loadLakeConfig(statementRoot, "statement lakefile", errors) : null;
 const statements = Array.isArray(meta.statements) ? meta.statements : [];
 const statementModuleByName = statementModulesByName();

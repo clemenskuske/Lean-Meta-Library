@@ -5,6 +5,7 @@ import { createPaper } from "./commands/create-paper.js";
 import { init } from "./commands/init.js";
 import { login } from "./commands/login.js";
 import { logout } from "./commands/logout.js";
+import { readme } from "./commands/readme.js";
 import { submit } from "./commands/submit.js";
 import { submissionStatus } from "./commands/submission-status.js";
 import { test } from "./commands/test.js";
@@ -20,7 +21,8 @@ const commands = new Map([
   ["test", test],
   ["submit", submit],
   ["submission-status", submissionStatus],
-  ["create-paper", createPaper]
+  ["create-paper", createPaper],
+  ["readme", readme]
 ]);
 
 const usage = `Lean Meta Library CLI
@@ -37,14 +39,16 @@ Commands:
   logout                Logout from GitHub with the GitHub CLI.
   init                  Check local tooling and sync repository metadata.
   update                Run the same checks and sync as init.
-  test --meta=meta.yaml
+  test --meta=manifest.yaml
                          Run submission checks from .github/actions/test.
-  submit --meta=meta.yaml
+  submit --meta=manifest.yaml
                          Run checks and dispatch the submit GitHub workflow.
                          Use --no-prior-test to skip checks.
   submission-status
                          Show submission issue, workflow, commit, and surface status.
   create-paper [slug]   Create a starter submission package.
+  readme                Print the repository README.
+  readme --short (-s)   Print a condensed quick-reference instead.
 
 Options:
   -h, --help            Show this help text.

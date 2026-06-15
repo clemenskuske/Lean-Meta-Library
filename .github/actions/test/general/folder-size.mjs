@@ -3,15 +3,15 @@
 // Defaults come from lml-env.json; local runs may override them with LML_MAX_PACKAGE_BYTES,
 // LML_MAX_FOLDER_BYTES, and LML_MAX_FILE_BYTES.
 import { existsSync, statSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import lmlEnv from "../../../../lml-env.json" with { type: "json" };
 import { loadContext } from "./meta-context.mjs";
 import {
   fileSize,
+  proofPackageRoot,
   report,
   relativePath,
-  statementLakefilePath,
-  proofLakefilePath,
+  statementPackageRoot,
   walkFiles
 } from "../common.mjs";
 
@@ -35,8 +35,8 @@ for (const file of packageFiles) {
 }
 
 for (const folder of [
-  dirname(statementLakefilePath(meta) ?? ""),
-  dirname(proofLakefilePath(meta) ?? ""),
+  statementPackageRoot(meta) ?? "",
+  proofPackageRoot(meta) ?? "",
   ...(meta.statements ?? []).map((entry) => dirname(entry?.Statement?.LeanStatement ?? "")).filter(Boolean),
   ...(meta.proofs ?? []).map((proof) => dirname(proof?.Proof?.File ?? "")).filter(Boolean)
 ]) {

@@ -1,5 +1,6 @@
-proofLakefilePath: lakefile.lean
-statementLakefilePath: statements/lakefile.lean
+manifestVersion: "1"
+proofRoot: "."
+statementRoot: statements
 abstractPath: abstract.tex
 submissionTitle: Metadata Check Failure Fixture
 statements:
@@ -33,6 +34,4 @@ proofs:
     DeclarationReferences: []
 bibtex-entries: []
 submissionSlug: metadata-check-failure
-proofLeanToolchainPath: lean-toolchain
-statementLeanToolchainPath: statements/lean-toolchain
 legacyCompatibilityField: true

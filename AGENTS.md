@@ -41,10 +41,10 @@ category folders: `general`, `statements`, and `proofs`, with shared root helper
 fixture execution, and final proof composition. The metadata file is the source of submission information. Run checks with:
 
 ```sh
-node .github/actions/test/run-all.mjs --meta=path/to/meta.yaml
+node .github/actions/test/run-all.mjs --meta=path/to/manifest.yaml
 ```
 
-Pass only one metadata file path, preferably with `--meta=path/to/meta.yaml`. The older positional form is accepted for compatibility. If no metadata path is provided, each check falls back to `meta.yaml` in the current working directory; directories are not accepted.
+Pass only one metadata file path, preferably with `--meta=path/to/manifest.yaml`. The older positional form is accepted for compatibility. If no metadata path is provided, each check falls back to `manifest.yaml` in the current working directory; directories are not accepted.
 
 `run-all.mjs` first prepares the Lean packages with `.github/actions/test/statements/prepare-build-cache.mjs`
 and `.github/actions/test/proofs/prepare-build-cache.mjs`, then runs static checks in parallel, then runs Lean
@@ -66,10 +66,10 @@ statements. File-existence checks belong in `general/files-present.mjs`.
 The CLI test command uses the same metadata convention:
 
 ```sh
-lml test --meta=path/to/meta.yaml
+lml test --meta=path/to/manifest.yaml
 ```
 
-If no metadata path is provided, `lml test` checks `meta.yaml` in the current working directory and returns an error when that file is missing.
+If no metadata path is provided, `lml test` checks `manifest.yaml` in the current working directory and returns an error when that file is missing.
 
 Run the intentionally failing import fixtures with:
 
@@ -125,7 +125,7 @@ The CLI `create-paper` command should create the current statement/proof package
 - A proof package may depend locally on a present statement package.
 - Do not require a unique Lean library for each statement folder; each statement must still be included in the shared statement library.
 - Use statement package terminology.
-- Metadata should use `statementLakefilePath`, `statementLeanToolchainPath`, `proofLakefilePath`, `proofLeanToolchainPath`, `submissionSlug`, `submissionTitle`, `bibtex-entries`, `statements`, `proofs`, `Statement`, `Theorem`, `Proof`, `DeclarationReferences`, `LakeStatementPackage`, and `LakeProofPackage`.
+- Metadata should use `manifestVersion`, `statementRoot`, `proofRoot`, `submissionSlug`, `submissionTitle`, `bibtex-entries`, `statements`, `proofs`, `Statement`, `Theorem`, `Proof`, `DeclarationReferences`, `LakeStatementPackage`, and `LakeProofPackage`. `statementRoot` and `proofRoot` are folder paths; each must contain a `lakefile.lean` and a `lean-toolchain` file.
 - Statement entry types are `Definition` and `Axiom`; statement files only allow axioms for axiom entries.
 - If a statement package is present, require its `lakefile.lean`, `lean-toolchain`, and, for each statement entry, a LaTeX file and Lean file.
 - If a proof package is present, require its `lakefile.lean` and `lean-toolchain`.

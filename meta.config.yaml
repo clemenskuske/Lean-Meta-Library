@@ -1,13 +1,14 @@
 $schema: "https://json-schema.org/draft/2020-12/schema"
-$id: "https://lean-meta-library.local/schemas/meta.config.yaml"
+$id: "https://lean-meta-library.local/schemas/manifest.config.yaml"
 title: "Lean Meta Library metadata"
 description: >
-  Schema for Lean Meta Library meta.yaml files. Fields marked as created fields
-  are populated by tooling/workflows rather than supplied by the initial author.
+  Schema for Lean Meta Library manifest.yaml files. Fields marked as created
+  fields are populated by tooling/workflows rather than supplied by the initial
+  author.
 $comment: >
-  Each present Lake package has its own lean-toolchain file. lml-env.json pins
-  the Lean version and the Mathlib base import; package toolchain files are
-  checked against that fixed Lean version.
+  Each present Lake package has its own lean-toolchain file at its package root.
+  lml-env.json pins the Lean version and the Mathlib base import; package
+  toolchain files are checked against that fixed Lean version.
 type: object
 additionalProperties: false
 
@@ -19,48 +20,57 @@ required:
 
 dependentRequired:
   proofs:
-    - proofLakefilePath
-    - proofLeanToolchainPath
-  proofLakefilePath:
+    - proofRoot
+  proofRoot:
     - proofs
-    - proofLeanToolchainPath
-  proofLeanToolchainPath:
-    - proofs
-    - proofLakefilePath
   statements:
-    - statementLakefilePath
-    - statementLeanToolchainPath
-  statementLakefilePath:
+    - statementRoot
+  statementRoot:
     - statements
-    - statementLeanToolchainPath
-  statementLeanToolchainPath:
-    - statements
-    - statementLakefilePath
 
 properties:
-  proofLakefilePath:
-    $ref: "#/$defs/repoRelativePath"
+  manifestVersion:
+    allOf:
+      - $ref: "#/$defs/safeText"
+    type: string
+    minLength: 1
     description: >
-      Repository-relative path to the Lake file for the package whose
-      proof entries discharge axioms from this submission or from other
-      submissions.
+      Version of the manifest format. Currently "1".
 
-  proofLeanToolchainPath:
-    $ref: "#/$defs/repoRelativePath"
+  leanVersion:
+    allOf:
+      - $ref: "#/$defs/safeText"
+    type: string
+    minLength: 1
     description: >
-      Repository-relative path to the lean-toolchain file for the proof package.
+      The Lean version used by the submission packages. Must match the version
+      pinned in lml-env.json.
 
-  statementLakefilePath:
-    $ref: "#/$defs/repoRelativePath"
+  mathlibVersion:
+    allOf:
+      - $ref: "#/$defs/safeText"
+    type: string
+    minLength: 1
     description: >
-      Repository-relative path to the Lake file for the package whose
-      statement entries publish public definitions and axiom statements.
+      The Mathlib revision used by the submission packages. Must match the
+      revision pinned in lml-env.json.
 
-  statementLeanToolchainPath:
+  licensePath:
     $ref: "#/$defs/repoRelativePath"
     description: >
-      Repository-relative path to the lean-toolchain file for the statement
-      package.
+      Repository-relative path to the license file for this submission.
+
+  statementRoot:
+    $ref: "#/$defs/repoRelativePath"
+    description: >
+      Repository-relative path to the folder containing the statement package.
+      The folder must contain a lakefile.lean and a lean-toolchain file.
+
+  proofRoot:
+    $ref: "#/$defs/repoRelativePath"
+    description: >
+      Repository-relative path to the folder containing the proof package.
+      The folder must contain a lakefile.lean and a lean-toolchain file.
 
   abstractPath:
     $ref: "#/$defs/repoRelativePath"

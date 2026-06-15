@@ -1,5 +1,6 @@
-proofLakefilePath: lakefile.lean
-statementLakefilePath: statements/lakefile.lean
+manifestVersion: "1"
+proofRoot: "."
+statementRoot: statements
 abstractPath: abstract.tex
 submissionTitle: Statement File Context Failure Fixture
 statements:
@@ -33,5 +34,3 @@ proofs:
     DeclarationReferences: []
 bibtex-entries: []
 submissionSlug: statement-file-context-failure
-proofLeanToolchainPath: lean-toolchain
-statementLeanToolchainPath: statements/lean-toolchain

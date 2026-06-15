@@ -18,7 +18,7 @@ npm run test:imports
 Run one fixture manually with:
 
 ```sh
-node .github/actions/test/run-all.mjs --meta=test-imports/<fixture>/meta.yaml
+node .github/actions/test/run-all.mjs --meta=test-imports/<fixture>/manifest.yaml
 ```
 
 Fixtures:

@@ -5,12 +5,12 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { loadContext } from "../general/meta-context.mjs";
 import {
   isLeanName,
   maxBuildOutputBytes,
-  packageRootForLakefile,
-  proofLakefilePath,
+  proofPackageRoot,
   relativePath,
   report
 } from "../common.mjs";
@@ -22,12 +22,13 @@ const { packageRoot, meta, namespaceRoot } = loadContext();
 const errors = [];
 const warnings = [];
 const proofs = Array.isArray(meta.proofs) ? meta.proofs : [];
-const proofRoot = proofLakefilePath(meta) ? packageRootForLakefile(packageRoot, proofLakefilePath(meta)) : null;
+const pPkgRoot = proofPackageRoot(meta);
+const proofRoot = pPkgRoot ? resolve(packageRoot, pPkgRoot) : null;
 
 augmentProofLakefile({ packageRoot, meta, errors, warnings });
 ensurePreparedLakePackage({
   packageRoot,
-  lakefilePath: proofLakefilePath(meta),
+  lakefilePath: pPkgRoot ? join(pPkgRoot, "lakefile.lean") : null,
   kind: "proof",
   label: "proof package",
   errors,

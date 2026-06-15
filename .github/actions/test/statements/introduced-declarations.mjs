@@ -2,13 +2,12 @@
 // Uses Lean to verify that each metadata statement file introduces exactly one simple declaration.
 // The check diffs the environment before and after importing the module, so hidden public, private, generated, or instance declarations are rejected.
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { loadContext } from "../general/meta-context.mjs";
 import {
-  packageRootForLakefile,
   readIfExists,
   report,
-  statementLakefilePath
+  statementPackageRoot
 } from "../common.mjs";
 import { lakeModuleForFile, loadLakeConfig } from "../lake-config.mjs";
 import { inspectIntroducedDeclarations, isLeanName } from "../lean-inspect.mjs";
@@ -19,12 +18,11 @@ const { packageRoot, meta } = loadContext();
 const errors = [];
 const warnings = [];
 const statements = Array.isArray(meta.statements) ? meta.statements : [];
-const statementRoot = statementLakefilePath(meta)
-  ? packageRootForLakefile(packageRoot, statementLakefilePath(meta))
-  : null;
+const stmtPkgRoot = statementPackageRoot(meta);
+const statementRoot = stmtPkgRoot ? resolve(packageRoot, stmtPkgRoot) : null;
 ensurePreparedLakePackage({
   packageRoot,
-  lakefilePath: statementLakefilePath(meta),
+  lakefilePath: stmtPkgRoot ? join(stmtPkgRoot, "lakefile.lean") : null,
   kind: "statement",
   label: "statement package",
   errors,

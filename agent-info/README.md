@@ -51,9 +51,9 @@ lml logout
 lml init
 lml update
 lml create-paper <slug>
-lml test --meta=path/to/meta.yaml
-lml submit --meta=path/to/meta.yaml
-lml submission-status path/to/meta.yaml
+lml test --meta=path/to/manifest.yaml
+lml submit --meta=path/to/manifest.yaml
+lml submission-status path/to/manifest.yaml
 ```
 
 The commands have these roles:
@@ -66,11 +66,11 @@ The commands have these roles:
 - `init` and `update`: check local tooling and synchronize repository metadata.
 - `create-paper <slug>`: create a starter submission package that an agent can
   adapt with user-approved declarations, metadata, and proofs.
-- `test --meta=path/to/meta.yaml`: run the local submission checks from the
+- `test --meta=path/to/manifest.yaml`: run the local submission checks from the
   metadata file.
-- `submit --meta=path/to/meta.yaml`: run checks, then dispatch the GitHub submit
+- `submit --meta=path/to/manifest.yaml`: run checks, then dispatch the GitHub submit
   workflow.
-- `submission-status path/to/meta.yaml`: report submission issue, workflow,
+- `submission-status path/to/manifest.yaml`: report submission issue, workflow,
   import, source commit, and statement-file status.
 
 When a user asks you to make an arbitrary Lean project submission ready, start
@@ -118,9 +118,9 @@ Important fields include:
   locating the statement and proof package folders. Older rows may still
   contain a legacy public-statement folder field, but new imports should not
   write it.
-- `statementLakefilePath`, `statementLeanToolchainPath`, `proofLakefilePath`,
-  and `proofLeanToolchainPath`: repository-relative package files when the
-  corresponding package is present.
+- `statementRoot` and `proofRoot`: repository-relative folder paths for the
+  statement and proof packages. Each folder must contain a `lakefile.lean`
+  and a `lean-toolchain` file.
 - `submissionSlug`, `submissionTitle`, and `bibtex-entries`: schema-level
   submission identity and bibliographic metadata.
 - `statements`: public `Definition` and `Axiom` entries.
@@ -157,9 +157,9 @@ canonical repository state at any time.
    plus the matching LaTeX file.
 6. Keep proof content focused on the submitted proof targets and any necessary
    internal development.
-7. Run `lml test --meta=path/to/meta.yaml` before calling submission work
+7. Run `lml test --meta=path/to/manifest.yaml` before calling submission work
    complete.
-8. Run `lml submission-status path/to/meta.yaml` when the user wants to know
+8. Run `lml submission-status path/to/manifest.yaml` when the user wants to know
    whether a submitted package has been uploaded, tested, imported, or changed
    since submission.
 

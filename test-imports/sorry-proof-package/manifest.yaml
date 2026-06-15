@@ -1,5 +1,6 @@
-proofLakefilePath: lakefile.lean
-statementLakefilePath: statements/lakefile.lean
+manifestVersion: "1"
+proofRoot: "."
+statementRoot: statements
 abstractPath: abstract.tex
 submissionTitle: Sorry Proof Fixture
 statements:
@@ -33,5 +34,3 @@ proofs:
     DeclarationReferences: []
 bibtex-entries: []
 submissionSlug: sorry-proof
-proofLeanToolchainPath: lean-toolchain
-statementLeanToolchainPath: statements/lean-toolchain

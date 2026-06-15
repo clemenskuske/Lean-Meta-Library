@@ -1,26 +1,24 @@
 #!/usr/bin/env node
 // Checks that submitted package and metadata names use the namespace implied by submissionSlug.
+import { resolve } from "node:path";
 import { loadContext } from "./meta-context.mjs";
 import {
   isLeanName,
   metadataPackageSlug,
-  packageRootForLakefile,
-  proofLakefilePath,
+  proofPackageRoot,
   report,
   requireMeta,
-  statementLakefilePath
+  statementPackageRoot
 } from "../common.mjs";
 import { hasLeanLib, lakeDependencies, loadLakeConfig } from "../lake-config.mjs";
 
 const context = loadContext();
 const { packageRoot, meta, namespaceRoot } = context;
 const errors = [];
-const statementRoot = statementLakefilePath(meta)
-  ? packageRootForLakefile(packageRoot, statementLakefilePath(meta))
-  : null;
-const proofRoot = proofLakefilePath(meta)
-  ? packageRootForLakefile(packageRoot, proofLakefilePath(meta))
-  : null;
+const stmtRootFolder = statementPackageRoot(meta);
+const pRootFolder = proofPackageRoot(meta);
+const statementRoot = stmtRootFolder ? resolve(packageRoot, stmtRootFolder) : null;
+const proofRoot = pRootFolder ? resolve(packageRoot, pRootFolder) : null;
 
 const statementLakeConfig = statementRoot ? loadLakeConfig(statementRoot, "statement lakefile", errors) : null;
 const proofLakeConfig = proofRoot ? loadLakeConfig(proofRoot, "proof lakefile", errors) : null;

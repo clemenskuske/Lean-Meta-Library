@@ -12,7 +12,7 @@
     }
   },
   "submission": {
-    "defaultMetadataPath": "meta.yaml",
+    "defaultMetadataPath": "manifest.yaml",
     "allowedFileExtensions": [".lean", ".tex", ".yaml", ".yml", ".json", ".bib", ".md", ".txt"],
     "allowedExtensionlessFiles": ["lean-toolchain", "LICENSE", "README"]
   },

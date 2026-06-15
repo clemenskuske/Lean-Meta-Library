@@ -187,7 +187,7 @@ function materializeFixture({ name, stripMathlibDependencyForCheck }) {
   const sourceDir = join(repoRoot, "test-imports", name);
   if (!stripMathlibDependencyForCheck) {
     return {
-      metaPath: join(sourceDir, "meta.yaml"),
+      metaPath: join(sourceDir, "manifest.yaml"),
       cleanup() {}
     };
   }
@@ -203,7 +203,7 @@ function materializeFixture({ name, stripMathlibDependencyForCheck }) {
   }
 
   return {
-    metaPath: join(fixtureDir, "meta.yaml"),
+    metaPath: join(fixtureDir, "manifest.yaml"),
     cleanup() {
       rmSync(tmpRoot, { recursive: true, force: true });
     }

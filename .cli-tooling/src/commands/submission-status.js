@@ -7,7 +7,7 @@ import { lmlEnv } from "../lib/project-env.js";
 import { run } from "../lib/process.js";
 import { parseMetaYaml } from "../../../.github/actions/test/common.mjs";
 
-const defaultMetadataPath = String(lmlEnv.submission?.defaultMetadataPath ?? "meta.yaml");
+const defaultMetadataPath = String(lmlEnv.submission?.defaultMetadataPath ?? "manifest.yaml");
 
 export async function submissionStatus({ args, cwd }) {
   const metaPath = parseArgs(args, cwd);
@@ -20,7 +20,7 @@ export async function submissionStatus({ args, cwd }) {
     throw new Error(`Metadata path must be a file: ${metaPath}.`);
   }
   if (!isMetadataFile(metaPath)) {
-    throw new Error("Use a metadata .yaml or .yml file argument: lml submission-status path/to/meta.yaml");
+    throw new Error("Use a metadata .yaml or .yml file argument: lml submission-status path/to/manifest.yaml");
   }
 
   const metaRelPath = toRepoRelativePath(repoRoot, metaPath);
@@ -77,7 +77,7 @@ function parseArgs(args, cwd) {
     positional.push(arg);
   }
   if (positional.length > 1) {
-    throw new Error("Use one metadata file argument: lml submission-status path/to/meta.yaml");
+    throw new Error("Use one metadata file argument: lml submission-status path/to/manifest.yaml");
   }
   return resolveMetaArgument(cwd, positional[0] ?? defaultMetadataPath);
 }

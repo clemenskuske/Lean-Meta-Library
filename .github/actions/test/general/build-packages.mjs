@@ -2,13 +2,13 @@
 // Runs `lake build` for both the statement package and the proof package.
 // This is the expensive check that confirms Lean accepts both packages.
 import { spawnSync } from "node:child_process";
+import { resolve } from "node:path";
 import { loadContext } from "./meta-context.mjs";
 import {
   maxBuildOutputBytes,
-  packageRootForLakefile,
-  proofLakefilePath,
+  proofPackageRoot,
   report,
-  statementLakefilePath
+  statementPackageRoot
 } from "../common.mjs";
 
 const { packageRoot, meta } = loadContext();
@@ -31,20 +31,20 @@ if (lakeVersion.error) {
 function packageRoots() {
   const items = [];
   const seen = new Set();
-  addPackage("statement package", statementLakefilePath(meta));
-  addPackage("proof package", proofLakefilePath(meta));
+  addPackage("statement package", statementPackageRoot(meta));
+  addPackage("proof package", proofPackageRoot(meta));
   return items;
 
-  function addPackage(label, lakefilePath) {
-    if (!lakefilePath) {
+  function addPackage(label, packageFolderPath) {
+    if (!packageFolderPath) {
       return;
     }
-    const cwd = packageRootForLakefile(packageRoot, lakefilePath);
-    if (!cwd || seen.has(cwd)) {
+    const cwd = resolve(packageRoot, packageFolderPath);
+    if (seen.has(cwd)) {
       return;
     }
     seen.add(cwd);
-    items.push({ label, cwd, lakefilePath });
+    items.push({ label, cwd });
   }
 }
 

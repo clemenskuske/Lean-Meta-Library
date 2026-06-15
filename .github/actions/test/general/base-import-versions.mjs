@@ -1,17 +1,14 @@
 #!/usr/bin/env node
 // Checks that submitted packages use the pinned base imports from lml-env.json.
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import lmlEnv from "../../../../lml-env.json" with { type: "json" };
 import { loadContext } from "./meta-context.mjs";
 import {
-  packageRootForLakefile,
-  proofLeanToolchainPath,
-  proofLakefilePath,
+  proofPackageRoot,
   report,
   requireMeta,
-  statementLeanToolchainPath,
-  statementLakefilePath
+  statementPackageRoot
 } from "../common.mjs";
 import { lakeDependencies, loadLakeConfig } from "../lake-config.mjs";
 
@@ -38,32 +35,27 @@ if (!expectedMathlibRevision) {
 }
 
 for (const item of packages) {
-  checkLeanToolchainFile(item.toolchainPath ?? join(item.cwd, "lean-toolchain"), `${item.label} lean-toolchain`);
+  checkLeanToolchainFile(join(item.cwd, "lean-toolchain"), `${item.label} lean-toolchain`);
   checkMathlibRequire(loadLakeConfig(item.cwd, `${item.label} lakefile`, errors), `${item.label} lakefile`);
 }
 
 function packageRoots() {
   const items = [];
   const seen = new Set();
-  addPackage("statement package", statementLakefilePath(meta), statementLeanToolchainPath(meta));
-  addPackage("proof package", proofLakefilePath(meta), proofLeanToolchainPath(meta));
+  addPackage("statement package", statementPackageRoot(meta));
+  addPackage("proof package", proofPackageRoot(meta));
   return items;
 
-  function addPackage(label, lakefilePath, leanToolchainPath) {
-    if (!lakefilePath) {
+  function addPackage(label, packageFolderPath) {
+    if (!packageFolderPath) {
       return;
     }
-    const cwd = packageRootForLakefile(packageRoot, lakefilePath);
-    if (!cwd || seen.has(cwd)) {
+    const cwd = resolve(packageRoot, packageFolderPath);
+    if (seen.has(cwd)) {
       return;
     }
     seen.add(cwd);
-    items.push({
-      label,
-      cwd,
-      lakefilePath,
-      toolchainPath: leanToolchainPath ? join(packageRoot, leanToolchainPath) : null
-    });
+    items.push({ label, cwd });
   }
 }
 

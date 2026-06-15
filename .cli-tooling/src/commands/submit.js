@@ -6,7 +6,7 @@ import { lmlEnv } from "../lib/project-env.js";
 import { run } from "../lib/process.js";
 import { test } from "./test.js";
 
-const defaultMetadataPath = String(lmlEnv.submission?.defaultMetadataPath ?? "meta.yaml");
+const defaultMetadataPath = String(lmlEnv.submission?.defaultMetadataPath ?? "manifest.yaml");
 
 export async function submit({ args, cwd }) {
   const { metaPath, shouldRunTests } = parseArgs(args, cwd);
@@ -23,7 +23,7 @@ export async function submit({ args, cwd }) {
     throw new Error(`Metadata path must be a file: ${metaPath}.`);
   }
   if (!isMetadataFile(metaPath)) {
-    throw new Error("Use a metadata .yaml or .yml file argument: lml submit [--no-prior-test] --meta=path/to/meta.yaml");
+    throw new Error("Use a metadata .yaml or .yml file argument: lml submit [--no-prior-test] --meta=path/to/manifest.yaml");
   }
 
   const branch = currentBranch(repoRoot);
@@ -71,7 +71,7 @@ function parseArgs(args, cwd) {
     }
     if (arg === "--meta") {
       if (metaPath) {
-        throw new Error("Use one metadata file argument: lml submit --meta=path/to/meta.yaml");
+        throw new Error("Use one metadata file argument: lml submit --meta=path/to/manifest.yaml");
       }
       metaPath = args[index + 1];
       index += 1;
@@ -82,7 +82,7 @@ function parseArgs(args, cwd) {
     }
     if (arg.startsWith("--meta=")) {
       if (metaPath) {
-        throw new Error("Use one metadata file argument: lml submit --meta=path/to/meta.yaml");
+        throw new Error("Use one metadata file argument: lml submit --meta=path/to/manifest.yaml");
       }
       metaPath = arg.slice("--meta=".length);
       if (!metaPath) {
@@ -97,7 +97,7 @@ function parseArgs(args, cwd) {
   }
 
   if (positional.length > 1 || (metaPath && positional.length > 0)) {
-    throw new Error("Use one metadata file argument: lml submit [--no-prior-test] --meta=path/to/meta.yaml");
+    throw new Error("Use one metadata file argument: lml submit [--no-prior-test] --meta=path/to/manifest.yaml");
   }
 
   return {

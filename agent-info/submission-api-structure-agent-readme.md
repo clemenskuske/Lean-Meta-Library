@@ -44,10 +44,8 @@ shape. The schema uses:
 - `submissionTitle`
 - `submissionSlug`
 - `bibtex-entries`
-- `statementLakefilePath`
-- `statementLeanToolchainPath`
-- `proofLakefilePath`
-- `proofLeanToolchainPath`
+- `statementRoot`
+- `proofRoot`
 - `statements`
 - `proofs`
 - `Statement`
@@ -65,8 +63,9 @@ Created metadata fields are `githubRepo`, `submittedBy`, `LakeProofPackage`,
 Authors should normally omit these until tooling/workflows populate them. If
 present, they must satisfy the schema, for example `githubRepo` must be a URI.
 
-Each present package has its own `lean-toolchain` file. Metadata records those
-files with `statementLeanToolchainPath` and `proofLeanToolchainPath`.
+Each present package has its own `lean-toolchain` file. Metadata records the
+package root folder with `statementRoot` and `proofRoot`; the checker verifies
+that `lakefile.lean` and `lean-toolchain` exist inside each root folder.
 
 The expected Lake package/library names are derived from `submissionSlug` by
 converting it to Pascal case:
@@ -123,10 +122,10 @@ entries. Reference records must use exactly one of `CurrentSubmission: true` or
 
 Package checks are conditional:
 
-- If `statements` is present, require `statementLakefilePath` and
-  `statementLeanToolchainPath`.
-- If `proofs` is present, require `proofLakefilePath` and
-  `proofLeanToolchainPath`.
+- If `statements` is present, require `statementRoot`; the folder at that
+  path must contain `lakefile.lean` and `lean-toolchain`.
+- If `proofs` is present, require `proofRoot`; the folder at that path must
+  contain `lakefile.lean` and `lean-toolchain`.
 - If a statement package is present, require each statement's Lean file and
   LaTeX file.
 - If a proof package is present, require each proof entry's `Proof.File`.

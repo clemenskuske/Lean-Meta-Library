@@ -5,7 +5,7 @@ import { lmlEnv } from "../lib/project-env.js";
 import { run } from "../lib/process.js";
 
 const cliRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
-const defaultMetadataPath = String(lmlEnv.submission?.defaultMetadataPath ?? "meta.yaml");
+const defaultMetadataPath = String(lmlEnv.submission?.defaultMetadataPath ?? "manifest.yaml");
 
 export async function test({ args, cwd }) {
   const metaPath = parseMetaArg(args, cwd);
@@ -29,7 +29,7 @@ function parseMetaArg(args, cwd) {
     const arg = args[index];
     if (arg === "--meta") {
       if (metaPath) {
-        throw new Error("Use one metadata file argument: lml test --meta=path/to/meta.yaml");
+        throw new Error("Use one metadata file argument: lml test --meta=path/to/manifest.yaml");
       }
       metaPath = args[index + 1];
       index += 1;
@@ -40,7 +40,7 @@ function parseMetaArg(args, cwd) {
     }
     if (arg.startsWith("--meta=")) {
       if (metaPath) {
-        throw new Error("Use one metadata file argument: lml test --meta=path/to/meta.yaml");
+        throw new Error("Use one metadata file argument: lml test --meta=path/to/manifest.yaml");
       }
       metaPath = arg.slice("--meta=".length);
       if (!metaPath) {
@@ -55,7 +55,7 @@ function parseMetaArg(args, cwd) {
   }
 
   if (positional.length > 1 || (metaPath && positional.length > 0)) {
-    throw new Error("Use one metadata file argument: lml test --meta=path/to/meta.yaml");
+    throw new Error("Use one metadata file argument: lml test --meta=path/to/manifest.yaml");
   }
 
   const selected = metaPath ?? positional[0] ?? defaultMetadataPath;
@@ -68,7 +68,7 @@ function resolveMetaArgument(cwd, metaPath) {
 
 function validateMetaPath(metaPath) {
   if (!/\.ya?ml$/i.test(metaPath)) {
-    throw new Error("Use a metadata .yaml or .yml file argument: lml test --meta=path/to/meta.yaml");
+    throw new Error("Use a metadata .yaml or .yml file argument: lml test --meta=path/to/manifest.yaml");
   }
   if (!existsSync(metaPath)) {
     throw new Error(`Metadata file not found: ${metaPath}`);

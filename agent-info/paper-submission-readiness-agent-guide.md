@@ -22,7 +22,7 @@ should stay private implementation.
 A submission is ready only when all conditions hold:
 
 - The metadata and statement files represent what the user wants to submit.
-- The package passes `lml test --meta=<path-to-meta.yaml>` under the current
+- The package passes `lml test --meta=<path-to-manifest.yaml>` under the current
   checker.
 - The user is pleased with the result.
 
@@ -75,7 +75,7 @@ package/library names are derived from `submissionSlug` as
 
 ## Metadata File
 
-Create `meta.yaml` with the user. It is the source of truth for the CLI checks.
+Create `manifest.yaml` with the user. It is the source of truth for the CLI checks.
 Use `meta.config.yaml` as the schema source of truth. Workflow-created fields
 such as `githubRepo`, `submittedBy`, `LakeStatementPackage`,
 `LakeProofPackage`, `submissionIssueNumber`, and `submissionIssueUrl` should
@@ -90,12 +90,12 @@ submissionSlug: user-slug
 bibtex-entries: []
 ```
 
-A statement package adds `statements`, `statementLakefilePath`, and
-`statementLeanToolchainPath` together:
+A statement package adds `statements` and `statementRoot` together.
+`statementRoot` is the repository-relative folder containing the package;
+it must have a `lakefile.lean` and a `lean-toolchain` inside it:
 
 ```yaml
-statementLakefilePath: statements/lakefile.lean
-statementLeanToolchainPath: statements/lean-toolchain
+statementRoot: statements
 statements:
   - Name: MainDefinition
     Type: Definition
@@ -115,12 +115,12 @@ statements:
     DeclarationReferences: []
 ```
 
-A proof package adds `proofs`, `proofLakefilePath`, and
-`proofLeanToolchainPath` together:
+A proof package adds `proofs` and `proofRoot` together. `proofRoot` is the
+repository-relative folder containing the package; it must have a
+`lakefile.lean` and a `lean-toolchain` inside it:
 
 ```yaml
-proofLakefilePath: proofs/lakefile.lean
-proofLeanToolchainPath: proofs/lean-toolchain
+proofRoot: "."
 proofs:
   - Name: MainStatementProof
     Type: proof
@@ -263,7 +263,7 @@ review and easier for the CLI to accept.
 Run the CLI check against exactly one metadata file:
 
 ```sh
-lml test --meta=<slug>-package/meta.yaml
+lml test --meta=<slug>-package/manifest.yaml
 ```
 
 Fix every error. Treat warnings as review items and decide whether they are
@@ -295,4 +295,4 @@ Before submitting or asking the user to submit, confirm:
 - Imports and `DeclarationReferences` metadata explain all declared
   dependencies.
 - Any external dependency is backed by a matching row in `submissions.jsonl`.
-- `lml test --meta=<slug>-package/meta.yaml` passes for the exact metadata path.
+- `lml test --meta=<slug>-package/manifest.yaml` passes for the exact metadata path.

@@ -16,7 +16,7 @@ export function createSubmissionPackage({ cwd, slug }) {
   mkdirSync(root, { recursive: true });
   write(root, "lean-toolchain", `${leanToolchain}\n`);
   write(root, "lakefile.lean", proofLakefile(namespace, mathlib));
-  write(root, "meta.yaml", metaYaml({ slug, namespace }));
+  write(root, "manifest.yaml", manifestYaml({ slug, namespace, lmlEnv }));
   write(root, "abstract.tex", abstractTex());
 
   const statementsRoot = join(root, "statements");
@@ -84,11 +84,12 @@ lean_lib ${namespace}.Statements where
 `;
 }
 
-function metaYaml({ slug, namespace }) {
-  return `proofLakefilePath: lakefile.lean
-proofLeanToolchainPath: lean-toolchain
-statementLakefilePath: statements/lakefile.lean
-statementLeanToolchainPath: statements/lean-toolchain
+function manifestYaml({ slug, namespace, lmlEnv }) {
+  return `manifestVersion: "1"
+leanVersion: ${lmlEnv.lean?.version ?? ""}
+mathlibVersion: ${lmlEnv.baseImports?.Mathlib?.revision ?? ""}
+proofRoot: "."
+statementRoot: statements
 abstractPath: abstract.tex
 submissionTitle: Your Submission Paper
 submissionSlug: ${slug}

@@ -1,17 +1,16 @@
 #!/usr/bin/env node
 // Applies a conservative first-run policy to statement Lean files.
 // It rejects macros, custom syntax, unsafe features, and other constructs outside the intended secure subset.
-import { join } from "node:path";
-import { packageRootForLakefile, report, statementLakefilePath } from "../common.mjs";
+import { join, resolve } from "node:path";
+import { report, statementPackageRoot } from "../common.mjs";
 import { loadContext } from "../general/meta-context.mjs";
 import { inspectCommandSyntax } from "../lean-inspect.mjs";
 
 const { packageRoot, meta } = loadContext();
 const errors = [];
 const warnings = [];
-const statementRoot = statementLakefilePath(meta)
-  ? packageRootForLakefile(packageRoot, statementLakefilePath(meta))
-  : null;
+const stmtRootFolder = statementPackageRoot(meta);
+const statementRoot = stmtRootFolder ? resolve(packageRoot, stmtRootFolder) : null;
 
 const forbiddenPatterns = [
   ["macro definitions", "Lean.Parser.Command.macro"],

@@ -11,15 +11,15 @@ root:
   description: "Directory containing the submission metadata file."
   files:
     metadata:
-      fileName: meta.yaml
+      fileName: manifest.yaml
       required: true
       mayAlsoBeNamed:
-        - meta.yml
+        - manifest.yml
       schema: meta.config.yaml
       description: >
         Submission metadata. The import workflow may receive a different
         repository-relative metadata path, but the default root metadata file is
-        meta.yaml.
+        manifest.yaml.
 
     abstract:
       pathFromMetadata: abstractPath
@@ -32,21 +32,26 @@ root:
   folders:
     statementFolder:
       requiredWhenMetadataHas:
-        - statementLakefilePath
+        - statementRoot
         - statements
-      folderPath: "dirname(statementLakefilePath)"
+      folderPath: "statementRoot"
       description: >
         Statement package folder. This package publishes public Definition and
-        Axiom entries for the submission.
+        Axiom entries for the submission. The folder path is given directly by
+        the statementRoot metadata field.
       files:
         lakefile:
-          pathFromMetadata: statementLakefilePath
+          pathInFolder: "lakefile.lean"
           required: true
           description: "Lake file for the statement package."
           expectedContent:
             - "Defines the statement-side Lake package or library."
             - "Builds every statement Lean file listed in metadata."
             - "Includes all listed statement files in one shared statement library."
+        leanToolchain:
+          pathInFolder: "lean-toolchain"
+          required: true
+          description: "Lean toolchain pin for the statement package."
 
       declarationFolders:
         arrayFromMetadata: statements
@@ -75,21 +80,27 @@ root:
 
     proofFolder:
       requiredWhenMetadataHas:
-        - proofLakefilePath
+        - proofRoot
         - proofs
-      folderPath: "dirname(proofLakefilePath)"
+      folderPath: "proofRoot"
       description: >
         Proof package folder. This package contains proof, conditional-proof,
-        or reduction declarations that discharge Axiom entries.
+        or reduction declarations that discharge Axiom entries. The folder path
+        is given directly by the proofRoot metadata field. Use "." when the
+        proof package lives at the submission root.
       files:
         lakefile:
-          pathFromMetadata: proofLakefilePath
+          pathInFolder: "lakefile.lean"
           required: true
           description: "Lake file for the proof package."
           expectedContent:
             - "Defines the proof-side Lake package or library."
             - "Builds every proof Lean file listed in metadata."
             - "May depend locally on a present statement package, but that split is not required."
+        leanToolchain:
+          pathInFolder: "lean-toolchain"
+          required: true
+          description: "Lean toolchain pin for the proof package."
 
       proofFiles:
         arrayFromMetadata: proofs
@@ -107,8 +118,8 @@ relationships:
   metadataControlsLayout:
     - "The metadata file is the source of all non-default repository-relative paths."
     - "abstractPath locates the abstract file from the root."
-    - "statementLakefilePath locates the statement folder lakefile from the root."
-    - "proofLakefilePath locates the proof folder lakefile from the root."
+    - "statementRoot is the repository-relative path to the statement package folder; lakefile.lean and lean-toolchain must exist inside it."
+    - "proofRoot is the repository-relative path to the proof package folder; lakefile.lean and lean-toolchain must exist inside it."
     - "Each statements[].Statement.LeanStatement locates one statement Lean file from the root."
     - "Each statements[].Statement.LatexDefinition locates the matching statement LaTeX file from the root."
     - "Each proofs[].Proof.File locates one proof Lean file from the root."

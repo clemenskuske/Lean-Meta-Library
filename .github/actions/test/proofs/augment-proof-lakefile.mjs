@@ -1,15 +1,16 @@
 // Adds statement-package dependencies needed by proof metadata before building proofs.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, extname, join, resolve } from "node:path";
+import { extname, join, resolve } from "node:path";
 import { validateSubmissionRow } from "../../submission-schema.mjs";
-import { proofLakefilePath } from "../common.mjs";
+import { proofPackageRoot } from "../common.mjs";
 import { slugToPascal } from "../general/meta-context.mjs";
 
 export function augmentProofLakefile({ packageRoot, meta, errors, warnings }) {
-  const lakefilePath = proofLakefilePath(meta);
-  if (!lakefilePath) {
+  const pRoot = proofPackageRoot(meta);
+  if (!pRoot) {
     return;
   }
+  const lakefilePath = join(pRoot, "lakefile.lean");
 
   const required = referencedStatementPackages(meta);
   if (required.length === 0) {

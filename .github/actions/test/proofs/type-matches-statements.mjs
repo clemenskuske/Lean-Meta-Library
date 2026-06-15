@@ -8,10 +8,9 @@ import { loadContext, slugToPascal } from "../general/meta-context.mjs";
 import {
   isLeanName,
   maxBuildOutputBytes,
-  packageRootForLakefile,
-  proofLakefilePath,
+  proofPackageRoot,
   report,
-  statementLakefilePath
+  statementPackageRoot
 } from "../common.mjs";
 import { lakeDependencies, lakeModuleForFile, loadLakeConfig } from "../lake-config.mjs";
 import { ensurePreparedLakePackage } from "../general/prepare-lake-package.mjs";
@@ -22,12 +21,14 @@ const errors = [];
 const warnings = [];
 const statements = Array.isArray(meta.statements) ? meta.statements : [];
 const proofs = Array.isArray(meta.proofs) ? meta.proofs : [];
-const proofRoot = proofLakefilePath(meta) ? packageRootForLakefile(packageRoot, proofLakefilePath(meta)) : null;
-const statementRoot = statementLakefilePath(meta) ? packageRootForLakefile(packageRoot, statementLakefilePath(meta)) : null;
+const stmtPkgRoot = statementPackageRoot(meta);
+const pPkgRoot = proofPackageRoot(meta);
+const proofRoot = pPkgRoot ? resolve(packageRoot, pPkgRoot) : null;
+const statementRoot = stmtPkgRoot ? resolve(packageRoot, stmtPkgRoot) : null;
 
 ensurePreparedLakePackage({
   packageRoot,
-  lakefilePath: statementLakefilePath(meta),
+  lakefilePath: stmtPkgRoot ? join(stmtPkgRoot, "lakefile.lean") : null,
   kind: "statement",
   label: "statement package",
   errors,
@@ -36,7 +37,7 @@ ensurePreparedLakePackage({
 augmentProofLakefile({ packageRoot, meta, errors, warnings });
 ensurePreparedLakePackage({
   packageRoot,
-  lakefilePath: proofLakefilePath(meta),
+  lakefilePath: pPkgRoot ? join(pPkgRoot, "lakefile.lean") : null,
   kind: "proof",
   label: "proof package",
   errors,

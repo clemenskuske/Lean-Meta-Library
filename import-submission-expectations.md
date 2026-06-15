@@ -10,15 +10,17 @@ schema disagree, follow the schema.
 ## Metadata
 
 - The metadata file is selected by the import command or workflow. If no path is
-  provided, the default is `meta.yaml`.
+  provided, the default is `manifest.yaml`.
 - The metadata must use the exact field names and shapes from
   `meta.config.yaml`.
 - Author-supplied required top-level fields are `abstractPath`,
   `submissionTitle`, `submissionSlug`, and `bibtex-entries`.
-- `statements`, `statementLakefilePath`, and `statementLeanToolchainPath` must
-  appear together when a statement package is present.
-- `proofs`, `proofLakefilePath`, and `proofLeanToolchainPath` must appear
-  together when a proof package is present.
+- `statements` and `statementRoot` must appear together when a statement
+  package is present. `statementRoot` is a repository-relative folder path;
+  the folder must contain a `lakefile.lean` and a `lean-toolchain` file.
+- `proofs` and `proofRoot` must appear together when a proof package is
+  present. `proofRoot` is a repository-relative folder path; the folder must
+  contain a `lakefile.lean` and a `lean-toolchain` file.
 - Workflow/tooling-created fields include `githubRepo`, `submittedBy`,
   `LakeStatementPackage`, `LakeProofPackage`, `submissionIssueNumber`, and
   `submissionIssueUrl`.

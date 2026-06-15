@@ -51,10 +51,11 @@ Author-supplied metadata requires:
 - `submissionSlug`
 - `bibtex-entries`
 
-Statement metadata, when present, uses `statements`,
-`statementLakefilePath`, and `statementLeanToolchainPath` together. Proof
-metadata, when present, uses `proofs`, `proofLakefilePath`, and
-`proofLeanToolchainPath` together. Workflow-created fields include
+Statement metadata, when present, uses `statements` and `statementRoot`
+together. Proof metadata, when present, uses `proofs` and `proofRoot`
+together. `statementRoot` and `proofRoot` are repository-relative folder
+paths; each folder must contain a `lakefile.lean` and a `lean-toolchain`
+file. Workflow-created fields include
 `githubRepo`, `submittedBy`, `LakeStatementPackage`, `LakeProofPackage`,
 `submissionIssueNumber`, and `submissionIssueUrl`.
 
@@ -141,9 +142,11 @@ lml logout
 lml init
 lml update
 lml create-paper
-lml test --meta=path/to/meta.yaml
-lml submit --meta=path/to/meta.yaml
-lml submission-status path/to/meta.yaml
+lml test --meta=path/to/manifest.yaml
+lml submit --meta=path/to/manifest.yaml
+lml submission-status path/to/manifest.yaml
+lml readme
+lml readme --short
 ```
 
 The `agent-introduction` command prints `agent-info/README.md`, a general
@@ -159,10 +162,10 @@ The `test` command runs `.github/actions/test/run-all.mjs` using the metadata
 file as the source of submission information:
 
 ```sh
-lml test --meta=path/to/meta.yaml
+lml test --meta=path/to/manifest.yaml
 ```
 
-If no metadata path is provided, the checks use `meta.yaml` in the current
+If no metadata path is provided, the checks use `manifest.yaml` in the current
 working directory. Pass exactly one metadata file path; directories are not
 accepted.
 
@@ -189,8 +192,8 @@ The `submit` command runs the submission checks first, then dispatches
 metadata file:
 
 ```sh
-lml submit --meta=path/to/meta.yaml
-lml submit --no-prior-test --meta=path/to/meta.yaml
+lml submit --meta=path/to/manifest.yaml
+lml submit --no-prior-test --meta=path/to/manifest.yaml
 ```
 
 The `submission-status` command reports whether the metadata file has been
@@ -199,7 +202,15 @@ testing, or finalizing the submission, and how the recorded source commit
 compares with the current commit and statement files:
 
 ```sh
-lml submission-status path/to/meta.yaml
+lml submission-status path/to/manifest.yaml
+```
+
+The `readme` command prints this README file. Pass `--short` (or `-s`) to print
+a condensed quick-reference instead:
+
+```sh
+lml readme
+lml readme --short
 ```
 
 ## Submission Workflow
