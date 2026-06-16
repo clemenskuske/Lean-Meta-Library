@@ -68,7 +68,7 @@ Statement files must not introduce theorem declarations as submitted statement
 content. Each statement entry uses a structured `Statement` record with exactly
 one of `CurrentSubmission: true` or `SubmissionSlug`, plus `LeanStatement`,
 `LatexDefinition`, and `Name`. `DeclarationReferences` records use the same
-shape and may appear on statements and proofs.
+shape and may appear on statements.
 
 ```yaml
 statements:
@@ -82,36 +82,25 @@ statements:
     DeclarationReferences: []
 ```
 
-Proof entries have `Type: proof`, `Type: conditional-proof`, or
-`Type: reduction`. They name the discharged statement through `Theorem` and the
-proof-side declaration through `Proof`. The checker asks Lean `isDefEq` to
-compare the compiled statement type and proof target type.
+Each proof entry has exactly two fields: `axiom`, the global name of the
+statement axiom it discharges, and `proof`, the global name of the proof
+declaration in this submission's proof package. Both are global Lean names whose
+leading namespace segment is the owning submission's slug in PascalCase, so they
+identify declarations uniquely across all submissions. The target `axiom` may
+belong to this submission or to another submission. The checker resolves both
+declarations by name in the built packages and asks Lean `isDefEq` to compare
+the compiled statement type and proof target type.
 
 ```yaml
 proofs:
-  - Name: MainStatementProof
-    Type: proof
-    Theorem:
-      CurrentSubmission: true
-      LeanStatement: statements/MainStatement.lean
-      LatexDefinition: statements/MainStatement.tex
-      Name: MySlug.Statements.MainStatement.main_statement
-    Proof:
-      File: proofs/MainStatementProof.lean
-      Name: MySlug.Proofs.MainStatement.main_statement
-    DeclarationReferences: []
+  - axiom: MySlug.Statements.MainStatement.main_statement
+    proof: MySlug.Proofs.MainStatement.main_statement
 ```
-
-A statement with a `proof` or `conditional-proof` entry is classified as a
-theorem. A statement with a `reduction` entry is classified as a conjecture. An
-assumption is a conjecture expected to be true, and a `conditional-proof` is a
-proof that relies only on assumptions.
 
 Proof files may rely on definitions, declared dependencies, Std, and Mathlib,
 but submitted proof targets must not depend on `sorryAx` or local proof-package
-axioms. The final proof build composes submitted proof outputs in declared
-statement-dependency order and accepts only allowed base axioms plus declared
-conjectures.
+axioms. The final proof build composes submitted proof outputs and accepts only
+allowed base axioms.
 
 ## CLI Tooling
 

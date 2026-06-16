@@ -1,5 +1,5 @@
 # Build Packages Failure
 
-This package is a negative import fixture for the `build-packages.mjs` checker.
+This package is a negative import fixture for the `proofs/prepare-build-cache.mjs` checker.
 
-Expected rejection: `build both packages` reports that the proof package failed to build.
+Expected rejection: the proof package `lake build` fails because of an unknown identifier.

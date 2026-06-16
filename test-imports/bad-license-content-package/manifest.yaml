@@ -1,0 +1,6 @@
+manifestVersion: "1"
+abstractPath: abstract.tex
+licensePath: LICENSE
+submissionTitle: Bad License Content Fixture
+submissionSlug: bad-license-content
+bibtex-entries: []

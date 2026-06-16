@@ -85,18 +85,13 @@ function checkStatementMetadataNames() {
 
 function checkProofMetadataNames() {
   for (const proof of meta.proofs ?? []) {
-    const theorem = proof.Theorem ?? {};
-    const proofName = proof.Proof?.Name;
+    const proofName = proof.proof;
     if (!isLeanName(proofName)) {
-      errors.push(`proof metadata entry is missing a valid Proof.Name: ${proofName ?? "(missing)"}`);
+      errors.push(`proof metadata entry is missing a valid proof name: ${proofName ?? "(missing)"}`);
       continue;
     }
     if (namespaceRoot && !proofName.startsWith(`${namespaceRoot}.`)) {
       errors.push(`proof Lean name should start with ${namespaceRoot}.: ${proofName}`);
-    }
-
-    if (theorem.CurrentSubmission === true && namespaceRoot && !theorem.Name?.startsWith(`${namespaceRoot}.`)) {
-      errors.push(`proof Theorem.Name for current submission should start with ${namespaceRoot}.: ${theorem.Name ?? "(missing)"}`);
     }
   }
 }

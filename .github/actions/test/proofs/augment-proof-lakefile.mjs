@@ -56,25 +56,28 @@ export function augmentProofLakefile({ packageRoot, meta, errors, warnings }) {
 }
 
 function referencedStatementPackages(meta) {
+  const namespaceRoot = meta.submissionSlug ? slugToPascal(meta.submissionSlug) : null;
   const packages = new Set();
 
   for (const proof of meta.proofs ?? []) {
-    addReferencePackage(packages, proof?.Theorem);
-    for (const reference of proof?.DeclarationReferences ?? []) {
-      addReferencePackage(packages, reference);
+    const statementPackage = statementPackageForAxiom(proof?.axiom, namespaceRoot);
+    if (statementPackage) {
+      packages.add(statementPackage);
     }
   }
 
   return [...packages].sort();
 }
 
-function addReferencePackage(packages, reference) {
-  if (!reference || reference.CurrentSubmission === true) {
-    return;
+function statementPackageForAxiom(axiom, namespaceRoot) {
+  if (typeof axiom !== "string" || axiom.length === 0) {
+    return null;
   }
-  if (reference.SubmissionSlug) {
-    packages.add(`${slugToPascal(reference.SubmissionSlug)}.Statements`);
+  const submissionNamespace = axiom.split(".")[0];
+  if (!submissionNamespace || submissionNamespace === namespaceRoot) {
+    return null;
   }
+  return `${submissionNamespace}.Statements`;
 }
 
 function existingRequireNames(source) {

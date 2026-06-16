@@ -111,9 +111,10 @@ properties:
   proofs:
     type: array
     description: >
-      Entries that record proofs or reductions for target statements. Each entry
-      names the target statement, identifies the proof-side declaration, records
-      the proof kind, and lists the declaration references used by that proof.
+      Entries that record proofs for statement axioms. Each entry names the
+      target statement axiom (axiom) and the proof declaration that discharges it
+      (proof), both as global declaration names. The target axiom may belong to
+      this submission or to another submission.
     items:
       $ref: "#/$defs/proofEntry"
 
@@ -228,47 +229,26 @@ $defs:
   proofEntry:
     type: object
     description: >
-      Proof entry. Required fields are Name, Type, Theorem, Proof, and
-      DeclarationReferences.
+      Proof entry. Required fields are axiom and proof. Both are global Lean
+      declaration names: the leading namespace segment is the submission slug in
+      PascalCase, so each name identifies a declaration uniquely across all
+      submissions.
     additionalProperties: false
     required:
-      - Name
-      - Type
-      - Theorem
-      - Proof
-      - DeclarationReferences
+      - axiom
+      - proof
     properties:
-      Name:
-        allOf:
-          - $ref: "#/$defs/safeText"
-        type: string
-        minLength: 1
-        description: "Metadata entry name for this proof/reduction."
-      Type:
-        type: string
-        enum:
-          - proof
-          - conditional-proof
-          - reduction
-      Theorem:
-        $ref: "#/$defs/declarationReference"
-      Proof:
-        type: object
-        description: "Proof theorem reference. Required fields are File and Name."
-        additionalProperties: false
-        required:
-          - File
-          - Name
-        properties:
-          File:
-            $ref: "#/$defs/repoRelativePath"
-          Name:
-            $ref: "#/$defs/leanName"
-      DeclarationReferences:
-        type: array
-        description: "Declarations referenced by this proof."
-        items:
-          $ref: "#/$defs/declarationReference"
+      axiom:
+        $ref: "#/$defs/leanName"
+        description: >
+          Global name of the statement axiom this proof discharges. It may belong
+          to this submission or to another submission; either way the leading
+          namespace segment is that submission's slug in PascalCase.
+      proof:
+        $ref: "#/$defs/leanName"
+        description: >
+          Global name of the proof declaration in this submission's proof
+          package, for example SubmissionSlug.Proof.Namespace.theorem.
 
   declarationReference:
     type: object

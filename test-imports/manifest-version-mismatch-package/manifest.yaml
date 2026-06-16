@@ -1,0 +1,7 @@
+manifestVersion: "1"
+leanVersion: "v0.0.0"
+mathlibVersion: "0000000000000000000000000000000000000000"
+abstractPath: abstract.tex
+submissionTitle: Manifest Version Mismatch Fixture
+submissionSlug: manifest-version-mismatch
+bibtex-entries: []

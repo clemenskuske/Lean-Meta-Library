@@ -34,15 +34,6 @@ for (const statement of meta.statements ?? []) {
   }
 }
 
-for (const proof of meta.proofs ?? []) {
-  const label = proof.Name ?? proof.Theorem?.Name ?? "(unknown proof)";
-  checkDeclarationReference(proof.Theorem, `proof ${label} Theorem`);
-  checkPath(proof.Proof?.File, `proof ${label} Proof.File`);
-  for (const [index, reference] of (proof.DeclarationReferences ?? []).entries()) {
-    checkDeclarationReference(reference, `proof ${label} DeclarationReferences[${index}]`);
-  }
-}
-
 function checkDeclarationReference(reference, label) {
   if (!reference) {
     errors.push(`${label} is missing`);

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Lake-backed helpers for tests that need package configuration facts.
 import { spawnSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { parse as parseToml } from "smol-toml";
@@ -121,6 +121,36 @@ function resolveFileForPackage(absPackageDir, packageDir, file) {
   }
 
   return resolve(absPackageDir, file);
+}
+
+export function builtModuleNames(packageDir) {
+  const root = resolve(packageDir, ".lake/build/lib/lean");
+  if (!existsSync(root)) {
+    return [];
+  }
+
+  const names = new Set();
+  const visit = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        visit(full);
+        continue;
+      }
+      if (entry.isFile() && entry.name.endsWith(".olean")) {
+        const moduleName = normalizePath(relative(root, full))
+          .replace(/\.olean$/i, "")
+          .split("/")
+          .join(".");
+        if (moduleName) {
+          names.add(moduleName);
+        }
+      }
+    }
+  };
+
+  visit(root);
+  return [...names].sort();
 }
 
 export function hasLeanLib(config, predicate) {

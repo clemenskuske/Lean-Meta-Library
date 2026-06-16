@@ -84,10 +84,10 @@ root:
         - proofs
       folderPath: "proofRoot"
       description: >
-        Proof package folder. This package contains proof, conditional-proof,
-        or reduction declarations that discharge Axiom entries. The folder path
-        is given directly by the proofRoot metadata field. Use "." when the
-        proof package lives at the submission root.
+        Proof package folder. This package contains the proof declarations that
+        discharge statement Axiom entries. The folder path is given directly by
+        the proofRoot metadata field. Use "." when the proof package lives at the
+        submission root.
       files:
         lakefile:
           pathInFolder: "lakefile.lean"
@@ -95,22 +95,21 @@ root:
           description: "Lake file for the proof package."
           expectedContent:
             - "Defines the proof-side Lake package or library."
-            - "Builds every proof Lean file listed in metadata."
+            - "Builds so every proofs[].proof declaration is available by name."
             - "May depend locally on a present statement package, but that split is not required."
         leanToolchain:
           pathInFolder: "lean-toolchain"
           required: true
           description: "Lean toolchain pin for the proof package."
 
-      proofFiles:
+      proofDeclarations:
         arrayFromMetadata: proofs
-        pathFromMetadata: proofs[].Proof.File
+        nameFromMetadata: proofs[].proof
         required: true
-        description: "Lean proof file containing the proof declaration named by proofs[].Proof.Name."
+        description: "Each proofs[].proof names a proof declaration resolved by name in the built proof package; its source file is package content and is not enumerated in metadata."
         expectedContent:
-          - "Contains a theorem or declaration whose name is proofs[].Proof.Name."
-          - "The proof declaration's type must be definitionally equal to proofs[].Theorem.Name."
-          - "The proof entry Type is proof, conditional-proof, or reduction."
+          - "Some Lean file in the package defines a declaration whose global name is proofs[].proof."
+          - "The proof declaration's type must be definitionally equal to the type of the proofs[].axiom declaration it discharges."
           - "Submitted proof targets must not depend on sorryAx or local proof-namespace axioms."
           - "Imports should be limited to Mathlib modules, Std modules, local submission modules, and authorized imported packages."
 
@@ -122,21 +121,20 @@ relationships:
     - "proofRoot is the repository-relative path to the proof package folder; lakefile.lean and lean-toolchain must exist inside it."
     - "Each statements[].Statement.LeanStatement locates one statement Lean file from the root."
     - "Each statements[].Statement.LatexDefinition locates the matching statement LaTeX file from the root."
-    - "Each proofs[].Proof.File locates one proof Lean file from the root."
+    - "Each proofs[].proof is a global declaration name resolved in the built proof package, not a file path."
   statementEntries:
     - "Each statement entry has Type Definition or Axiom."
     - "Definition entries publish definitions."
     - "Axiom entries publish statement axioms."
     - "Statement Lean and LaTeX files for the same entry should share a folder."
   proofEntries:
-    - "Each proof entry targets an Axiom statement through proofs[].Theorem."
-    - "proof and conditional-proof entries classify the target statement as a theorem."
-    - "reduction entries classify the target statement as a conjecture."
+    - "Each proof entry targets an Axiom statement through proofs[].axiom, a global declaration name."
+    - "proofs[].axiom may belong to this submission or to another submission; its leading namespace segment is the owning submission slug in PascalCase."
+    - "proofs[].proof names the proof declaration that discharges the target axiom."
   declarationReferences:
     - "DeclarationReferences use CurrentSubmission or SubmissionSlug, plus LeanStatement, LatexDefinition, and Name."
     - "Referenced LeanStatement and LatexDefinition files should be in the same folder."
-    - "Proof-level DeclarationReferences are supported independently of statement-level DeclarationReferences."
-    - "Declared dependencies must include actual Lean axiom dependencies found in proof terms."
+    - "DeclarationReferences are supported on statement entries."
 
 filePolicy:
   appliesTo: whole-repository-subtree-below-metadata-file

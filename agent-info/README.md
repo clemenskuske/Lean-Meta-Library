@@ -14,7 +14,7 @@ repository may host a submission. A submission may contain up to two Lake
 packages:
 
 - a statement package for public `Definition` and `Axiom` entries;
-- a proof package for proof, conditional-proof, or reduction evidence.
+- a proof package for proofs that discharge statement axioms.
 
 Each package is a Lake package. Use repository terminology only for the source
 checkout or GitHub repository that hosts the submission.
@@ -24,13 +24,17 @@ The core idea is to separate three things:
 - Public statement content: trustworthy `Definition` entries and `Axiom`
   entries. `Definition` entries introduce Lean `def`s. `Axiom` entries
   introduce Lean `axiom`s, not theorem declarations.
-- Proof artifacts: Lean files for `proof`, `conditional-proof`, and
-  `reduction` entries. A statement with a `proof` or `conditional-proof` is a
-  theorem; a statement with a `reduction` is a conjecture. An assumption is a
-  conjecture expected to be true, and a `conditional-proof` is a proof relying
-  only on assumptions.
+- Proof artifacts: Lean files whose declarations discharge statement axioms.
+  Each proof entry pairs a target statement axiom (`axiom`) with the proof
+  declaration that establishes it (`proof`), both as global Lean names. A proof
+  may discharge its own submission's axiom or another submission's axiom.
 - Submission metadata: a manifest that tells the checker where the declarations,
   proofs, abstract, toolchains, and bibliographic data live.
+
+Whether a statement reads as a theorem, conjecture, or assumption is a
+naming/display classification derived from whether its axiom is discharged by a
+proof. It is not a field on the proof entry, which carries only `axiom` and
+`proof`.
 
 Agents should treat the metadata file as the submission source of truth. For
 metadata shape, treat `meta.config.yaml` as authoritative: it defines the
@@ -124,8 +128,8 @@ Important fields include:
 - `submissionSlug`, `submissionTitle`, and `bibtex-entries`: schema-level
   submission identity and bibliographic metadata.
 - `statements`: public `Definition` and `Axiom` entries.
-- `proofs`: proof targets with `Type: proof`, `Type: conditional-proof`, or
-  `Type: reduction`.
+- `proofs`: proof entries, each pairing a target statement axiom (`axiom`) with
+  the proof declaration that discharges it (`proof`).
 - `User Login`, `Issue Number`, and `Issue Url`: submission provenance from the
   import workflow.
 

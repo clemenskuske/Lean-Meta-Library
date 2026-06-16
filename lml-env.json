@@ -14,7 +14,19 @@
   "submission": {
     "defaultMetadataPath": "manifest.yaml",
     "allowedFileExtensions": [".lean", ".tex", ".yaml", ".yml", ".json", ".bib", ".md", ".txt"],
-    "allowedExtensionlessFiles": ["lean-toolchain", "LICENSE", "README"]
+    "allowedExtensionlessFiles": ["lean-toolchain", "LICENSE", "README"],
+    "allowedLicenseIdentifiers": [
+      "MIT License",
+      "Apache License",
+      "GNU General Public License",
+      "GNU Lesser General Public License",
+      "GNU Affero General Public License",
+      "BSD 2-Clause License",
+      "BSD 3-Clause License",
+      "ISC License",
+      "Creative Commons",
+      "CC0 1.0 Universal"
+    ]
   },
   "submissionLimits": {
     "maxPackageBytes": 5242880,

@@ -224,13 +224,13 @@ function checkCompiledAxioms() {
 function proofCompositionTargets() {
   return (context.meta.proofs ?? [])
     .map((proof) => {
-      const statement = proof?.Theorem?.Name ?? null;
-      const proofTarget = proof?.Proof?.Name ?? null;
+      const statement = proof?.axiom ?? null;
+      const proofTarget = proof?.proof ?? null;
       return {
         statement,
         proof: proofTarget,
         composed: composedNameForStatement(statement),
-        deps: (proof?.DeclarationReferences ?? []).map((dependency) => dependency.Name).filter(isLeanName)
+        deps: []
       };
     })
     .filter((entry) => isLeanName(entry.statement) && isLeanName(entry.proof) && isLeanName(entry.composed));

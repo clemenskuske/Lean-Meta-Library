@@ -13,12 +13,6 @@ const fixtureTimeoutMs = Number(process.env.LML_TEST_IMPORT_TIMEOUT_MS ?? 10 * 6
 const fixtures = [
   {
     name: "build-packages-failure-package",
-    checker: "general/build-packages.mjs",
-    expected: /proof package failed to build|unknown identifier/,
-    stripMathlibDependencyForCheck: true
-  },
-  {
-    name: "build-packages-failure-package",
     checker: "proofs/prepare-build-cache.mjs",
     expected: /proof package lake build failed|unknown identifier/,
     stripMathlibDependencyForCheck: true
@@ -31,8 +25,9 @@ const fixtures = [
   },
   {
     name: "missing-proof-file-package",
-    checker: "general/files-present.mjs",
-    expected: /Proof\.File missing|proof file missing/
+    checker: "proofs/type-matches-statements.mjs",
+    expected: /proof package lake build failed|no built proof modules|unknown (constant|identifier)/,
+    stripMathlibDependencyForCheck: true
   },
   {
     name: "metadata-disk-state-failure-package",
@@ -104,6 +99,21 @@ const fixtures = [
     name: "unauthorized-statement-import-package",
     checker: "statements/imports.mjs",
     expected: /statement lakefile does not declare an authorized dependency|not listed in that statement entry's DeclarationReferences metadata/
+  },
+  {
+    name: "manifest-version-mismatch-package",
+    checker: "general/metadata-check.mjs",
+    expected: /leanVersion must match|mathlibVersion must match/
+  },
+  {
+    name: "missing-license-package",
+    checker: "general/license.mjs",
+    expected: /licensePath is missing from metadata/
+  },
+  {
+    name: "bad-license-content-package",
+    checker: "general/license.mjs",
+    expected: /license file does not contain a recognized license identifier/
   }
 ];
 

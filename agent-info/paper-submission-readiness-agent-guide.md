@@ -15,9 +15,8 @@ GitHub repository that hosts the submission.
 
 Do not infer the submitted statement set from the source project alone. Build
 the submission together with the user. Ask which definitions and axioms should
-become public entries, which statements have `proof`, `conditional-proof`, or
-`reduction` evidence, which assumptions are used, and which project details
-should stay private implementation.
+become public entries, which statement axioms have proof evidence, and which
+project details should stay private implementation.
 
 A submission is ready only when all conditions hold:
 
@@ -37,12 +36,9 @@ Before writing the submission package, gather these decisions from the user:
 - Which Lean project folder, archive, or remote source is the starting point.
 - Which declarations should be public statement entries.
 - For each public entry, whether it is a `Definition` or an `Axiom`.
-- For each axiom, whether the proof entry type is `proof`,
-  `conditional-proof`, or `reduction`, and which proof declaration establishes
-  it.
-- Which conjectures are expected to be true and should be treated as
-  assumptions.
-- Whether any entry depends on another entry in this submission.
+- For each axiom that is being discharged, the global name of the proof
+  declaration that establishes it (the proof may live in this submission or, by
+  global name, target another submission's axiom).
 - Whether any entry or proof depends on a previously imported Lean Meta Library
   submission listed in `submissions.jsonl`.
 - BibTeX entries and any bibliographic context the user wants preserved.
@@ -122,24 +118,17 @@ repository-relative folder containing the package; it must have a
 ```yaml
 proofRoot: "."
 proofs:
-  - Name: MainStatementProof
-    Type: proof
-    Theorem:
-      CurrentSubmission: true
-      LeanStatement: statements/MainStatement.lean
-      LatexDefinition: statements/MainStatement.tex
-      Name: UserSlug.Statements.MainStatement.main_statement
-    Proof:
-      File: proofs/MainStatementProof.lean
-      Name: UserSlug.Proofs.MainStatement.main_statement
-    DeclarationReferences: []
+  - axiom: UserSlug.Statements.MainStatement.main_statement
+    proof: UserSlug.Proofs.MainStatement.main_statement
 ```
 
-Use `Type: proof` for a fully formal proof, `Type: conditional-proof` for a
-proof relying only on assumptions, and `Type: reduction` for a reduction that
-uses unresolved conjectures. A statement with `proof` or `conditional-proof` is
-classified as a theorem. A statement with `reduction` is classified as a
-conjecture.
+Each proof entry has only `axiom` and `proof`, both global Lean names. `axiom`
+is the statement axiom the proof discharges and `proof` is the proof declaration
+that establishes it; the leading namespace segment of each name is the owning
+submission's slug in PascalCase. The target `axiom` may belong to this
+submission or to another submission. Submitted proofs must be complete: their
+compiled axiom dependencies may bottom out only in allowed base axioms, not in
+other Lean Meta Library axioms.
 
 All repository paths must be relative paths that stay inside the metadata root.
 Metadata strings should stay simple ASCII text accepted by the CLI checks.
@@ -201,22 +190,22 @@ package modes for the imported submission.
 
 ## Proof Artifacts
 
-Proof artifacts contain typed proof evidence for submitted axioms. They may
-contain `proof`, `conditional-proof`, and `reduction` entries.
+Proof artifacts contain typed proof evidence for submitted axioms. Each proof
+entry pairs a target statement axiom (`axiom`) with the proof declaration that
+discharges it (`proof`), both as global Lean names.
 
-Every current-submission axiom that is to be discharged needs one matching
-metadata proof entry and proof file. The CLI compares the compiled Lean type of
-the statement axiom and proof declaration with Lean `isDefEq`; textual
+A discharged axiom needs one matching metadata proof entry whose `proof`
+declaration builds in the proof package. The CLI compares the compiled Lean type
+of the statement axiom and the proof declaration with Lean `isDefEq`; textual
 similarity is not enough.
 
 Proof packages may contain helper files and internal declarations, but submitted
 proof targets must be clean:
 
-- proof files named by metadata must elaborate;
+- the proof package must build so each `proof` declaration resolves by name;
 - submitted proof targets must not depend on `sorryAx`;
 - submitted proof targets must not depend on local proof-namespace axioms;
-- actual axiom dependencies must be covered by metadata `DeclarationReferences`,
-  except for allowed base axioms.
+- actual axiom dependencies may bottom out only in allowed base axioms.
 
 ## Final Proof Build
 
@@ -224,12 +213,9 @@ The current final proof build copies the metadata-root package tree into an
 isolated directory, runs `lake update`, `lake clean`, a best-effort cache fetch,
 and `lake build`, then rejects build output that reports `sorry` or `sorryAx`.
 
-It then composes submitted proof targets in statement-dependency order using the
-proof entries' `DeclarationReferences`. Composed outputs may rely only on:
-
-- allowed base axioms listed in `lml-env.json`'s `checks.allowedMathlibAxioms`,
-  matched by Lean name and type; and
-- declared conjecture axioms from `Type: reduction` entries.
+It then composes each submitted proof target onto the statement axiom it
+discharges. Composed outputs may rely only on allowed base axioms listed in
+`lml-env.json`'s `checks.allowedMathlibAxioms`, matched by Lean name and type.
 
 When `lean4checker` is available, the final checker also rechecks the composed
 `.olean` output.

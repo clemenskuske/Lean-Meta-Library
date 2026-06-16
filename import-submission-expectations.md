@@ -98,7 +98,7 @@ When present, the proof package Lake file must:
 - use the fixed Lean version from `lml-env.json`;
 - pin Mathlib to `lml-env.json`'s `baseImports.Mathlib.revision` whenever it
   declares Mathlib;
-- build every proof file listed by `proofs[].Proof.File`;
+- build so every declaration named by `proofs[].proof` is available;
 - use only local Lake dependencies on the current submission's statement package
   when local dependencies are present.
 
@@ -109,27 +109,27 @@ proof targets unless a metadata proof entry names them.
 
 ### Lean Proof Targets
 
-Each listed proof must:
+Each proof entry names a target statement axiom (`axiom`) and a proof
+declaration (`proof`), both as global Lean names. Each listed proof must:
 
-- elaborate with Lean;
-- contain a theorem or definition named by `Proof.Name`;
-- use a proof declaration name beginning with the namespace root derived from
+- resolve, by name, to a declaration in the built proof package;
+- use a `proof` name beginning with the namespace root derived from
   `submissionSlug`;
-- have a compiled Lean type definitionally equal to the `Theorem` statement
-  type, as checked by Lean `isDefEq`.
+- have a compiled Lean type definitionally equal to the type of the `axiom`
+  declaration it discharges, as checked by Lean `isDefEq`.
 
 For submitted proof targets, compiled axiom dependencies are controlled:
 
 - The proof target must not depend on `sorryAx`.
 - The proof target must not depend on local proof-namespace axioms.
-- Actual Lean axiom dependencies must be covered by the proof entry's
-  `DeclarationReferences`, except for allowed base axioms from `lml-env.json`.
-- Every current-submission `Axiom` statement must have one matching proof entry
-  whose `Theorem` points to that statement.
+- The proof target may bottom out only in allowed base axioms from
+  `lml-env.json`.
 
-External theorem and declaration references use `SubmissionSlug`. The proof
-checker augments proof Lake files with required external statement-package
-dependencies when it can find matching `submissions.jsonl` rows.
+The target `axiom` may belong to this submission or to another submission; the
+leading namespace segment of its global name identifies the owning submission.
+When the target axiom belongs to another submission, the proof checker augments
+proof Lake files with the required external statement-package dependency when it
+can find a matching `submissions.jsonl` row.
 
 ## Final Proof Build
 
@@ -137,14 +137,10 @@ The final proof-build check copies the metadata-root package tree into an
 isolated directory, runs `lake update`, `lake clean`, a best-effort cache fetch,
 and `lake build`, then rejects build output reporting `sorry` or `sorryAx`.
 
-It then composes submitted proof targets in statement-dependency order using the
-proof entries' `DeclarationReferences`. Composed proof outputs may bottom out
-only in:
-
-- allowed base axioms listed in `lml-env.json`'s `checks.allowedMathlibAxioms`,
-  matched by Lean name and type; and
-- declared conjecture axioms, which are metadata proof entries with
-  `Type: reduction` and must also be listed as dependencies when used.
+It then composes each submitted proof target onto the statement axiom it
+discharges. Composed proof outputs may bottom out only in allowed base axioms
+listed in `lml-env.json`'s `checks.allowedMathlibAxioms`, matched by Lean name
+and type.
 
 The final checker attempts an additional `lean4checker` pass over the composed
 `.olean` output when `lean4checker` is available.

@@ -5,15 +5,17 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
 import YAML from "yaml";
+import lmlEnv from "../../../../lml-env.json" with { type: "json" };
 import { loadContext } from "./meta-context.mjs";
 import {
+  isLeanName,
   namespaceOfDeclaration,
   report,
   requireMeta
 } from "../common.mjs";
 
 const context = loadContext();
-const { metaText } = context;
+const { metaText, namespaceRoot } = context;
 const rawMeta = YAML.parse(metaText || "") ?? {};
 const errors = [];
 const warnings = [];
@@ -58,6 +60,25 @@ function formatSchemaError(error) {
 }
 
 function runRepositoryChecks() {
+  const pinnedLeanVersion = String(lmlEnv.lean?.version ?? "").trim();
+  const pinnedMathlibRevision = String(lmlEnv.baseImports?.Mathlib?.revision ?? "").trim();
+
+  if (rawMeta.leanVersion !== undefined) {
+    if (String(rawMeta.leanVersion).trim() !== pinnedLeanVersion) {
+      errors.push(
+        `leanVersion must match lml-env.json lean.version (${pinnedLeanVersion}), found ${rawMeta.leanVersion}`
+      );
+    }
+  }
+
+  if (rawMeta.mathlibVersion !== undefined) {
+    if (String(rawMeta.mathlibVersion).trim() !== pinnedMathlibRevision) {
+      errors.push(
+        `mathlibVersion must match lml-env.json baseImports.Mathlib.revision (${pinnedMathlibRevision}), found ${rawMeta.mathlibVersion}`
+      );
+    }
+  }
+
   const statements = rawMeta.statements ?? [];
   const statementByName = new Map();
   for (const entry of statements) {
@@ -75,19 +96,22 @@ function runRepositoryChecks() {
   }
 
   for (const proof of rawMeta.proofs ?? []) {
-    const label = proof.Name ?? proof.Theorem?.Name ?? "(unnamed proof)";
-    checkDeclarationReference(proof.Theorem, `Theorem in proof ${label}`);
-    if (proof.Theorem?.CurrentSubmission === true) {
-      const theoremEntry = statementByName.get(proof.Theorem?.Name);
-      if (!theoremEntry) {
-        errors.push(`proof entry ${label} does not match a metadata statement: ${proof.Theorem?.Name}`);
-      } else if (theoremEntry.Type !== "Axiom") {
-        errors.push(`proof entry ${label} must target an Axiom statement, found ${theoremEntry.Type}: ${proof.Theorem?.Name}`);
-      }
+    const label = proof.proof ?? proof.axiom ?? "(unnamed proof)";
+    if (!isLeanName(proof.axiom)) {
+      errors.push(`proof entry ${label} is missing a valid axiom name: ${proof.axiom ?? "(missing)"}`);
+      continue;
     }
-
-    for (const used of proof.DeclarationReferences ?? []) {
-      checkDeclarationReference(used, `DeclarationReferences item in proof ${label}`);
+    if (!isLeanName(proof.proof)) {
+      errors.push(`proof entry ${label} is missing a valid proof name: ${proof.proof ?? "(missing)"}`);
+      continue;
+    }
+    if (isLocalName(proof.axiom, namespaceRoot)) {
+      const statementEntry = statementByName.get(proof.axiom);
+      if (!statementEntry) {
+        errors.push(`proof entry ${label} targets a current-submission statement axiom not listed in metadata: ${proof.axiom}`);
+      } else if (statementEntry.Type !== "Axiom") {
+        errors.push(`proof entry ${label} must target an Axiom statement, found ${statementEntry.Type}: ${proof.axiom}`);
+      }
     }
   }
 
@@ -104,6 +128,13 @@ function runRepositoryChecks() {
       errors.push(`metadata contains suspicious token: ${suspicious}`);
     }
   }
+}
+
+function isLocalName(name, root) {
+  if (!root || !name) {
+    return false;
+  }
+  return name === root || name.startsWith(`${root}.`);
 }
 
 function checkDeclarationReference(reference, label) {

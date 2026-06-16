@@ -26,8 +26,8 @@ The model uses statement package terminology:
 - `Definition` entries introduce Lean `def`s.
 - `Axiom` entries introduce Lean `axiom`s; theorem declarations belong to proof
   artifacts, not statement files.
-- Proof artifacts discharge statements with `proof`, `conditional-proof`, or
-  `reduction` entries.
+- Proof artifacts discharge statement axioms; each proof entry names the target
+  statement axiom and the proof declaration that establishes it.
 
 Statement-package and proof-package presence is optional: a submission may have
 only a statement package, only a proof package, or both. When both are present,
@@ -47,10 +47,8 @@ shape. The schema uses:
 - `statementRoot`
 - `proofRoot`
 - `statements`
-- `proofs`
+- `proofs` (entries have only `axiom` and `proof`)
 - `Statement`
-- `Theorem`
-- `Proof`
 - `DeclarationReferences`
 - `CurrentSubmission`
 - `SubmissionSlug`
@@ -93,29 +91,22 @@ statements:
         Name: OtherSubmission.Statements.OtherStatement.other_statement
 ```
 
-Proof entries use structured theorem, proof, and declaration-reference records:
+Proof entries have exactly two fields, both global Lean names:
 
 ```yaml
 proofs:
-  - Name: MainStatementProof
-    Type: proof
-    Theorem:
-      CurrentSubmission: true
-      LeanStatement: statements/MainStatement.lean
-      LatexDefinition: statements/MainStatement.tex
-      Name: SubmissionSlug.Statements.MainStatement.main_statement
-    Proof:
-      File: proofs/MainStatementProof.lean
-      Name: SubmissionSlug.Proofs.MainStatement.main_statement
-    DeclarationReferences:
-      - SubmissionSlug: other-submission
-        LeanStatement: statements/OtherStatement.lean
-        LatexDefinition: statements/OtherStatement.tex
-        Name: OtherSubmission.Statements.OtherStatement.other_statement
+  - axiom: SubmissionSlug.Statements.MainStatement.main_statement
+    proof: SubmissionSlug.Proofs.MainStatement.main_statement
 ```
 
-`DeclarationReferences` metadata is supported on both statement and proof
-entries. Reference records must use exactly one of `CurrentSubmission: true` or
+`axiom` is the global name of the statement axiom the proof discharges, and
+`proof` is the global name of the proof declaration in this submission's proof
+package. The leading namespace segment of each name is the owning submission's
+slug in PascalCase, so the names are unique across submissions. The target
+`axiom` may belong to this submission or to another submission.
+
+`DeclarationReferences` metadata is supported on statement entries only.
+Reference records must use exactly one of `CurrentSubmission: true` or
 `SubmissionSlug`, plus `LeanStatement`, `LatexDefinition`, and `Name`.
 
 ## Needed Files And Packages
@@ -128,7 +119,8 @@ Package checks are conditional:
   contain `lakefile.lean` and `lean-toolchain`.
 - If a statement package is present, require each statement's Lean file and
   LaTeX file.
-- If a proof package is present, require each proof entry's `Proof.File`.
+- If a proof package is present, build it so each proof entry's `proof`
+  declaration resolves by name.
 - Lake build checks build only packages that are present.
 
 Do not require statement folders to be direct children of a fixed package
@@ -155,16 +147,11 @@ whitelist and rejects the explicitly forbidden syntax above.
 
 ## Dependency Model
 
-Check two dependency graphs:
-
-- declared dependencies from metadata, including proof-level
-  `DeclarationReferences` records;
-- actual dependencies from Lean axiom collection on proof terms.
-
-Declared dependencies must cover actual dependencies except for allowed base
-axioms. Build the axiom-remapping substitution from declared dependencies only.
-Do not use a global substitution; undeclared axioms should survive and be caught
-by the axiom gate.
+Each submitted proof must be a complete proof of its target statement axiom.
+Collect the actual Lean axiom dependencies of each proof term; they must bottom
+out only in allowed base axioms. A proof that depends on any other Lean Meta
+Library axiom (a statement axiom that is not its own target) is rejected by the
+axiom gate.
 
 Imported submission information comes from metadata files and
 `submissions.jsonl`. Import registry rows should preserve enough source
@@ -180,12 +167,9 @@ The current final proof build:
    `lake build`.
 3. Rejects build output that reports `sorry` or `sorryAx`.
 4. Builds a composed Lean module from metadata proof entries.
-5. Orders composition by statement dependencies listed in each proof entry's
-   `DeclarationReferences`.
-6. Rewrites declared proved statement dependencies to their composed constants.
-7. Accepts only allowed base axioms from `lml-env.json` by Lean name and type,
-   plus declared conjecture axioms from `Type: reduction` entries.
-8. Runs `lean4checker` over the composed `.olean` output when available.
+5. Composes each submitted proof target onto the statement axiom it discharges.
+6. Accepts only allowed base axioms from `lml-env.json` by Lean name and type.
+7. Runs `lean4checker` over the composed `.olean` output when available.
 
 The current implementation does not yet make trusted-base acceptance depend on
 source module/provenance.
@@ -237,8 +221,7 @@ it emits a term with extra axioms, the axiom gate must catch it.
 
 ## Axiom Gate
 
-Current behavior accepts configured base axioms by Lean name and type and
-accepts declared conjecture axioms from `Type: reduction` entries.
+Current behavior accepts configured base axioms by Lean name and type only.
 
 The target axiom gate must match trusted base axioms by name, type, and source
 module/provenance, not by name alone. The whitelist must be pinned to a
@@ -314,11 +297,9 @@ Future fixture work should add or strengthen coverage for:
 - submissions with only a statement package;
 - submissions with only a proof package;
 - rejection of statement theorem declarations;
-- proof-level `DeclarationReferences` with external imported submissions;
-- declared dependencies covering actual Lean axiom dependencies;
+- proofs that discharge an external submission's statement axiom by global name;
 - statement-level dependency DAG acyclicity;
-- axiom-gate matching by name, type, and source module;
-- final proof-build metadata dependency/conjecture comparison.
+- axiom-gate matching by name, type, and source module.
 
 ## Suggested Milestone
 
