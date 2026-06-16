@@ -16,7 +16,7 @@ const prepareChecks = runnerOptions.skipBuildCache ? [] : [
 const staticChecks = [
   "general/files-present.mjs",
   "statements/no-extra-files.mjs",
-  "general/metadata-check.mjs",
+  "general/manifest-check.mjs",
   "general/base-import-versions.mjs",
   "general/namespaces-correct.mjs",
   "general/folder-size.mjs",

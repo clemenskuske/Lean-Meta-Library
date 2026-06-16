@@ -5,10 +5,10 @@ import { lmlEnv } from "../lib/project-env.js";
 import { run } from "../lib/process.js";
 
 const cliRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
-const defaultMetadataPath = String(lmlEnv.submission?.defaultMetadataPath ?? "manifest.yaml");
+const defaultManifestPath = String(lmlEnv.submission?.defaultManifestPath ?? "manifest.yaml");
 
 export async function test({ args, cwd }) {
-  const metaPath = parseMetaArg(args, cwd);
+  const manifestPath = parseManifestArg(args, cwd);
 
   const workspaceRoot = findWorkspaceRoot(cwd) ?? join(cliRoot, "..");
   const runner = join(workspaceRoot, ".github/actions", "test", "run-all.mjs");
@@ -17,34 +17,34 @@ export async function test({ args, cwd }) {
     throw new Error(`Could not find submission test runner at ${runner}.`);
   }
 
-  validateMetaPath(metaPath);
-  run(process.execPath, [runner, `--meta=${metaPath}`], { cwd: workspaceRoot, stdio: "inherit" });
+  validateMetaPath(manifestPath);
+  run(process.execPath, [runner, `--manifest=${manifestPath}`], { cwd: workspaceRoot, stdio: "inherit" });
 }
 
-function parseMetaArg(args, cwd) {
+function parseManifestArg(args, cwd) {
   const positional = [];
-  let metaPath = null;
+  let manifestPath = null;
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
-    if (arg === "--meta") {
-      if (metaPath) {
-        throw new Error("Use one metadata file argument: lml test --meta=path/to/manifest.yaml");
+    if (arg === "--manifest") {
+      if (manifestPath) {
+        throw new Error("Use one manifest file argument: lml test --manifest=path/to/manifest.yaml");
       }
-      metaPath = args[index + 1];
+      manifestPath = args[index + 1];
       index += 1;
-      if (!metaPath) {
-        throw new Error("Missing metadata path after --meta.");
+      if (!manifestPath) {
+        throw new Error("Missing manifest path after --manifest.");
       }
       continue;
     }
-    if (arg.startsWith("--meta=")) {
-      if (metaPath) {
-        throw new Error("Use one metadata file argument: lml test --meta=path/to/manifest.yaml");
+    if (arg.startsWith("--manifest=")) {
+      if (manifestPath) {
+        throw new Error("Use one manifest file argument: lml test --manifest=path/to/manifest.yaml");
       }
-      metaPath = arg.slice("--meta=".length);
-      if (!metaPath) {
-        throw new Error("Missing metadata path after --meta=.");
+      manifestPath = arg.slice("--manifest=".length);
+      if (!manifestPath) {
+        throw new Error("Missing manifest path after --manifest=.");
       }
       continue;
     }
@@ -54,27 +54,27 @@ function parseMetaArg(args, cwd) {
     positional.push(arg);
   }
 
-  if (positional.length > 1 || (metaPath && positional.length > 0)) {
-    throw new Error("Use one metadata file argument: lml test --meta=path/to/manifest.yaml");
+  if (positional.length > 1 || (manifestPath && positional.length > 0)) {
+    throw new Error("Use one manifest file argument: lml test --manifest=path/to/manifest.yaml");
   }
 
-  const selected = metaPath ?? positional[0] ?? defaultMetadataPath;
+  const selected = manifestPath ?? positional[0] ?? defaultManifestPath;
   return resolveMetaArgument(cwd, selected);
 }
 
-function resolveMetaArgument(cwd, metaPath) {
-  return isAbsolute(metaPath) ? metaPath : resolve(cwd, metaPath);
+function resolveMetaArgument(cwd, manifestPath) {
+  return isAbsolute(manifestPath) ? manifestPath : resolve(cwd, manifestPath);
 }
 
-function validateMetaPath(metaPath) {
-  if (!/\.ya?ml$/i.test(metaPath)) {
-    throw new Error("Use a metadata .yaml or .yml file argument: lml test --meta=path/to/manifest.yaml");
+function validateMetaPath(manifestPath) {
+  if (!/\.ya?ml$/i.test(manifestPath)) {
+    throw new Error("Use a manifest .yaml or .yml file argument: lml test --manifest=path/to/manifest.yaml");
   }
-  if (!existsSync(metaPath)) {
-    throw new Error(`Metadata file not found: ${metaPath}`);
+  if (!existsSync(manifestPath)) {
+    throw new Error(`Metadata file not found: ${manifestPath}`);
   }
-  if (!statSync(metaPath).isFile()) {
-    throw new Error(`Metadata path must be a file: ${metaPath}`);
+  if (!statSync(manifestPath).isFile()) {
+    throw new Error(`Metadata path must be a file: ${manifestPath}`);
   }
 }
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// Uses Lean to verify that each metadata statement file introduces exactly one simple declaration.
+// Uses Lean to verify that each manifest statement file introduces exactly one simple declaration.
 // The check diffs the environment before and after importing the module, so hidden public, private, generated, or instance declarations are rejected.
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { loadContext } from "../general/meta-context.mjs";
+import { loadContext } from "../general/manifest-context.mjs";
 import {
   readIfExists,
   report,
@@ -14,11 +14,11 @@ import { inspectIntroducedDeclarations, isLeanName } from "../lean-inspect.mjs";
 import { parseLeanImports } from "../lean-imports.mjs";
 import { ensurePreparedLakePackage } from "../general/prepare-lake-package.mjs";
 
-const { packageRoot, meta } = loadContext();
+const { packageRoot, manifest } = loadContext();
 const errors = [];
 const warnings = [];
-const statements = Array.isArray(meta.statements) ? meta.statements : [];
-const stmtPkgRoot = statementPackageRoot(meta);
+const statements = Array.isArray(manifest.statements) ? manifest.statements : [];
+const stmtPkgRoot = statementPackageRoot(manifest);
 const statementRoot = stmtPkgRoot ? resolve(packageRoot, stmtPkgRoot) : null;
 ensurePreparedLakePackage({
   packageRoot,
@@ -121,8 +121,8 @@ function isDirectChildOf(name, namespace) {
   return suffix.length > 0 && !suffix.includes(".");
 }
 
-function isPrimaryDeclarationForEntry(name, metadataName) {
-  return name === metadataName || isDirectChildOf(name, metadataName);
+function isPrimaryDeclarationForEntry(name, manifestName) {
+  return name === manifestName || isDirectChildOf(name, manifestName);
 }
 
 function allowedKindForEntry(type, kind) {

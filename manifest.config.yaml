@@ -1,6 +1,6 @@
 $schema: "https://json-schema.org/draft/2020-12/schema"
 $id: "https://lean-meta-library.local/schemas/manifest.config.yaml"
-title: "Lean Meta Library metadata"
+title: "Lean Meta Library manifest"
 description: >
   Schema for Lean Meta Library manifest.yaml files. Fields marked as created
   fields are populated by tooling/workflows rather than supplied by the initial
@@ -171,7 +171,7 @@ $defs:
         - pattern: "\\|\\|"
         - pattern: "[<>]"
     description: >
-      Plain ASCII text accepted by the metadata checkers. Rejects suspicious
+      Plain ASCII text accepted by the manifest checkers. Rejects suspicious
       shell tokens such as backticks, command substitutions, shell separators,
       and angle brackets.
 

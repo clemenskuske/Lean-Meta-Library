@@ -1,36 +1,36 @@
 #!/usr/bin/env node
-// Checks that submitted package and metadata names use the namespace implied by submissionSlug.
+// Checks that submitted package and manifest names use the namespace implied by submissionSlug.
 import { resolve } from "node:path";
-import { loadContext } from "./meta-context.mjs";
+import { loadContext } from "./manifest-context.mjs";
 import {
   isLeanName,
-  metadataPackageSlug,
+  manifestPackageSlug,
   proofPackageRoot,
   report,
-  requireMeta,
+  requireManifest,
   statementPackageRoot
 } from "../common.mjs";
 import { hasLeanLib, lakeDependencies, loadLakeConfig } from "../lake-config.mjs";
 
 const context = loadContext();
-const { packageRoot, meta, namespaceRoot } = context;
+const { packageRoot, manifest, namespaceRoot } = context;
 const errors = [];
-const stmtRootFolder = statementPackageRoot(meta);
-const pRootFolder = proofPackageRoot(meta);
+const stmtRootFolder = statementPackageRoot(manifest);
+const pRootFolder = proofPackageRoot(manifest);
 const statementRoot = stmtRootFolder ? resolve(packageRoot, stmtRootFolder) : null;
 const proofRoot = pRootFolder ? resolve(packageRoot, pRootFolder) : null;
 
 const statementLakeConfig = statementRoot ? loadLakeConfig(statementRoot, "statement lakefile", errors) : null;
 const proofLakeConfig = proofRoot ? loadLakeConfig(proofRoot, "proof lakefile", errors) : null;
 
-requireMeta(context, errors);
+requireManifest(context, errors);
 
 if (!namespaceRoot) {
-  errors.push("could not infer namespace root from metadata");
+  errors.push("could not infer namespace root from manifest");
 }
 
-if (!metadataPackageSlug(meta)) {
-  errors.push("metadata must define submissionSlug for namespace checks");
+if (!manifestPackageSlug(manifest)) {
+  errors.push("manifest must define submissionSlug for namespace checks");
 }
 
 checkStatementLakefile(statementLakeConfig);
@@ -68,13 +68,13 @@ function checkStatementLakefile(config) {
 }
 
 function checkStatementMetadataNames() {
-  for (const entry of meta.statements ?? []) {
+  for (const entry of manifest.statements ?? []) {
     const statementName = entry.Statement?.Name;
     if (!statementName) {
       continue;
     }
     if (!isLeanName(statementName)) {
-      errors.push(`statement metadata entry is missing a valid Statement.Name: ${statementName}`);
+      errors.push(`statement manifest entry is missing a valid Statement.Name: ${statementName}`);
       continue;
     }
     if (namespaceRoot && !statementName.startsWith(`${namespaceRoot}.`)) {
@@ -84,10 +84,10 @@ function checkStatementMetadataNames() {
 }
 
 function checkProofMetadataNames() {
-  for (const proof of meta.proofs ?? []) {
+  for (const proof of manifest.proofs ?? []) {
     const proofName = proof.proof;
     if (!isLeanName(proofName)) {
-      errors.push(`proof metadata entry is missing a valid proof name: ${proofName ?? "(missing)"}`);
+      errors.push(`proof manifest entry is missing a valid proof name: ${proofName ?? "(missing)"}`);
       continue;
     }
     if (namespaceRoot && !proofName.startsWith(`${namespaceRoot}.`)) {

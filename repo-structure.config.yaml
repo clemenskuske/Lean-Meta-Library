@@ -4,21 +4,21 @@ title: "Lean Meta Library import submission structure"
 description: >
   Self-contained description of the expected file layout for a source
   repository submitted to the Lean Meta Library import workflow. The structure
-  is rooted at the directory containing the submission metadata file.
+  is rooted at the directory containing the submission manifest file.
 
 root:
   role: import-submission-root
-  description: "Directory containing the submission metadata file."
+  description: "Directory containing the submission manifest file."
   files:
-    metadata:
+    manifest:
       fileName: manifest.yaml
       required: true
       mayAlsoBeNamed:
         - manifest.yml
       schema: manifest.config.yaml
       description: >
-        Submission metadata. The import workflow may receive a different
-        repository-relative metadata path, but the default root metadata file is
+        Submission manifest. The import workflow may receive a different
+        repository-relative manifest path, but the default root manifest file is
         manifest.yaml.
 
     abstract:
@@ -38,7 +38,7 @@ root:
       description: >
         Statement package folder. This package publishes public Definition and
         Axiom entries for the submission. The folder path is given directly by
-        the statementRoot metadata field.
+        the statementRoot manifest field.
       files:
         lakefile:
           pathInFolder: "lakefile.lean"
@@ -46,7 +46,7 @@ root:
           description: "Lake file for the statement package."
           expectedContent:
             - "Defines the statement-side Lake package or library."
-            - "Builds every statement Lean file listed in metadata."
+            - "Builds every statement Lean file listed in manifest."
             - "Includes all listed statement files in one shared statement library."
         leanToolchain:
           pathInFolder: "lean-toolchain"
@@ -65,10 +65,10 @@ root:
             required: true
             description: "Lean file containing the public statement declaration."
             expectedContent:
-              - "For Type: Definition, introduces the metadata declaration as one Lean def."
-              - "For Type: Axiom, introduces the metadata declaration as one Lean axiom."
+              - "For Type: Definition, introduces the manifest declaration as one Lean def."
+              - "For Type: Axiom, introduces the manifest declaration as one Lean axiom."
               - "Axiom entries must not be theorem declarations."
-              - "Statement files should not introduce extra public declarations beyond the metadata-listed declaration."
+              - "Statement files should not introduce extra public declarations beyond the manifest-listed declaration."
               - "Imports should be limited to Mathlib modules, Std modules, local statement modules, and authorized imported packages."
 
           latexFile:
@@ -86,7 +86,7 @@ root:
       description: >
         Proof package folder. This package contains the proof declarations that
         discharge statement Axiom entries. The folder path is given directly by
-        the proofRoot metadata field. Use "." when the proof package lives at the
+        the proofRoot manifest field. Use "." when the proof package lives at the
         submission root.
       files:
         lakefile:
@@ -106,7 +106,7 @@ root:
         arrayFromMetadata: proofs
         nameFromMetadata: proofs[].proof
         required: true
-        description: "Each proofs[].proof names a proof declaration resolved by name in the built proof package; its source file is package content and is not enumerated in metadata."
+        description: "Each proofs[].proof names a proof declaration resolved by name in the built proof package; its source file is package content and is not enumerated in manifest."
         expectedContent:
           - "Some Lean file in the package defines a declaration whose global name is proofs[].proof."
           - "The proof declaration's type must be definitionally equal to the type of the proofs[].axiom declaration it discharges."
@@ -114,8 +114,8 @@ root:
           - "Imports should be limited to Mathlib modules, Std modules, local submission modules, and authorized imported packages."
 
 relationships:
-  metadataControlsLayout:
-    - "The metadata file is the source of all non-default repository-relative paths."
+  manifestControlsLayout:
+    - "The manifest file is the source of all non-default repository-relative paths."
     - "abstractPath locates the abstract file from the root."
     - "statementRoot is the repository-relative path to the statement package folder; lakefile.lean and lean-toolchain must exist inside it."
     - "proofRoot is the repository-relative path to the proof package folder; lakefile.lean and lean-toolchain must exist inside it."
@@ -137,7 +137,7 @@ relationships:
     - "DeclarationReferences are supported on statement entries."
 
 filePolicy:
-  appliesTo: whole-repository-subtree-below-metadata-file
+  appliesTo: whole-repository-subtree-below-manifest-file
   allowedExtensionsFrom: "lml-env.json#/submission/allowedFileExtensions"
   allowedExtensionlessFilesFrom: "lml-env.json#/submission/allowedExtensionlessFiles"
   disallowedFiles:
@@ -149,21 +149,21 @@ filePolicy:
 
 buildAndCheckPolicy:
   packagePreparation:
-    - "Prepare and build only packages that are present according to metadata."
+    - "Prepare and build only packages that are present according to manifest."
     - "Lake update and build failures reject the submission."
     - "Cache fetch is best-effort and may warn without rejecting the submission."
   firstRunChecks:
-    - "Validate metadata against manifest.config.yaml before repository-aware checks."
-    - "Check that every metadata-listed repository-local file exists."
-    - "Check that statement package files match metadata exactly."
+    - "Validate manifest against manifest.config.yaml before repository-aware checks."
+    - "Check that every manifest-listed repository-local file exists."
+    - "Check that statement package files match manifest exactly."
     - "Check allowed file extensions and extensionless filenames from lml-env.json."
     - "Check Lean imports against the allowed import and declared dependency policy."
     - "Check statement declarations with Lean inspection."
     - "Check proof declarations, definitional equality, axioms, and sorry usage with Lean inspection."
   finalProofBuildTarget:
-    - "Copy the metadata-root package tree into isolation."
+    - "Copy the manifest-root package tree into isolation."
     - "Run lake update, lake clean, best-effort cache fetch, and lake build."
     - "Reject build output that reports sorry or sorryAx."
-    - "Compose submitted proof targets using metadata DeclarationReferences."
+    - "Compose submitted proof targets using manifest DeclarationReferences."
     - "Accepted composed proofs bottom out only in allowed base axioms and declared conjectures."
-    - "Remaining target work: recursively follow imported submission metadata, rewrite proved dependency statements to proof counterparts, and compare computed dependency/conjecture information to metadata."
+    - "Remaining target work: recursively follow imported submission manifest, rewrite proved dependency statements to proof counterparts, and compare computed dependency/conjecture information to manifest."

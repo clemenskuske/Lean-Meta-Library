@@ -5,31 +5,31 @@ import { ensureAuthenticated } from "../lib/github-auth.js";
 import { ensureGitHubCli } from "../lib/github-cli.js";
 import { lmlEnv } from "../lib/project-env.js";
 import { run } from "../lib/process.js";
-import { parseMetaYaml } from "../../../.github/actions/test/common.mjs";
+import { parseManifestYaml } from "../../../.github/actions/test/common.mjs";
 
-const defaultMetadataPath = String(lmlEnv.submission?.defaultMetadataPath ?? "manifest.yaml");
+const defaultManifestPath = String(lmlEnv.submission?.defaultManifestPath ?? "manifest.yaml");
 
 export async function submissionStatus({ args, cwd }) {
-  const metaPath = parseArgs(args, cwd);
+  const manifestPath = parseArgs(args, cwd);
   const repoRoot = run("git", ["rev-parse", "--show-toplevel"], { cwd });
 
-  if (!existsSync(metaPath)) {
-    throw new Error(`Metadata file not found: ${metaPath}.`);
+  if (!existsSync(manifestPath)) {
+    throw new Error(`Metadata file not found: ${manifestPath}.`);
   }
-  if (!statSync(metaPath).isFile()) {
-    throw new Error(`Metadata path must be a file: ${metaPath}.`);
+  if (!statSync(manifestPath).isFile()) {
+    throw new Error(`Metadata path must be a file: ${manifestPath}.`);
   }
-  if (!isMetadataFile(metaPath)) {
-    throw new Error("Use a metadata .yaml or .yml file argument: lml submission-status path/to/manifest.yaml");
+  if (!isManifestFile(manifestPath)) {
+    throw new Error("Use a manifest .yaml or .yml file argument: lml submission-status path/to/manifest.yaml");
   }
 
-  const metaRelPath = toRepoRelativePath(repoRoot, metaPath);
-  const metaText = readFileSync(metaPath, "utf8");
-  const meta = parseMetaYaml(metaText);
+  const manifestRelPath = toRepoRelativePath(repoRoot, manifestPath);
+  const manifestText = readFileSync(manifestPath, "utf8");
+  const manifest = parseManifestYaml(manifestText);
   const repo = githubRepo(repoRoot);
   const branch = currentBranch(repoRoot);
   const headCommit = run("git", ["rev-parse", "HEAD"], { cwd: repoRoot });
-  const issueNumber = stringValue(meta.submissionIssueNumber);
+  const issueNumber = stringValue(manifest.submissionIssueNumber);
 
   let issue = null;
   let issueFields = {};
@@ -51,13 +51,13 @@ export async function submissionStatus({ args, cwd }) {
   }
 
   const sourceCommit = issueFields["Source Commit"] ?? null;
-  const imported = importedSubmission({ repoRoot, issueNumber, sourceCommit, metaRelPath });
+  const imported = importedSubmission({ repoRoot, issueNumber, sourceCommit, manifestRelPath });
   const comparison = sourceCommit
-    ? compareWithSourceCommit({ repoRoot, metaRelPath, sourceCommit, currentMeta: meta })
+    ? compareWithSourceCommit({ repoRoot, manifestRelPath, sourceCommit, currentManifest: manifest })
     : null;
 
   printStatus({
-    metaRelPath,
+    manifestRelPath,
     issue,
     issueNumber,
     imported,
@@ -77,16 +77,16 @@ function parseArgs(args, cwd) {
     positional.push(arg);
   }
   if (positional.length > 1) {
-    throw new Error("Use one metadata file argument: lml submission-status path/to/manifest.yaml");
+    throw new Error("Use one manifest file argument: lml submission-status path/to/manifest.yaml");
   }
-  return resolveMetaArgument(cwd, positional[0] ?? defaultMetadataPath);
+  return resolveMetaArgument(cwd, positional[0] ?? defaultManifestPath);
 }
 
-function resolveMetaArgument(cwd, metaPath) {
-  return isAbsolute(metaPath) ? metaPath : resolve(cwd, metaPath);
+function resolveMetaArgument(cwd, manifestPath) {
+  return isAbsolute(manifestPath) ? manifestPath : resolve(cwd, manifestPath);
 }
 
-function isMetadataFile(path) {
+function isManifestFile(path) {
   return /\.ya?ml$/i.test(path);
 }
 
@@ -229,7 +229,7 @@ function importRunStatus(repo, runInfo) {
   const detail = ghJsonOptional(["run", "view", String(runInfo.databaseId), "--repo", repo, "--json", "jobs,status,conclusion,url"]);
   const jobs = detail?.jobs ?? [];
   const checkJob = jobs.find((job) => job.name === "Check submitted package");
-  const importJob = jobs.find((job) => job.name === "Import submission metadata");
+  const importJob = jobs.find((job) => job.name === "Import submission manifest");
 
   if (isActiveJob(checkJob)) {
     return runStatus("test", runInfo, "import-submission.yml");
@@ -265,7 +265,7 @@ function isActiveJob(job) {
   return job && ["queued", "in_progress", "waiting", "requested", "pending"].includes(job.status);
 }
 
-function importedSubmission({ repoRoot, issueNumber, sourceCommit, metaRelPath }) {
+function importedSubmission({ repoRoot, issueNumber, sourceCommit, manifestRelPath }) {
   const path = join(repoRoot, "submissions.jsonl");
   if (!existsSync(path)) {
     return { imported: false, row: null };
@@ -279,13 +279,13 @@ function importedSubmission({ repoRoot, issueNumber, sourceCommit, metaRelPath }
 
   const row =
     rows.find((item) => issueNumber && String(item["Issue Number"] ?? "") === String(issueNumber)) ??
-    rows.find((item) => sourceCommit && item["Source Commit"] === sourceCommit && item["Metadata File"] === metaRelPath) ??
+    rows.find((item) => sourceCommit && item["Source Commit"] === sourceCommit && item["Manifest File"] === manifestRelPath) ??
     null;
 
   return { imported: Boolean(row), row };
 }
 
-function compareWithSourceCommit({ repoRoot, metaRelPath, sourceCommit, currentMeta }) {
+function compareWithSourceCommit({ repoRoot, manifestRelPath, sourceCommit, currentManifest }) {
   if (!commitExists(repoRoot, sourceCommit)) {
     return { available: false, reason: `source commit ${sourceCommit} is not available locally` };
   }
@@ -296,9 +296,9 @@ function compareWithSourceCommit({ repoRoot, metaRelPath, sourceCommit, currentM
   const headTimestamp = Number(run("git", ["show", "-s", "--format=%ct", "HEAD"], { cwd: repoRoot }));
   const days = Math.max(0, Math.floor((headTimestamp - sourceTimestamp) / 86400));
   const shortstat = optionalGit(repoRoot, ["diff", "--shortstat", `${sourceCommit}..HEAD`]) || "no committed file changes";
-  const packageRelRoot = dirname(metaRelPath).replace(/^\.$/, "");
-  const dirty = optionalGit(repoRoot, ["status", "--short", "--", metaRelPath, ...currentStatementFiles(currentMeta, packageRelRoot)]);
-  const statements = compareStatementFiles({ repoRoot, metaRelPath, sourceCommit, currentMeta });
+  const packageRelRoot = dirname(manifestRelPath).replace(/^\.$/, "");
+  const dirty = optionalGit(repoRoot, ["status", "--short", "--", manifestRelPath, ...currentStatementFiles(currentManifest, packageRelRoot)]);
+  const statements = compareStatementFiles({ repoRoot, manifestRelPath, sourceCommit, currentManifest });
 
   return {
     available: true,
@@ -330,11 +330,11 @@ function optionalGit(repoRoot, args) {
   return result.stdout.trim();
 }
 
-function compareStatementFiles({ repoRoot, metaRelPath, sourceCommit, currentMeta }) {
-  const usedMetaText = optionalGit(repoRoot, ["show", `${sourceCommit}:${metaRelPath}`]);
-  const usedMeta = usedMetaText ? parseMetaYaml(usedMetaText) : { declarations: [] };
-  const packageRelRoot = dirname(metaRelPath).replace(/^\.$/, "");
-  const currentFiles = currentStatementFiles(currentMeta, packageRelRoot);
+function compareStatementFiles({ repoRoot, manifestRelPath, sourceCommit, currentManifest }) {
+  const usedManifestText = optionalGit(repoRoot, ["show", `${sourceCommit}:${manifestRelPath}`]);
+  const usedMeta = usedManifestText ? parseManifestYaml(usedManifestText) : { declarations: [] };
+  const packageRelRoot = dirname(manifestRelPath).replace(/^\.$/, "");
+  const currentFiles = currentStatementFiles(currentManifest, packageRelRoot);
   const usedFiles = currentStatementFiles(usedMeta, packageRelRoot);
   const currentSet = new Set(currentFiles);
   const usedSet = new Set(usedFiles);
@@ -358,8 +358,8 @@ function compareStatementFiles({ repoRoot, metaRelPath, sourceCommit, currentMet
   };
 }
 
-function currentStatementFiles(meta, packageRelRoot = "") {
-  return [...new Set((meta.statements ?? []).map((entry) => statementFileForEntry(entry, packageRelRoot)).filter(Boolean))];
+function currentStatementFiles(manifest, packageRelRoot = "") {
+  return [...new Set((manifest.statements ?? []).map((entry) => statementFileForEntry(entry, packageRelRoot)).filter(Boolean))];
 }
 
 function statementFileForEntry(entry, packageRelRoot) {
@@ -367,8 +367,8 @@ function statementFileForEntry(entry, packageRelRoot) {
   return file ? posix.join(packageRelRoot, file.replace(/^\.\/+/, "")) : null;
 }
 
-function printStatus({ metaRelPath, issue, issueNumber, imported, workflow, sourceCommit, headCommit, comparison }) {
-  console.log(`Submission status for ${metaRelPath}`);
+function printStatus({ manifestRelPath, issue, issueNumber, imported, workflow, sourceCommit, headCommit, comparison }) {
+  console.log(`Submission status for ${manifestRelPath}`);
   console.log(`Submitted: ${issueNumber ? `yes (#${issueNumber}${issue?.url ? `, ${issue.url}` : ""})` : "no"}`);
   console.log(`Imported: ${imported.imported ? "yes" : "no"}`);
 
@@ -397,7 +397,7 @@ function printStatus({ metaRelPath, issue, issueNumber, imported, workflow, sour
   );
   console.log(`Changes since source commit: ${comparison.shortstat}`);
   if (comparison.dirty) {
-    console.log("Uncommitted metadata/statement changes:");
+    console.log("Uncommitted manifest/statement changes:");
     console.log(indent(comparison.dirty));
   }
 

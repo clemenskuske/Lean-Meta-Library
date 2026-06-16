@@ -3,19 +3,19 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import lmlEnv from "../../../../lml-env.json" with { type: "json" };
-import { loadContext } from "./meta-context.mjs";
+import { loadContext } from "./manifest-context.mjs";
 import { report } from "../common.mjs";
 
-const { packageRoot, meta } = loadContext();
+const { packageRoot, manifest } = loadContext();
 const errors = [];
 const allowedLicenseIdentifiers = lmlEnv.submission?.allowedLicenseIdentifiers ?? [];
 
-if (!meta.licensePath) {
-  errors.push("licensePath is missing from metadata: submission must include a license file");
+if (!manifest.licensePath) {
+  errors.push("licensePath is missing from manifest: submission must include a license file");
 } else {
-  const absolute = join(packageRoot, meta.licensePath);
+  const absolute = join(packageRoot, manifest.licensePath);
   if (!existsSync(absolute)) {
-    errors.push(`license file missing: ${meta.licensePath}`);
+    errors.push(`license file missing: ${manifest.licensePath}`);
   } else {
     const content = readFileSync(absolute, "utf8");
     const recognized = allowedLicenseIdentifiers.some((id) => content.includes(id));

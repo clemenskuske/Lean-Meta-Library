@@ -1,18 +1,18 @@
-// Adds statement-package dependencies needed by proof metadata before building proofs.
+// Adds statement-package dependencies needed by proof manifest before building proofs.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { extname, join, resolve } from "node:path";
 import { validateSubmissionRow } from "../../submission-schema.mjs";
 import { proofPackageRoot } from "../common.mjs";
-import { slugToPascal } from "../general/meta-context.mjs";
+import { slugToPascal } from "../general/manifest-context.mjs";
 
-export function augmentProofLakefile({ packageRoot, meta, errors, warnings }) {
-  const pRoot = proofPackageRoot(meta);
+export function augmentProofLakefile({ packageRoot, manifest, errors, warnings }) {
+  const pRoot = proofPackageRoot(manifest);
   if (!pRoot) {
     return;
   }
   const lakefilePath = join(pRoot, "lakefile.lean");
 
-  const required = referencedStatementPackages(meta);
+  const required = referencedStatementPackages(manifest);
   if (required.length === 0) {
     return;
   }
@@ -55,11 +55,11 @@ export function augmentProofLakefile({ packageRoot, meta, errors, warnings }) {
   warnings.push(`added proof lakefile statement dependencies: ${additions.map((item) => item.name).join(", ")}`);
 }
 
-function referencedStatementPackages(meta) {
-  const namespaceRoot = meta.submissionSlug ? slugToPascal(meta.submissionSlug) : null;
+function referencedStatementPackages(manifest) {
+  const namespaceRoot = manifest.submissionSlug ? slugToPascal(manifest.submissionSlug) : null;
   const packages = new Set();
 
-  for (const proof of meta.proofs ?? []) {
+  for (const proof of manifest.proofs ?? []) {
     const statementPackage = statementPackageForAxiom(proof?.axiom, namespaceRoot);
     if (statementPackage) {
       packages.add(statementPackage);

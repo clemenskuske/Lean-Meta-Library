@@ -16,13 +16,13 @@ locally without downloading Mathlib.
 | `build-packages-failure-package` | `proofs/prepare-build-cache.mjs` | The proof package contains an unknown identifier, so its Lean build fails; the proof build-cache preparation step must reject the `lake build`. |
 | `prepare-build-cache-failure-package` | `statements/prepare-build-cache.mjs` | The statement package fails to compile during preparation; the statement build-cache step must report the failed `lake build`. |
 
-## Files and metadata integrity
+## Files and manifest integrity
 
 | Fixture Package | Checker | What It Tests |
 |----------------|---------|---------------|
 | `missing-proof-file-package` | `proofs/type-matches-statements.mjs` | The manifest names a `proof` declaration whose source file is absent from the proof package; the package fails to build and the proof declaration cannot be resolved by name. |
-| `metadata-disk-state-failure-package` | `statements/no-extra-files.mjs` | A statement Lean file exists on disk but is not listed in the manifest; the check must report the undeclared file. |
-| `metadata-check-failure-package` | `general/metadata-check.mjs` | The manifest violates the schema (missing required `bibtex-entries`, or an unexpected extra property); the schema validator must reject it. |
+| `manifest-disk-state-failure-package` | `statements/no-extra-files.mjs` | A statement Lean file exists on disk but is not listed in the manifest; the check must report the undeclared file. |
+| `manifest-check-failure-package` | `general/manifest-check.mjs` | The manifest violates the schema (missing required `bibtex-entries`, or an unexpected extra property); the schema validator must reject it. |
 
 ## Submission policy
 
@@ -55,4 +55,4 @@ locally without downloading Mathlib.
 | Fixture Package | Checker | What It Tests |
 |----------------|---------|---------------|
 | `final-proof-build-failure-package` | `final-proof-build.mjs` | The final proof composition leaves a forbidden proof-side axiom; the final build step must reject the composed build. |
-| `unused-sorry-proof-package` | `final-proof-build.mjs` | A non-metadata proof module is proved with `sorry`; the final build checker must reject the build output even though the submitted proof target does not depend on it. |
+| `unused-sorry-proof-package` | `final-proof-build.mjs` | A non-manifest proof module is proved with `sorry`; the final build checker must reject the build output even though the submitted proof target does not depend on it. |

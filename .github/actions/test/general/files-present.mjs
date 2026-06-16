@@ -2,31 +2,31 @@
 // Verifies that every repository-relative path named by manifest.config.yaml fields exists on disk.
 import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { loadContext } from "./meta-context.mjs";
-import { report, requireMeta, statementPackageRoot, proofPackageRoot } from "../common.mjs";
+import { loadContext } from "./manifest-context.mjs";
+import { report, requireManifest, statementPackageRoot, proofPackageRoot } from "../common.mjs";
 
 const context = loadContext();
-const { packageRoot, meta } = context;
+const { packageRoot, manifest } = context;
 const errors = [];
 
-requireMeta(context, errors);
+requireManifest(context, errors);
 
-checkPath(meta.abstractPath, "abstractPath");
-checkPath(meta.licensePath, "licensePath");
+checkPath(manifest.abstractPath, "abstractPath");
+checkPath(manifest.licensePath, "licensePath");
 
-const stmtRoot = statementPackageRoot(meta);
+const stmtRoot = statementPackageRoot(manifest);
 if (stmtRoot) {
   checkFile(join(stmtRoot, "lakefile.lean"), "statementRoot/lakefile.lean");
   checkFile(join(stmtRoot, "lean-toolchain"), "statementRoot/lean-toolchain");
 }
 
-const pRoot = proofPackageRoot(meta);
+const pRoot = proofPackageRoot(manifest);
 if (pRoot) {
   checkFile(join(pRoot, "lakefile.lean"), "proofRoot/lakefile.lean");
   checkFile(join(pRoot, "lean-toolchain"), "proofRoot/lean-toolchain");
 }
 
-for (const statement of meta.statements ?? []) {
+for (const statement of manifest.statements ?? []) {
   const label = statement.Name ?? statement.Statement?.Name ?? "(unknown statement)";
   checkDeclarationReference(statement.Statement, `statement ${label} Statement`);
   for (const [index, reference] of (statement.DeclarationReferences ?? []).entries()) {
@@ -65,4 +65,4 @@ function checkFile(relativeTo, label) {
   }
 }
 
-report("metadata files present", errors);
+report("manifest files present", errors);

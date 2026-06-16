@@ -15,7 +15,7 @@ import {
 import { tmpdir } from "node:os";
 import { basename, delimiter, join, relative, sep } from "node:path";
 import lmlEnv from "../../../lml-env.json" with { type: "json" };
-import { loadContext } from "./general/meta-context.mjs";
+import { loadContext } from "./general/manifest-context.mjs";
 import {
   maxBuildOutputBytes,
   report,
@@ -27,8 +27,8 @@ const errors = [];
 const warnings = [];
 const tmpRoot = mkdtempSync(join(tmpdir(), "lml-final-proof-build-"));
 const isolatedPackageRoot = join(tmpRoot, "package");
-const isolatedStatementRoot = context.meta.statementRoot
-  ? join(isolatedPackageRoot, context.meta.statementRoot)
+const isolatedStatementRoot = context.manifest.statementRoot
+  ? join(isolatedPackageRoot, context.manifest.statementRoot)
   : null;
 const keepTemp = process.env.LML_KEEP_FINAL_PROOF_BUILD_TMP === "1";
 const configuredAllowedMathlibAxioms = (lmlEnv.checks?.allowedMathlibAxioms ?? []).map(String);
@@ -222,7 +222,7 @@ function checkCompiledAxioms() {
 }
 
 function proofCompositionTargets() {
-  return (context.meta.proofs ?? [])
+  return (context.manifest.proofs ?? [])
     .map((proof) => {
       const statement = proof?.axiom ?? null;
       const proofTarget = proof?.proof ?? null;

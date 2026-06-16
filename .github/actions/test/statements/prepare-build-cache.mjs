@@ -2,14 +2,14 @@
 // Prepares the submitted statement package before statement-facing checks run.
 // Cache fetch is best-effort, but Lake update and package build must pass.
 import { join } from "node:path";
-import { loadContext } from "../general/meta-context.mjs";
+import { loadContext } from "../general/manifest-context.mjs";
 import { ensurePreparedLakePackage } from "../general/prepare-lake-package.mjs";
 import { report, statementPackageRoot } from "../common.mjs";
 
-const { packageRoot, meta } = loadContext();
+const { packageRoot, manifest } = loadContext();
 const errors = [];
 const warnings = [];
-const stmtRoot = statementPackageRoot(meta);
+const stmtRoot = statementPackageRoot(manifest);
 
 ensurePreparedLakePackage({
   packageRoot,

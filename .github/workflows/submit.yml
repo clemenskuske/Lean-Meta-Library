@@ -3,15 +3,15 @@ name: Submit
 on:
   workflow_dispatch:
     inputs:
-      meta_path:
-        description: Path to the submission metadata file.
+      manifest_path:
+        description: Path to the submission manifest file.
         required: false
         default: manifest.yaml
         type: string
   workflow_call:
     inputs:
-      meta_path:
-        description: Path to the submission metadata file.
+      manifest_path:
+        description: Path to the submission manifest file.
         required: false
         default: manifest.yaml
         type: string
@@ -45,7 +45,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_SERVER_URL: ${{ github.server_url }}
-          META_PATH: ${{ inputs.meta_path }}
+          MANIFEST_PATH: ${{ inputs.manifest_path }}
           SOURCE_BRANCH: ${{ github.ref_name }}
           SOURCE_COMMIT: ${{ github.sha }}
           SUBMITTER_ID: ${{ github.actor_id }}
@@ -59,8 +59,8 @@ jobs:
           const repository = process.env.GITHUB_REPOSITORY;
           const serverUrl = process.env.GITHUB_SERVER_URL;
           const lmlEnv = JSON.parse(readFileSync("lml-env.json", "utf8"));
-          const defaultMetadataPath = lmlEnv.submission?.defaultMetadataPath ?? "manifest.yaml";
-          const metaPath = process.env.META_PATH || defaultMetadataPath;
+          const defaultManifestPath = lmlEnv.submission?.defaultManifestPath ?? "manifest.yaml";
+          const manifestPath = process.env.MANIFEST_PATH || defaultManifestPath;
           const sourceBranch = process.env.SOURCE_BRANCH;
           const sourceCommit = process.env.SOURCE_COMMIT;
           const submitterLogin = process.env.SUBMITTER_LOGIN;
@@ -82,21 +82,21 @@ jobs:
             if (!token) {
               throw new Error("GITHUB_TOKEN is required.");
             }
-            if (!existsSync(metaPath)) {
-              throw new Error(`Metadata file not found: ${resolve(metaPath)}`);
+            if (!existsSync(manifestPath)) {
+              throw new Error(`manifest file not found: ${resolve(manifestPath)}`);
             }
 
-            let metaText = readFileSync(metaPath, "utf8");
-            const issueNumberValue = readTopLevelScalar(metaText, issueNumberField);
+            let manifestText = readFileSync(manifestPath, "utf8");
+            const issueNumberValue = readTopLevelScalar(manifestText, issueNumberField);
             const issueNumber = issueNumberValue ? Number.parseInt(issueNumberValue, 10) : null;
-            const submissionTitle = readTopLevelScalar(metaText, "submissionTitle");
-            const submissionSlug = readTopLevelScalar(metaText, "submissionSlug");
-            const packageSlug = readTopLevelScalar(metaText, "packageSlug");
-            const paperTitle = readTopLevelScalar(metaText, "paperTitle");
-            const namespaceSlug = readTopLevelScalar(metaText, "namespaceSlug");
-            const abstractPath = readTopLevelScalar(metaText, "abstractPath");
-            const title = submissionTitle || submissionSlug || packageSlug || paperTitle || namespaceSlug || metaPath;
-            issueAbstract = readAbstract(metaPath, abstractPath);
+            const submissionTitle = readTopLevelScalar(manifestText, "submissionTitle");
+            const submissionSlug = readTopLevelScalar(manifestText, "submissionSlug");
+            const packageSlug = readTopLevelScalar(manifestText, "packageSlug");
+            const paperTitle = readTopLevelScalar(manifestText, "paperTitle");
+            const namespaceSlug = readTopLevelScalar(manifestText, "namespaceSlug");
+            const abstractPath = readTopLevelScalar(manifestText, "abstractPath");
+            const title = submissionTitle || submissionSlug || packageSlug || paperTitle || namespaceSlug || manifestPath;
+            issueAbstract = readAbstract(manifestPath, abstractPath);
 
             await ensureLabel();
 
@@ -109,9 +109,9 @@ jobs:
 
             await addLabel(issue.number);
 
-            metaText = setTopLevelScalar(metaText, issueNumberField, String(issue.number));
-            metaText = setTopLevelScalar(metaText, issueUrlField, issue.html_url);
-            writeFileSync(metaPath, metaText);
+            manifestText = setTopLevelScalar(manifestText, issueNumberField, String(issue.number));
+            manifestText = setTopLevelScalar(manifestText, issueUrlField, issue.html_url);
+            writeFileSync(manifestPath, manifestText);
             issue = await updateIssue(issue.number, { title, body: issueBody() });
 
             appendOutput("issue-number", String(issue.number));
@@ -138,12 +138,12 @@ jobs:
               `- Repo Url: ${repoUrl}`,
               `- Source Branch: ${sourceBranch}`,
               `- Source Commit: ${sourceCommit}`,
-              `- Metadata File: ${metaPath}`,
-              `- Metadata Url: ${repoBlobUrl(metaPath)}`
+              `- manifest File: ${manifestPath}`,
+              `- manifest Url: ${repoBlobUrl(manifestPath)}`
             ];
-            const abstractPath = readTopLevelScalar(readFileSync(metaPath, "utf8"), "abstractPath");
+            const abstractPath = readTopLevelScalar(readFileSync(manifestPath, "utf8"), "abstractPath");
             if (abstractPath) {
-              lines.push(`- Abstract Url: ${repoBlobUrl(resolveMetadataRelativePath(metaPath, abstractPath))}`);
+              lines.push(`- Abstract Url: ${repoBlobUrl(resolveManifestRelativePath(manifestPath, abstractPath))}`);
             }
             if (submitterId) {
               lines.splice(lines.indexOf(`- Repo Url: ${repoUrl}`), 0, `- Submitter Id: ${submitterId}`);
@@ -151,11 +151,11 @@ jobs:
             return lines.join("\n");
           }
 
-          function readAbstract(metadataPath, abstractPathValue) {
+          function readAbstract(manifestPath, abstractPathValue) {
             if (!abstractPathValue) {
-              return "_No abstract file is recorded in the submission metadata._";
+              return "_No abstract file is recorded in the submission manifest._";
             }
-            const abstractPath = resolve(dirname(metadataPath), abstractPathValue);
+            const abstractPath = resolve(dirname(manifestPath), abstractPathValue);
             if (!existsSync(abstractPath)) {
               return `_Abstract file not found: ${abstractPathValue}_`;
             }
@@ -163,8 +163,8 @@ jobs:
             return text || "_The recorded abstract file is empty._";
           }
 
-          function resolveMetadataRelativePath(metadataPath, relativePathValue) {
-            return `${dirname(metadataPath).replace(/^\.$/, "")}/${relativePathValue}`.replace(/^\/+/, "").replace(/\/+/g, "/");
+          function resolveManifestRelativePath(manifestPath, relativePathValue) {
+            return `${dirname(manifestPath).replace(/^\.$/, "")}/${relativePathValue}`.replace(/^\/+/, "").replace(/\/+/g, "/");
           }
 
           function repoBlobUrl(pathValue) {
@@ -284,19 +284,19 @@ jobs:
           }
           NODE
 
-      - name: Commit metadata issue identifier
+      - name: Commit manifest issue identifier
         env:
-          META_PATH_INPUT: ${{ inputs.meta_path }}
+          META_PATH_INPUT: ${{ inputs.manifest_path }}
           SOURCE_BRANCH: ${{ github.ref_name }}
         run: |
-          META_PATH="${META_PATH_INPUT:-$(node -e 'console.log(require("./lml-env.json").submission?.defaultMetadataPath || "manifest.yaml")')}"
-          if git diff --quiet -- "$META_PATH"; then
-            echo "Metadata already contains the current submission issue identifier."
+          MANIFEST_PATH="${META_PATH_INPUT:-$(node -e 'console.log(require("./lml-env.json").submission?.defaultManifestPath || "manifest.yaml")')}"
+          if git diff --quiet -- "$MANIFEST_PATH"; then
+            echo "manifest already contains the current submission issue identifier."
             exit 0
           fi
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$META_PATH"
+          git add "$MANIFEST_PATH"
           git commit -m "Record submission issue"
           git push origin HEAD:"$SOURCE_BRANCH"

@@ -2,17 +2,17 @@
 // Prepares the submitted proof package before proof-facing checks run.
 // Cache fetch is best-effort, but Lake update and package build must pass.
 import { join } from "node:path";
-import { loadContext } from "../general/meta-context.mjs";
+import { loadContext } from "../general/manifest-context.mjs";
 import { ensurePreparedLakePackage } from "../general/prepare-lake-package.mjs";
 import { proofPackageRoot, report } from "../common.mjs";
 import { augmentProofLakefile } from "./augment-proof-lakefile.mjs";
 
-const { packageRoot, meta } = loadContext();
+const { packageRoot, manifest } = loadContext();
 const errors = [];
 const warnings = [];
-const pRoot = proofPackageRoot(meta);
+const pRoot = proofPackageRoot(manifest);
 
-augmentProofLakefile({ packageRoot, meta, errors, warnings });
+augmentProofLakefile({ packageRoot, manifest, errors, warnings });
 
 ensurePreparedLakePackage({
   packageRoot,

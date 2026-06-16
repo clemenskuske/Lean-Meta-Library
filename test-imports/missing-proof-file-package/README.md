@@ -1,6 +1,6 @@
 # Missing Proof File
 
-This package is a negative import fixture. The metadata names the proof
+This package is a negative import fixture. The manifest names the proof
 declaration `MissingProofFile.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable`,
 but its source file is intentionally absent from the proof package.
 

@@ -8,7 +8,7 @@ structure discussion evolves.
 
 When updating code, fixtures, or prose, use this order:
 
-1. `manifest.config.yaml` for metadata field names and schema shape.
+1. `manifest.config.yaml` for manifest field names and schema shape.
 2. `import-submission-expectations.md` for repository-content policy.
 3. `.github/actions/test/` and `test-imports/` for currently implemented
    checker behavior.
@@ -37,7 +37,7 @@ depends locally on a present statement package remains allowed.
 
 ## Naming Model
 
-Use `manifest.config.yaml` as the source of truth for field names and metadata
+Use `manifest.config.yaml` as the source of truth for field names and manifest
 shape. The schema uses:
 
 - `abstractPath`
@@ -56,7 +56,7 @@ shape. The schema uses:
 - `LatexDefinition`
 - `Name`
 
-Created metadata fields are `githubRepo`, `submittedBy`, `LakeProofPackage`,
+Created manifest fields are `githubRepo`, `submittedBy`, `LakeProofPackage`,
 `LakeStatementPackage`, `submissionIssueNumber`, and `submissionIssueUrl`.
 Authors should normally omit these until tooling/workflows populate them. If
 present, they must satisfy the schema, for example `githubRepo` must be a URI.
@@ -105,7 +105,7 @@ package. The leading namespace segment of each name is the owning submission's
 slug in PascalCase, so the names are unique across submissions. The target
 `axiom` may belong to this submission or to another submission.
 
-`DeclarationReferences` metadata is supported on statement entries only.
+`DeclarationReferences` manifest is supported on statement entries only.
 Reference records must use exactly one of `CurrentSubmission: true` or
 `SubmissionSlug`, plus `LeanStatement`, `LatexDefinition`, and `Name`.
 
@@ -129,7 +129,7 @@ statement must still be included in the shared statement library.
 
 ## Statement Declaration Inspection
 
-Statement packages contain only expected Lean and LaTeX files: metadata-listed
+Statement packages contain only expected Lean and LaTeX files: manifest-listed
 statement files, current-submission declaration reference files, and the
 statement package `lakefile.lean`.
 
@@ -153,7 +153,7 @@ out only in allowed base axioms. A proof that depends on any other Lean Meta
 Library axiom (a statement axiom that is not its own target) is rejected by the
 axiom gate.
 
-Imported submission information comes from metadata files and
+Imported submission information comes from manifest files and
 `submissions.jsonl`. Import registry rows should preserve enough source
 repository information to locate statement and proof package modes for an
 imported submission.
@@ -162,11 +162,11 @@ imported submission.
 
 The current final proof build:
 
-1. Copies the metadata-root package tree into an isolated directory.
+1. Copies the manifest-root package tree into an isolated directory.
 2. Runs `lake update`, `lake clean`, a best-effort `lake exe cache get`, and
    `lake build`.
 3. Rejects build output that reports `sorry` or `sorryAx`.
-4. Builds a composed Lean module from metadata proof entries.
+4. Builds a composed Lean module from manifest proof entries.
 5. Composes each submitted proof target onto the statement axiom it discharges.
 6. Accepts only allowed base axioms from `lml-env.json` by Lean name and type.
 7. Runs `lean4checker` over the composed `.olean` output when available.
@@ -179,15 +179,15 @@ source module/provenance.
 The target system should extend the current build so it:
 
 1. Imports all nested imported submissions into the root Lake file.
-2. Reads submission and source checkout information from metadata files and
+2. Reads submission and source checkout information from manifest files and
    `submissions.jsonl`.
-3. During the Lean build, recursively follows metadata references.
+3. During the Lean build, recursively follows manifest references.
 4. Changes proofs so they reference the proof counterpart of a referenced
    statement instead of its statement axiom when that referenced statement is
    not a conjecture.
 5. Uses the resulting `.olean` files for axiom testing and related checks.
 6. Returns computed dependency and conjecture information.
-7. Compares the computed information to the version recorded in metadata; a
+7. Compares the computed information to the version recorded in manifest; a
    mismatch is a failure.
 
 Composed proof outputs should rely only on trusted base axioms and declared
@@ -278,8 +278,8 @@ The current fixture suite in `test-imports/` covers:
 
 - package build failure;
 - conditional statement/proof build preparation;
-- metadata/schema failure;
-- metadata path existence;
+- manifest/schema failure;
+- manifest path existence;
 - statement-package disk closure;
 - pinned toolchain and Mathlib version checks;
 - namespace/package-name checks;

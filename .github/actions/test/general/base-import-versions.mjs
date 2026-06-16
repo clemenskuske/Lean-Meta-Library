@@ -3,21 +3,21 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import lmlEnv from "../../../../lml-env.json" with { type: "json" };
-import { loadContext } from "./meta-context.mjs";
+import { loadContext } from "./manifest-context.mjs";
 import {
   proofPackageRoot,
   report,
-  requireMeta,
+  requireManifest,
   statementPackageRoot
 } from "../common.mjs";
 import { lakeDependencies, loadLakeConfig } from "../lake-config.mjs";
 
 const context = loadContext();
-const { packageRoot, meta } = context;
+const { packageRoot, manifest } = context;
 const errors = [];
 const packages = packageRoots();
 
-requireMeta(context, errors);
+requireManifest(context, errors);
 
 const mathlib = lmlEnv.baseImports?.Mathlib ?? {};
 const expectedToolchain = leanToolchainFromVersion(lmlEnv.lean?.version);
@@ -42,8 +42,8 @@ for (const item of packages) {
 function packageRoots() {
   const items = [];
   const seen = new Set();
-  addPackage("statement package", statementPackageRoot(meta));
-  addPackage("proof package", proofPackageRoot(meta));
+  addPackage("statement package", statementPackageRoot(manifest));
+  addPackage("proof package", proofPackageRoot(manifest));
   return items;
 
   function addPackage(label, packageFolderPath) {

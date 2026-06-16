@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// Builds the proof package, then inspects the axiom dependencies of each metadata
+// Builds the proof package, then inspects the axiom dependencies of each manifest
 // proof theorem. Submitted proof targets may not depend on sorryAx or on local
 // proof-namespace axioms.
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { loadContext } from "../general/meta-context.mjs";
+import { loadContext } from "../general/manifest-context.mjs";
 import {
   isLeanName,
   maxBuildOutputBytes,
@@ -17,14 +17,14 @@ import { builtModuleNames } from "../lake-config.mjs";
 import { ensurePreparedLakePackage } from "../general/prepare-lake-package.mjs";
 import { augmentProofLakefile } from "./augment-proof-lakefile.mjs";
 
-const { packageRoot, meta, namespaceRoot } = loadContext();
+const { packageRoot, manifest, namespaceRoot } = loadContext();
 const errors = [];
 const warnings = [];
-const proofs = Array.isArray(meta.proofs) ? meta.proofs : [];
-const pPkgRoot = proofPackageRoot(meta);
+const proofs = Array.isArray(manifest.proofs) ? manifest.proofs : [];
+const pPkgRoot = proofPackageRoot(manifest);
 const proofRoot = pPkgRoot ? resolve(packageRoot, pPkgRoot) : null;
 
-augmentProofLakefile({ packageRoot, meta, errors, warnings });
+augmentProofLakefile({ packageRoot, manifest, errors, warnings });
 ensurePreparedLakePackage({
   packageRoot,
   lakefilePath: pPkgRoot ? join(pPkgRoot, "lakefile.lean") : null,
@@ -46,7 +46,7 @@ function checkCompiledProofAxioms() {
   for (const proof of proofs) {
     const proofName = proof?.proof;
     if (!isLeanName(proofName)) {
-      errors.push(`proof metadata entry is missing a valid proof name: ${proofName ?? "(missing)"}`);
+      errors.push(`proof manifest entry is missing a valid proof name: ${proofName ?? "(missing)"}`);
       continue;
     }
     proofTargets.push(proofName);

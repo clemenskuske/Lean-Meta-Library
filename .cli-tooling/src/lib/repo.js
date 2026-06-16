@@ -1,6 +1,6 @@
 import { run } from "./process.js";
 
-const DEFAULT_REPO = "clemenskuske/lean-meta-library";
+const DEFAULT_REPO = "clemenskuske/lean-manifest-library";
 const DEFAULT_BRANCH = "main";
 
 export function getRepoConfig({ cwd }) {

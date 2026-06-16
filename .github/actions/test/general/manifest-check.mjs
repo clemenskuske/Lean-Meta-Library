@@ -1,40 +1,40 @@
 #!/usr/bin/env node
-// Validates metadata against manifest.config.yaml, then runs semantic checks that schema cannot express.
+// Validates manifest against manifest.config.yaml, then runs semantic checks that schema cannot express.
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
 import YAML from "yaml";
 import lmlEnv from "../../../../lml-env.json" with { type: "json" };
-import { loadContext } from "./meta-context.mjs";
+import { loadContext } from "./manifest-context.mjs";
 import {
   isLeanName,
   namespaceOfDeclaration,
   report,
-  requireMeta
+  requireManifest
 } from "../common.mjs";
 
 const context = loadContext();
-const { metaText, namespaceRoot } = context;
-const rawMeta = YAML.parse(metaText || "") ?? {};
+const { manifestText, namespaceRoot } = context;
+const rawManifest = YAML.parse(manifestText || "") ?? {};
 const errors = [];
 const warnings = [];
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "../../../..");
 const schemaPath = join(repoRoot, "manifest.config.yaml");
 
-requireMeta(context, errors);
-const schemaValid = validateAgainstSchema(rawMeta);
+requireManifest(context, errors);
+const schemaValid = validateAgainstSchema(rawManifest);
 
 if (schemaValid) {
   runRepositoryChecks();
 }
 
-report("metadata check", errors, warnings);
+report("manifest check", errors, warnings);
 
 function validateAgainstSchema(value) {
   if (!existsSync(schemaPath)) {
-    errors.push(`metadata config file not found: ${schemaPath}`);
+    errors.push(`manifest config file not found: ${schemaPath}`);
     return false;
   }
 
@@ -46,7 +46,7 @@ function validateAgainstSchema(value) {
   }
 
   for (const error of validate.errors ?? []) {
-    errors.push(`metadata schema ${formatSchemaError(error)}`);
+    errors.push(`manifest schema ${formatSchemaError(error)}`);
   }
   return false;
 }
@@ -63,23 +63,23 @@ function runRepositoryChecks() {
   const pinnedLeanVersion = String(lmlEnv.lean?.version ?? "").trim();
   const pinnedMathlibRevision = String(lmlEnv.baseImports?.Mathlib?.revision ?? "").trim();
 
-  if (rawMeta.leanVersion !== undefined) {
-    if (String(rawMeta.leanVersion).trim() !== pinnedLeanVersion) {
+  if (rawManifest.leanVersion !== undefined) {
+    if (String(rawManifest.leanVersion).trim() !== pinnedLeanVersion) {
       errors.push(
-        `leanVersion must match lml-env.json lean.version (${pinnedLeanVersion}), found ${rawMeta.leanVersion}`
+        `leanVersion must match lml-env.json lean.version (${pinnedLeanVersion}), found ${rawManifest.leanVersion}`
       );
     }
   }
 
-  if (rawMeta.mathlibVersion !== undefined) {
-    if (String(rawMeta.mathlibVersion).trim() !== pinnedMathlibRevision) {
+  if (rawManifest.mathlibVersion !== undefined) {
+    if (String(rawManifest.mathlibVersion).trim() !== pinnedMathlibRevision) {
       errors.push(
-        `mathlibVersion must match lml-env.json baseImports.Mathlib.revision (${pinnedMathlibRevision}), found ${rawMeta.mathlibVersion}`
+        `mathlibVersion must match lml-env.json baseImports.Mathlib.revision (${pinnedMathlibRevision}), found ${rawManifest.mathlibVersion}`
       );
     }
   }
 
-  const statements = rawMeta.statements ?? [];
+  const statements = rawManifest.statements ?? [];
   const statementByName = new Map();
   for (const entry of statements) {
     const label = entry.Name ?? entry.Statement?.Name ?? "(unnamed)";
@@ -95,7 +95,7 @@ function runRepositoryChecks() {
     }
   }
 
-  for (const proof of rawMeta.proofs ?? []) {
+  for (const proof of rawManifest.proofs ?? []) {
     const label = proof.proof ?? proof.axiom ?? "(unnamed proof)";
     if (!isLeanName(proof.axiom)) {
       errors.push(`proof entry ${label} is missing a valid axiom name: ${proof.axiom ?? "(missing)"}`);
@@ -108,24 +108,24 @@ function runRepositoryChecks() {
     if (isLocalName(proof.axiom, namespaceRoot)) {
       const statementEntry = statementByName.get(proof.axiom);
       if (!statementEntry) {
-        errors.push(`proof entry ${label} targets a current-submission statement axiom not listed in metadata: ${proof.axiom}`);
+        errors.push(`proof entry ${label} targets a current-submission statement axiom not listed in manifest: ${proof.axiom}`);
       } else if (statementEntry.Type !== "Axiom") {
         errors.push(`proof entry ${label} must target an Axiom statement, found ${statementEntry.Type}: ${proof.axiom}`);
       }
     }
   }
 
-  const metadataStrings = collectStrings(rawMeta);
+  const manifestStrings = collectStrings(rawManifest);
   const allowedText = /^[\t\r\n\x20-\x7E]*$/;
-  for (const value of metadataStrings) {
+  for (const value of manifestStrings) {
     if (!allowedText.test(value)) {
-      errors.push(`metadata contains a non-whitelisted character sequence: ${value}`);
+      errors.push(`manifest contains a non-whitelisted character sequence: ${value}`);
     }
   }
 
   for (const suspicious of ["`", "$(", "${", ";", "&&", "||", "<", ">"]) {
-    if (metadataStrings.some((value) => value.includes(suspicious))) {
-      errors.push(`metadata contains suspicious token: ${suspicious}`);
+    if (manifestStrings.some((value) => value.includes(suspicious))) {
+      errors.push(`manifest contains suspicious token: ${suspicious}`);
     }
   }
 }

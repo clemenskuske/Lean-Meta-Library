@@ -30,14 +30,14 @@ const fixtures = [
     stripMathlibDependencyForCheck: true
   },
   {
-    name: "metadata-disk-state-failure-package",
+    name: "manifest-disk-state-failure-package",
     checker: "statements/no-extra-files.mjs",
-    expected: /statement file is present on disk but not listed in metadata/
+    expected: /statement file is present on disk but not listed in manifest/
   },
   {
-    name: "metadata-check-failure-package",
-    checker: "general/metadata-check.mjs",
-    expected: /metadata schema .*must have required property 'bibtex-entries'|metadata schema .*must NOT have additional properties/
+    name: "manifest-check-failure-package",
+    checker: "general/manifest-check.mjs",
+    expected: /manifest schema .*must have required property 'bibtex-entries'|manifest schema .*must NOT have additional properties/
   },
   {
     name: "mathlib-version-failure-package",
@@ -98,17 +98,17 @@ const fixtures = [
   {
     name: "unauthorized-statement-import-package",
     checker: "statements/imports.mjs",
-    expected: /statement lakefile does not declare an authorized dependency|not listed in that statement entry's DeclarationReferences metadata/
+    expected: /statement lakefile does not declare an authorized dependency|not listed in that statement entry's DeclarationReferences manifest/
   },
   {
     name: "manifest-version-mismatch-package",
-    checker: "general/metadata-check.mjs",
+    checker: "general/manifest-check.mjs",
     expected: /leanVersion must match|mathlibVersion must match/
   },
   {
     name: "missing-license-package",
     checker: "general/license.mjs",
-    expected: /licensePath is missing from metadata/
+    expected: /licensePath is missing from manifest/
   },
   {
     name: "bad-license-content-package",
@@ -146,7 +146,7 @@ function runFixture({ name, checker, expected, stripMathlibDependencyForCheck })
   let child;
 
   try {
-    child = spawnSync(process.execPath, [checkerPath, `--meta=${fixture.metaPath}`], {
+    child = spawnSync(process.execPath, [checkerPath, `--manifest=${fixture.manifestPath}`], {
       cwd: repoRoot,
       encoding: "utf8",
       maxBuffer: 1024 * 1024 * 20,
@@ -197,7 +197,7 @@ function materializeFixture({ name, stripMathlibDependencyForCheck }) {
   const sourceDir = join(repoRoot, "test-imports", name);
   if (!stripMathlibDependencyForCheck) {
     return {
-      metaPath: join(sourceDir, "manifest.yaml"),
+      manifestPath: join(sourceDir, "manifest.yaml"),
       cleanup() {}
     };
   }
@@ -213,7 +213,7 @@ function materializeFixture({ name, stripMathlibDependencyForCheck }) {
   }
 
   return {
-    metaPath: join(fixtureDir, "manifest.yaml"),
+    manifestPath: join(fixtureDir, "manifest.yaml"),
     cleanup() {
       rmSync(tmpRoot, { recursive: true, force: true });
     }

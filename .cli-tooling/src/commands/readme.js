@@ -13,10 +13,10 @@ Commands:
   lml agent-introduction          Print the agent startup guide.
   lml agent-submission-guide      Print the agent submission guide.
   lml login / logout              Authenticate with GitHub.
-  lml init / update               Check tooling and sync repository metadata.
+  lml init / update               Check tooling and sync repository manifest.
   lml create-paper [slug]         Create a starter submission package.
-  lml test --meta=manifest.yaml       Run all submission checks locally.
-  lml submit --meta=manifest.yaml     Run checks and dispatch the submit workflow.
+  lml test --manifest=manifest.yaml       Run all submission checks locally.
+  lml submit --manifest=manifest.yaml     Run checks and dispatch the submit workflow.
     --no-prior-test               Skip checks before submitting.
   lml submission-status manifest.yaml Show submission issue, workflow, and commit status.
   lml readme                      Print this README.

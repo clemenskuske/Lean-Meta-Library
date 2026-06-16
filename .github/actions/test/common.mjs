@@ -5,7 +5,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { extname, join, relative, sep } from "node:path";
 import lmlEnv from "../../../lml-env.json" with { type: "json" };
 
-export { parseMetaYaml } from "./general/meta-context.mjs";
+export { parseManifestYaml } from "./general/manifest-context.mjs";
 
 export const maxBuildOutputBytes = Number(lmlEnv.checks?.maxBuildOutputBytes ?? 1024 * 1024 * 20);
 
@@ -46,16 +46,16 @@ export function relativePath(root, path) {
   return relative(root, path).split(sep).join("/");
 }
 
-export function metadataPackageSlug(meta) {
-  return meta.submissionSlug ?? meta.packageSlug ?? meta.namespaceSlug ?? null;
+export function manifestPackageSlug(manifest) {
+  return manifest.submissionSlug ?? manifest.packageSlug ?? manifest.namespaceSlug ?? null;
 }
 
-export function statementPackageRoot(meta) {
-  return meta.statementRoot ?? null;
+export function statementPackageRoot(manifest) {
+  return manifest.statementRoot ?? null;
 }
 
-export function proofPackageRoot(meta) {
-  return meta.proofRoot ?? null;
+export function proofPackageRoot(manifest) {
+  return manifest.proofRoot ?? null;
 }
 
 export function namespaceOfDeclaration(name) {
@@ -88,8 +88,8 @@ export function report(title, errors, warnings = []) {
   console.log(`PASS ${title}`);
 }
 
-export function requireMeta(context, errors) {
-  if (!existsSync(context.metaPath)) {
-    errors.push(`metadata file not found: ${context.metaPath}`);
+export function requireManifest(context, errors) {
+  if (!existsSync(context.manifestPath)) {
+    errors.push(`manifest file not found: ${context.manifestPath}`);
   }
 }

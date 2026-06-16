@@ -20,8 +20,8 @@ project details should stay private implementation.
 
 A submission is ready only when all conditions hold:
 
-- The metadata and statement files represent what the user wants to submit.
-- The package passes `lml test --meta=<path-to-manifest.yaml>` under the current
+- The manifest and statement files represent what the user wants to submit.
+- The package passes `lml test --manifest=<path-to-manifest.yaml>` under the current
   checker.
 - The user is pleased with the result.
 
@@ -30,7 +30,7 @@ A submission is ready only when all conditions hold:
 Before writing the submission package, gather these decisions from the user:
 
 - Check whether a PDF of the paper is present. If it is present, use it to
-  answer relevant metadata and statement-selection questions where possible; if
+  answer relevant manifest and statement-selection questions where possible; if
   it is not present, ask the user whether they can provide one.
 - The submission title, submission slug, and short abstract.
 - Which Lean project folder, archive, or remote source is the starting point.
@@ -48,7 +48,7 @@ plan, then ask the user to confirm or revise it.
 
 ## Package Shape To Create
 
-Create one metadata-root folder, normally named `<slug>-package/`. Prefer
+Create one manifest-root folder, normally named `<slug>-package/`. Prefer
 starting from the CLI skeleton when it matches the current checker policy:
 
 ```sh
@@ -59,9 +59,9 @@ A submission may contain only a statement package, only a proof package, or
 both. When both are present, keep them separate:
 
 - The statement package contains its `lakefile.lean`, `lean-toolchain`, and the
-  Lean/LaTeX statement files named by metadata.
+  Lean/LaTeX statement files named by manifest.
 - The proof package contains its `lakefile.lean`, `lean-toolchain`, proof files
-  named by metadata, and any internal proof development needed to build those
+  named by manifest, and any internal proof development needed to build those
   proof targets.
 
 Do not require a unique Lean library for each statement folder. Each statement
@@ -81,10 +81,17 @@ The author-supplied required top-level fields are:
 
 ```yaml
 abstractPath: abstract.tex
+licensePath: LICENSE
 submissionTitle: User Confirmed Title
 submissionSlug: user-slug
 bibtex-entries: []
 ```
+
+`licensePath` must point to a file that exists in the submission package. The
+file content must contain a recognized license identifier from
+`lml-env.json`'s `submission.allowedLicenseIdentifiers` (MIT, Apache, GPL,
+LGPL, AGPL, BSD 2-Clause, BSD 3-Clause, ISC, Creative Commons, CC0).
+Use a standard license text for the chosen identifier.
 
 A statement package adds `statements` and `statementRoot` together.
 `statementRoot` is the repository-relative folder containing the package;
@@ -130,7 +137,7 @@ submission or to another submission. Submitted proofs must be complete: their
 compiled axiom dependencies may bottom out only in allowed base axioms, not in
 other Lean Meta Library axioms.
 
-All repository paths must be relative paths that stay inside the metadata root.
+All repository paths must be relative paths that stay inside the manifest root.
 Metadata strings should stay simple ASCII text accepted by the CLI checks.
 
 ## Statement Files
@@ -143,7 +150,7 @@ Each submitted statement file must:
 - import only pinned Mathlib base modules from `lml-env.json`, Std modules
   provided by the fixed Lean version, local statement modules, or authorized
   imported statement packages;
-- introduce exactly one direct public declaration recorded by metadata;
+- introduce exactly one direct public declaration recorded by manifest;
 - use a Lean declaration name beginning with the namespace root derived from
   `submissionSlug`;
 - avoid helper declarations, private declarations, generated declarations,
@@ -157,7 +164,7 @@ The direct declaration rules are:
 - Statement entries must not introduce theorems.
 
 The statement package may not contain extra `.lean` or `.tex` files beyond the
-metadata-listed statement/reference files and `lakefile.lean`. Every statement
+manifest-listed statement/reference files and `lakefile.lean`. Every statement
 entry should also have a LaTeX file explaining it in paper-facing language.
 
 ## Dependencies
@@ -194,7 +201,7 @@ Proof artifacts contain typed proof evidence for submitted axioms. Each proof
 entry pairs a target statement axiom (`axiom`) with the proof declaration that
 discharges it (`proof`), both as global Lean names.
 
-A discharged axiom needs one matching metadata proof entry whose `proof`
+A discharged axiom needs one matching manifest proof entry whose `proof`
 declaration builds in the proof package. The CLI compares the compiled Lean type
 of the statement axiom and the proof declaration with Lean `isDefEq`; textual
 similarity is not enough.
@@ -209,7 +216,7 @@ proof targets must be clean:
 
 ## Final Proof Build
 
-The current final proof build copies the metadata-root package tree into an
+The current final proof build copies the manifest-root package tree into an
 isolated directory, runs `lake update`, `lake clean`, a best-effort cache fetch,
 and `lake build`, then rejects build output that reports `sorry` or `sorryAx`.
 
@@ -246,10 +253,10 @@ review and easier for the CLI to accept.
 
 ## Required Checks Before Calling The Work Done
 
-Run the CLI check against exactly one metadata file:
+Run the CLI check against exactly one manifest file:
 
 ```sh
-lml test --meta=<slug>-package/manifest.yaml
+lml test --manifest=<slug>-package/manifest.yaml
 ```
 
 Fix every error. Treat warnings as review items and decide whether they are
@@ -257,12 +264,14 @@ acceptable.
 
 Also check:
 
+- A license file exists at `licensePath` and its content contains a recognized
+  license identifier from `lml-env.json`'s `submission.allowedLicenseIdentifiers`.
 - `lean-toolchain` files are present for each package and match the fixed Lean
   version from `lml-env.json`.
 - Any present Lake files keep the Mathlib source URL and revision required by
   the pinned Mathlib base import unless the CLI explicitly instructs otherwise.
 - `lake update` and `lake build` work for each present package.
-- Every metadata path exists and stays inside the metadata root.
+- Every manifest path exists and stays inside the manifest root.
 - No file exceeds the limits reported by `lml test`.
 - File extensions are accepted by `lml test`.
 - The package contains no `.DS_Store`, generated build caches, or unrelated
@@ -273,12 +282,14 @@ Also check:
 Before submitting or asking the user to submit, confirm:
 
 - The user has approved the title, submission slug, abstract, statement entries,
-  proof entry types, dependencies, and bibliographic metadata.
+  proof entry types, dependencies, and bibliographic manifest.
+- A license file is present at `licensePath` with a recognized open-source
+  license (MIT, Apache, GPL, BSD, ISC, Creative Commons, or CC0).
 - Every `Definition` and `Axiom` has a matching statement file and LaTeX file.
-- Every discharged axiom has a matching typed proof file and metadata entry.
+- Every discharged axiom has a matching typed proof file and manifest entry.
 - Statement files contain exactly one direct public declaration each.
 - Proof targets contain no forbidden placeholders or local proof-package axioms.
-- Imports and `DeclarationReferences` metadata explain all declared
+- Imports and `DeclarationReferences` manifest explain all declared
   dependencies.
 - Any external dependency is backed by a matching row in `submissions.jsonl`.
-- `lml test --meta=<slug>-package/manifest.yaml` passes for the exact metadata path.
+- `lml test --manifest=<slug>-package/manifest.yaml` passes for the exact manifest path.

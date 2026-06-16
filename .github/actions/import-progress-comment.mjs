@@ -24,7 +24,7 @@ async function main() {
 
   const remainingSteps = Math.max(totalSteps - stepNumber, 0);
   const body = [
-    "<!-- lean-meta-library:import-progress -->",
+    "<!-- lean-manifest-library:import-progress -->",
     `### Import progress: step ${stepNumber}/${totalSteps}`,
     "",
     `Completed step: ${stepName}`,

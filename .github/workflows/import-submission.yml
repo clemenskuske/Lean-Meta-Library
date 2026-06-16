@@ -24,7 +24,7 @@ jobs:
       repo-url: ${{ steps.issue.outputs.repo-url }}
       source-branch: ${{ steps.issue.outputs.source-branch }}
       source-commit: ${{ steps.issue.outputs.source-commit }}
-      meta-path: ${{ steps.issue.outputs.meta-path }}
+      manifest-path: ${{ steps.issue.outputs.manifest-path }}
       submitter-id: ${{ steps.issue.outputs.submitter-id }}
       submitter-login: ${{ steps.issue.outputs.submitter-login }}
 
@@ -63,7 +63,7 @@ jobs:
           const repoUrl = fields["Repo Url"] ?? fields["Git Repo"];
           const sourceBranch = fields["Source Branch"];
           const sourceCommit = fields["Source Commit"];
-          const metaPath = fields["Metadata File"] ?? defaultMetadataPath;
+          const manifestPath = fields["manifest File"] ?? defaultMetadataPath;
           const submitterId = fields["Submitter Id"] ?? "";
           const submitterLogin = normalizeLogin(fields["Submitted By"] ?? fields["Submitter Login"] ?? "");
 
@@ -80,14 +80,14 @@ jobs:
           if (!/^[0-9a-fA-F]{40}$/.test(sourceCommit)) {
             throw new Error(`Source Commit must be a full 40-character SHA: ${sourceCommit}`);
           }
-          if (metaPath.startsWith("/") || metaPath.split("/").includes("..")) {
-            throw new Error(`Metadata path must be relative to the submitted repository: ${metaPath}`);
+          if (manifestPath.startsWith("/") || manifestPath.split("/").includes("..")) {
+            throw new Error(`manifest path must be relative to the submitted repository: ${manifestPath}`);
           }
 
           appendOutput("repo-url", repoUrl);
           appendOutput("source-branch", sourceBranch);
           appendOutput("source-commit", sourceCommit);
-          appendOutput("meta-path", metaPath);
+          appendOutput("manifest-path", manifestPath);
           appendOutput("submitter-id", submitterId);
           appendOutput("submitter-login", submitterLogin);
 
@@ -132,7 +132,7 @@ jobs:
             Repository: ${{ steps.issue.outputs.repo-url }}
             Branch: ${{ steps.issue.outputs.source-branch }}
             Commit: ${{ steps.issue.outputs.source-commit }}
-            Metadata file: ${{ steps.issue.outputs.meta-path }}
+            manifest file: ${{ steps.issue.outputs.manifest-path }}
             Submitted by: ${{ steps.issue.outputs.submitter-login || github.event.issue.user.login }}
         run: node .github/actions/import-progress-comment.mjs
 
@@ -169,11 +169,11 @@ jobs:
 
       - name: Prepare Lean build/cache
         env:
-          META_PATH: ${{ steps.issue.outputs.meta-path }}
+          MANIFEST_PATH: ${{ steps.issue.outputs.manifest-path }}
           LML_CHECK_RUN_ID: import-${{ github.run_id }}-${{ github.run_attempt }}
         run: |
-          node "$GITHUB_WORKSPACE/.github/actions/test/statements/prepare-build-cache.mjs" "$GITHUB_WORKSPACE/submission/$META_PATH"
-          node "$GITHUB_WORKSPACE/.github/actions/test/proofs/prepare-build-cache.mjs" "$GITHUB_WORKSPACE/submission/$META_PATH"
+          node "$GITHUB_WORKSPACE/.github/actions/test/statements/prepare-build-cache.mjs" "$GITHUB_WORKSPACE/submission/$MANIFEST_PATH"
+          node "$GITHUB_WORKSPACE/.github/actions/test/proofs/prepare-build-cache.mjs" "$GITHUB_WORKSPACE/submission/$MANIFEST_PATH"
 
       - name: "Comment progress: build/cache prepared"
         env:
@@ -190,10 +190,10 @@ jobs:
 
       - name: Run submission checks
         env:
-          META_PATH: ${{ steps.issue.outputs.meta-path }}
+          MANIFEST_PATH: ${{ steps.issue.outputs.manifest-path }}
           LML_CHECK_RUN_ID: import-${{ github.run_id }}-${{ github.run_attempt }}
         run: |
-          node "$GITHUB_WORKSPACE/.github/actions/test/run-all.mjs" --skip-build-cache "$GITHUB_WORKSPACE/submission/$META_PATH"
+          node "$GITHUB_WORKSPACE/.github/actions/test/run-all.mjs" --skip-build-cache "$GITHUB_WORKSPACE/submission/$MANIFEST_PATH"
 
       - name: "Comment progress: submission checks passed"
         env:
@@ -210,9 +210,9 @@ jobs:
 
       - name: Run final proof build
         env:
-          META_PATH: ${{ steps.issue.outputs.meta-path }}
+          MANIFEST_PATH: ${{ steps.issue.outputs.manifest-path }}
         run: |
-          node "$GITHUB_WORKSPACE/.github/actions/test/final-proof-build.mjs" "$GITHUB_WORKSPACE/submission/$META_PATH"
+          node "$GITHUB_WORKSPACE/.github/actions/test/final-proof-build.mjs" "$GITHUB_WORKSPACE/submission/$MANIFEST_PATH"
 
       - name: "Comment progress: final proof build passed"
         env:
@@ -224,24 +224,24 @@ jobs:
           STEP_NUMBER: 5
           TOTAL_STEPS: 10
           STEP_NAME: Final proof build passed
-          NEXT_STEP: Upload the checked metadata artifact
+          NEXT_STEP: Upload the checked manifest artifact
         run: node .github/actions/import-progress-comment.mjs
 
-      - name: Stage checked metadata
+      - name: Stage checked manifest
         env:
-          META_PATH: ${{ steps.issue.outputs.meta-path }}
+          MANIFEST_PATH: ${{ steps.issue.outputs.manifest-path }}
         run: |
-          mkdir -p checked-metadata
-          cp "submission/$META_PATH" checked-metadata/manifest.yaml
+          mkdir -p checked-manifest
+          cp "submission/$MANIFEST_PATH" checked-manifest/manifest.yaml
 
-      - name: Upload checked metadata
+      - name: Upload checked manifest
         uses: actions/upload-artifact@v4
         with:
-          name: checked-submission-metadata
-          path: checked-metadata/manifest.yaml
+          name: checked-submission-manifest
+          path: checked-manifest/manifest.yaml
           if-no-files-found: error
 
-      - name: "Comment progress: checked metadata uploaded"
+      - name: "Comment progress: checked manifest uploaded"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -250,12 +250,12 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           STEP_NUMBER: 6
           TOTAL_STEPS: 10
-          STEP_NAME: Checked metadata artifact was uploaded
-          NEXT_STEP: Download the checked metadata artifact in the import job
+          STEP_NAME: Checked manifest artifact was uploaded
+          NEXT_STEP: Download the checked manifest artifact in the import job
         run: node .github/actions/import-progress-comment.mjs
 
   import:
-    name: Import submission metadata
+    name: Import submission manifest
     needs: check
     if: contains(github.event.issue.labels.*.name, 'submission')
     runs-on: ubuntu-latest
@@ -275,13 +275,13 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
 
-      - name: Download checked metadata
+      - name: Download checked manifest
         uses: actions/download-artifact@v4
         with:
-          name: checked-submission-metadata
+          name: checked-submission-manifest
           path: checked-submission
 
-      - name: "Comment progress: checked metadata downloaded"
+      - name: "Comment progress: checked manifest downloaded"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -290,7 +290,7 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           STEP_NUMBER: 7
           TOTAL_STEPS: 10
-          STEP_NAME: Checked metadata artifact was downloaded
+          STEP_NAME: Checked manifest artifact was downloaded
           NEXT_STEP: Update submissions.jsonl
         run: node .github/actions/import-progress-comment.mjs
 
@@ -299,7 +299,7 @@ jobs:
           REPO_URL: ${{ needs.check.outputs.repo-url }}
           SOURCE_BRANCH: ${{ needs.check.outputs.source-branch }}
           SOURCE_COMMIT: ${{ needs.check.outputs.source-commit }}
-          META_PATH: ${{ needs.check.outputs.meta-path }}
+          MANIFEST_PATH: ${{ needs.check.outputs.manifest-path }}
           SUBMITTER_ID: ${{ needs.check.outputs.submitter-id }}
           SUBMITTER_LOGIN: ${{ needs.check.outputs.submitter-login }}
           ISSUE_ID: ${{ github.event.issue.id }}
@@ -312,35 +312,35 @@ jobs:
           import { existsSync, readFileSync, writeFileSync } from "node:fs";
           import { posix as path } from "node:path";
           import { assertSubmissionRow } from "./.github/actions/submission-schema.mjs";
-          import { parseMetaYaml } from "./.github/actions/test/common.mjs";
+          import { parseManifestYaml } from "./.github/actions/test/common.mjs";
 
-          const metaPath = "checked-submission/manifest.yaml";
-          if (!existsSync(metaPath)) {
-            throw new Error(`Checked metadata artifact not found: ${metaPath}`);
+          const manifestPath = "checked-submission/manifest.yaml";
+          if (!existsSync(manifestPath)) {
+            throw new Error(`Checked manifest artifact not found: ${manifestPath}`);
           }
 
-          const meta = parseMetaYaml(readFileSync(metaPath, "utf8"));
+          const manifest = parseManifestYaml(readFileSync(manifestPath, "utf8"));
           const repoUrl = process.env.REPO_URL;
           const sourceBranch = process.env.SOURCE_BRANCH;
           const sourceCommit = process.env.SOURCE_COMMIT;
-          const metadataPath = process.env.META_PATH;
+          const manifestPath = process.env.MANIFEST_PATH;
           const submitterId = process.env.SUBMITTER_ID || process.env.ISSUE_USER_ID;
           const submitterLogin = process.env.SUBMITTER_LOGIN || process.env.ISSUE_USER_LOGIN;
           const row = {
-            ...meta,
+            ...manifest,
             "Repo Url": repoUrl,
             "Git Repo": repoUrl,
             "Source Branch": sourceBranch,
             "Source Commit": sourceCommit,
-            "Metadata File": metadataPath,
+            "manifest File": manifestPath,
             githubRepo: repoUrl,
-            "Statement Folder": packageFolder(meta, metadataPath, "statementLakefilePath"),
-            "Declaration Folder": packageFolder(meta, metadataPath, "statementLakefilePath"),
-            "Proof Folder": packageFolder(meta, metadataPath, "proofLakefilePath"),
-            "Lake Statement Package": meta["Lake Statement Package"] || packageFolder(meta, metadataPath, "statementLakefilePath"),
-            "Lake Proof Package": meta["Lake Proof Package"] || packageFolder(meta, metadataPath, "proofLakefilePath"),
-            LakeStatementPackage: meta.LakeStatementPackage || packageFolder(meta, metadataPath, "statementLakefilePath"),
-            LakeProofPackage: meta.LakeProofPackage || packageFolder(meta, metadataPath, "proofLakefilePath"),
+            "Statement Folder": packageFolder(manifest, manifestPath, "statementLakefilePath"),
+            "Declaration Folder": packageFolder(manifest, manifestPath, "statementLakefilePath"),
+            "Proof Folder": packageFolder(manifest, manifestPath, "proofLakefilePath"),
+            "Lake Statement Package": manifest["Lake Statement Package"] || packageFolder(manifest, manifestPath, "statementLakefilePath"),
+            "Lake Proof Package": manifest["Lake Proof Package"] || packageFolder(manifest, manifestPath, "proofLakefilePath"),
+            LakeStatementPackage: manifest.LakeStatementPackage || packageFolder(manifest, manifestPath, "statementLakefilePath"),
+            LakeProofPackage: manifest.LakeProofPackage || packageFolder(manifest, manifestPath, "proofLakefilePath"),
             submittedBy: submitterLogin,
             "User Id": Number(submitterId),
             "User Login": submitterLogin,
@@ -371,12 +371,12 @@ jobs:
           writeFileSync(logPath, nextLogText);
           writeFileSync(".website/submissions-data.js", websiteDataSource(nextLogText));
 
-          function packageFolder(metadata, metadataPathValue, lakefileKey) {
-            const metadataDir = path.dirname(normalizePath(metadataPathValue)).replace(/^\.$/, "");
-            if (metadata[lakefileKey]) {
-              return repoRelativePath(metadataDir, path.dirname(normalizePath(metadata[lakefileKey])));
+          function packageFolder(manifest, manifestPathValue, lakefileKey) {
+            const manifestDir = path.dirname(normalizePath(manifestPathValue)).replace(/^\.$/, "");
+            if (manifest[lakefileKey]) {
+              return repoRelativePath(manifestDir, path.dirname(normalizePath(manifest[lakefileKey])));
             }
-            return metadataDir;
+            return manifestDir;
           }
 
           function repoRelativePath(base, relativePathValue) {
@@ -409,7 +409,7 @@ jobs:
               left["Issue Number"] === right["Issue Number"] ||
               (
                 normalize(left["Repo Url"] ?? left["Git Repo"]) === normalize(right["Repo Url"]) &&
-                left["Metadata File"] === right["Metadata File"]
+                left["manifest File"] === right["manifest File"]
               )
             );
           }
@@ -452,7 +452,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add submissions.jsonl .website/submissions-data.js
-          git commit -m "Import submission metadata"
+          git commit -m "Import submission manifest"
           git push origin HEAD:"$GITHUB_REF_NAME"
 
       - name: "Comment progress: submissions log committed"

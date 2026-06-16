@@ -3,13 +3,13 @@
 // It rejects macros, custom syntax, unsafe features, and other constructs outside the intended secure subset.
 import { join, resolve } from "node:path";
 import { report, statementPackageRoot } from "../common.mjs";
-import { loadContext } from "../general/meta-context.mjs";
+import { loadContext } from "../general/manifest-context.mjs";
 import { inspectCommandSyntax } from "../lean-inspect.mjs";
 
-const { packageRoot, meta } = loadContext();
+const { packageRoot, manifest } = loadContext();
 const errors = [];
 const warnings = [];
-const stmtRootFolder = statementPackageRoot(meta);
+const stmtRootFolder = statementPackageRoot(manifest);
 const statementRoot = stmtRootFolder ? resolve(packageRoot, stmtRootFolder) : null;
 
 const forbiddenPatterns = [
@@ -41,7 +41,7 @@ const allowedCommandKinds = new Set([
   "Lean.Parser.Command.noncomputable"
 ]);
 
-for (const entry of meta.statements ?? []) {
+for (const entry of manifest.statements ?? []) {
   const leanFile = entry?.Statement?.LeanStatement;
   if (!leanFile) {
     continue;

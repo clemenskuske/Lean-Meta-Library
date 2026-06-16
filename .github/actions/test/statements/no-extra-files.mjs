@@ -1,15 +1,15 @@
 #!/usr/bin/env node
-// Verifies that the statement package contains no Lean or LaTeX files outside metadata.
+// Verifies that the statement package contains no Lean or LaTeX files outside manifest.
 import { existsSync, statSync } from "node:fs";
 import { basename, extname, relative, resolve, sep } from "node:path";
-import { loadContext } from "../general/meta-context.mjs";
+import { loadContext } from "../general/manifest-context.mjs";
 import { report, walkFiles } from "../common.mjs";
 
-const { packageRoot, meta } = loadContext();
+const { packageRoot, manifest } = loadContext();
 const errors = [];
 const expectedStatementFiles = new Set();
 
-for (const statement of meta.statements ?? []) {
+for (const statement of manifest.statements ?? []) {
   addExpected(statement.Statement?.LeanStatement);
   addExpected(statement.Statement?.LatexDefinition);
   addExpected(statementRootFile(statement.Statement?.Name));
@@ -27,16 +27,16 @@ if (statementRoot && existsSync(statementRoot) && statSync(statementRoot).isDire
   for (const file of walkFiles(statementRoot).filter(isStatementPositionFile)) {
     const rel = normalizePath(relative(packageRoot, file));
     if (!expectedStatementFiles.has(rel)) {
-      errors.push(`statement file is present on disk but not listed in metadata: ${rel}`);
+      errors.push(`statement file is present on disk but not listed in manifest: ${rel}`);
     }
   }
 }
 
 function statementRootFromMetadata() {
-  if (!meta.statementRoot) {
+  if (!manifest.statementRoot) {
     return null;
   }
-  return resolve(packageRoot, meta.statementRoot);
+  return resolve(packageRoot, manifest.statementRoot);
 }
 
 function addExpected(path) {
@@ -47,10 +47,10 @@ function addExpected(path) {
 
 function statementRootFile(name) {
   const parts = String(name ?? "").split(".");
-  if (parts.length < 2 || !meta.statementRoot) {
+  if (parts.length < 2 || !manifest.statementRoot) {
     return null;
   }
-  return `${normalizePath(meta.statementRoot)}/${parts[0]}/${parts[1]}.lean`;
+  return `${normalizePath(manifest.statementRoot)}/${parts[0]}/${parts[1]}.lean`;
 }
 
 function isStatementPositionFile(path) {

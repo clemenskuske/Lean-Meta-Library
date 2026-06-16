@@ -29,7 +29,7 @@ const usage = `Lean Meta Library CLI
 
 Usage:
   lml <command> [options]
-  lean-meta-library <command> [options]
+  lean-manifest-library <command> [options]
 
 Commands:
   agent-introduction    Print the Lean Meta Library startup guide for agents.
@@ -37,11 +37,11 @@ Commands:
                          Print the paper-submission readiness guide for agents.
   login                 Login to GitHub with the GitHub CLI.
   logout                Logout from GitHub with the GitHub CLI.
-  init                  Check local tooling and sync repository metadata.
+  init                  Check local tooling and sync repository manifest.
   update                Run the same checks and sync as init.
-  test --meta=manifest.yaml
+  test --manifest=manifest.yaml
                          Run submission checks from .github/actions/test.
-  submit --meta=manifest.yaml
+  submit --manifest=manifest.yaml
                          Run checks and dispatch the submit GitHub workflow.
                          Use --no-prior-test to skip checks.
   submission-status

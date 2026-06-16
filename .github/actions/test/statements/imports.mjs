@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Checks statement-package Lake dependencies and Lean imports against metadata.
+// Checks statement-package Lake dependencies and Lean imports against manifest.
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import lmlEnv from "../../../../lml-env.json" with { type: "json" };
@@ -7,9 +7,9 @@ import { validateSubmissionRow } from "../../submission-schema.mjs";
 import { leanFiles, namespaceOfDeclaration, relativePath, report, statementPackageRoot } from "../common.mjs";
 import { lakeDependencies, lakeModuleForFile, loadLakeConfig } from "../lake-config.mjs";
 import { parseLeanImports } from "../lean-imports.mjs";
-import { loadContext, slugToPascal } from "../general/meta-context.mjs";
+import { loadContext, slugToPascal } from "../general/manifest-context.mjs";
 
-const { packageRoot, meta, namespaceRoot } = loadContext();
+const { packageRoot, manifest, namespaceRoot } = loadContext();
 const errors = [];
 const submissionDependencies = loadSubmissionDependencies();
 const baseImports = lmlEnv.baseImports ?? {};
@@ -17,14 +17,14 @@ const allowedBaseImportPrefixes = [
   ...Object.values(baseImports).map((item) => item?.importPrefix).filter(Boolean),
   ...(lmlEnv.lean?.version ? ["Std."] : [])
 ];
-const stmtPkgRoot = statementPackageRoot(meta);
+const stmtPkgRoot = statementPackageRoot(manifest);
 const statementRoot = stmtPkgRoot ? resolve(packageRoot, stmtPkgRoot) : null;
 const statementLakeConfig = statementRoot ? loadLakeConfig(statementRoot, "statement lakefile", errors) : null;
-const statements = Array.isArray(meta.statements) ? meta.statements : [];
+const statements = Array.isArray(manifest.statements) ? manifest.statements : [];
 const statementModuleByName = statementModulesByName();
 const localStatementModules = new Set([...statementModuleByName.values()]);
 const statementPolicyByFile = policyByStatementFile();
-const metadataExternalPackages = declaredExternalPackages();
+const manifestExternalPackages = declaredExternalPackages();
 const allowedExternalImports = new Set();
 
 checkStatementLakefile();
@@ -49,8 +49,8 @@ function checkStatementLakefile() {
       errors.push(`statement lakefile dependency is not allowed by submissions.jsonl: ${formatDependency(dependency)}`);
       continue;
     }
-    if (!packageSetAllows(metadataExternalPackages, dependency.name)) {
-      errors.push(`statement lakefile dependency ${dependency.name} is not listed in metadata DeclarationReferences`);
+    if (!packageSetAllows(manifestExternalPackages, dependency.name)) {
+      errors.push(`statement lakefile dependency ${dependency.name} is not listed in manifest DeclarationReferences`);
       continue;
     }
 
@@ -92,7 +92,7 @@ function importVerdict(imported, file) {
   if (!policy) {
     return {
       allowed: false,
-      error: `${rel} imports ${imported}, but this statement file is not linked to metadata`
+      error: `${rel} imports ${imported}, but this statement file is not linked to manifest`
     };
   }
 
@@ -109,7 +109,7 @@ function importVerdict(imported, file) {
 
   return {
     allowed: false,
-    error: `${rel} imports ${imported}, but it is not listed in that statement entry's DeclarationReferences metadata`
+    error: `${rel} imports ${imported}, but it is not listed in that statement entry's DeclarationReferences manifest`
   };
 }
 

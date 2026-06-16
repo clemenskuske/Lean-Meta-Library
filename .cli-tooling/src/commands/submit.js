@@ -6,33 +6,33 @@ import { lmlEnv } from "../lib/project-env.js";
 import { run } from "../lib/process.js";
 import { test } from "./test.js";
 
-const defaultMetadataPath = String(lmlEnv.submission?.defaultMetadataPath ?? "manifest.yaml");
+const defaultManifestPath = String(lmlEnv.submission?.defaultManifestPath ?? "manifest.yaml");
 
 export async function submit({ args, cwd }) {
-  const { metaPath, shouldRunTests } = parseArgs(args, cwd);
+  const { manifestPath, shouldRunTests } = parseArgs(args, cwd);
   const repoRoot = run("git", ["rev-parse", "--show-toplevel"], { cwd });
   const workflowPath = resolve(repoRoot, ".github", "workflows", "submit.yml");
 
   if (!existsSync(workflowPath)) {
     throw new Error(`Could not find submit workflow at ${workflowPath}.`);
   }
-  if (!existsSync(metaPath)) {
-    throw new Error(`Metadata file not found: ${metaPath}.`);
+  if (!existsSync(manifestPath)) {
+    throw new Error(`Metadata file not found: ${manifestPath}.`);
   }
-  if (!statSync(metaPath).isFile()) {
-    throw new Error(`Metadata path must be a file: ${metaPath}.`);
+  if (!statSync(manifestPath).isFile()) {
+    throw new Error(`Metadata path must be a file: ${manifestPath}.`);
   }
-  if (!isMetadataFile(metaPath)) {
-    throw new Error("Use a metadata .yaml or .yml file argument: lml submit [--no-prior-test] --meta=path/to/manifest.yaml");
+  if (!isManifestFile(manifestPath)) {
+    throw new Error("Use a manifest .yaml or .yml file argument: lml submit [--no-prior-test] --manifest=path/to/manifest.yaml");
   }
 
   const branch = currentBranch(repoRoot);
   const commit = run("git", ["rev-parse", "HEAD"], { cwd: repoRoot });
   const repo = githubRepo(repoRoot);
-  const metaPathForWorkflow = toRepoRelativePath(repoRoot, metaPath);
+  const manifestPathForWorkflow = toRepoRelativePath(repoRoot, manifestPath);
 
   if (shouldRunTests) {
-    await test({ args: [metaPath], cwd });
+    await test({ args: [manifestPath], cwd });
   }
 
   ensureRemoteHasCurrentCommit({ repoRoot, branch, commit });
@@ -50,18 +50,18 @@ export async function submit({ args, cwd }) {
       "--ref",
       branch,
       "-f",
-      `meta_path=${metaPathForWorkflow}`
+      `manifest_path=${manifestPathForWorkflow}`
     ],
     { cwd: repoRoot, stdio: "inherit" }
   );
 
-  console.log(`Submitted ${repo}@${commit} on ${branch} with ${metaPathForWorkflow}.`);
+  console.log(`Submitted ${repo}@${commit} on ${branch} with ${manifestPathForWorkflow}.`);
 }
 
 function parseArgs(args, cwd) {
   let shouldRunTests = true;
   const positional = [];
-  let metaPath = null;
+  let manifestPath = null;
 
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
@@ -69,24 +69,24 @@ function parseArgs(args, cwd) {
       shouldRunTests = false;
       continue;
     }
-    if (arg === "--meta") {
-      if (metaPath) {
-        throw new Error("Use one metadata file argument: lml submit --meta=path/to/manifest.yaml");
+    if (arg === "--manifest") {
+      if (manifestPath) {
+        throw new Error("Use one manifest file argument: lml submit --manifest=path/to/manifest.yaml");
       }
-      metaPath = args[index + 1];
+      manifestPath = args[index + 1];
       index += 1;
-      if (!metaPath) {
-        throw new Error("Missing metadata path after --meta.");
+      if (!manifestPath) {
+        throw new Error("Missing manifest path after --manifest.");
       }
       continue;
     }
-    if (arg.startsWith("--meta=")) {
-      if (metaPath) {
-        throw new Error("Use one metadata file argument: lml submit --meta=path/to/manifest.yaml");
+    if (arg.startsWith("--manifest=")) {
+      if (manifestPath) {
+        throw new Error("Use one manifest file argument: lml submit --manifest=path/to/manifest.yaml");
       }
-      metaPath = arg.slice("--meta=".length);
-      if (!metaPath) {
-        throw new Error("Missing metadata path after --meta=.");
+      manifestPath = arg.slice("--manifest=".length);
+      if (!manifestPath) {
+        throw new Error("Missing manifest path after --manifest=.");
       }
       continue;
     }
@@ -96,21 +96,21 @@ function parseArgs(args, cwd) {
     positional.push(arg);
   }
 
-  if (positional.length > 1 || (metaPath && positional.length > 0)) {
-    throw new Error("Use one metadata file argument: lml submit [--no-prior-test] --meta=path/to/manifest.yaml");
+  if (positional.length > 1 || (manifestPath && positional.length > 0)) {
+    throw new Error("Use one manifest file argument: lml submit [--no-prior-test] --manifest=path/to/manifest.yaml");
   }
 
   return {
-    metaPath: resolveMetaArgument(cwd, metaPath ?? positional[0] ?? defaultMetadataPath),
+    manifestPath: resolveMetaArgument(cwd, manifestPath ?? positional[0] ?? defaultManifestPath),
     shouldRunTests
   };
 }
 
-function resolveMetaArgument(cwd, metaPath) {
-  return isAbsolute(metaPath) ? metaPath : resolve(cwd, metaPath);
+function resolveMetaArgument(cwd, manifestPath) {
+  return isAbsolute(manifestPath) ? manifestPath : resolve(cwd, manifestPath);
 }
 
-function isMetadataFile(path) {
+function isManifestFile(path) {
   return /\.ya?ml$/i.test(path);
 }
 

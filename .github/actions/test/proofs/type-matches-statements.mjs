@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// Checks that each proof metadata entry's proof declaration has the same compiled
+// Checks that each proof manifest entry's proof declaration has the same compiled
 // type as the statement axiom it discharges. Declarations are resolved by their
 // global names against the built statement and proof packages.
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, join, resolve } from "node:path";
-import { loadContext } from "../general/meta-context.mjs";
+import { loadContext } from "../general/manifest-context.mjs";
 import {
   isLeanName,
   maxBuildOutputBytes,
@@ -18,12 +18,12 @@ import { builtModuleNames, lakeDependencies, loadLakeConfig } from "../lake-conf
 import { ensurePreparedLakePackage } from "../general/prepare-lake-package.mjs";
 import { augmentProofLakefile } from "./augment-proof-lakefile.mjs";
 
-const { packageRoot, meta, namespaceRoot } = loadContext();
+const { packageRoot, manifest, namespaceRoot } = loadContext();
 const errors = [];
 const warnings = [];
-const proofs = Array.isArray(meta.proofs) ? meta.proofs : [];
-const stmtPkgRoot = statementPackageRoot(meta);
-const pPkgRoot = proofPackageRoot(meta);
+const proofs = Array.isArray(manifest.proofs) ? manifest.proofs : [];
+const stmtPkgRoot = statementPackageRoot(manifest);
+const pPkgRoot = proofPackageRoot(manifest);
 const proofRoot = pPkgRoot ? resolve(packageRoot, pPkgRoot) : null;
 const statementRoot = stmtPkgRoot ? resolve(packageRoot, stmtPkgRoot) : null;
 
@@ -35,7 +35,7 @@ ensurePreparedLakePackage({
   errors,
   warnings
 });
-augmentProofLakefile({ packageRoot, meta, errors, warnings });
+augmentProofLakefile({ packageRoot, manifest, errors, warnings });
 ensurePreparedLakePackage({
   packageRoot,
   lakefilePath: pPkgRoot ? join(pPkgRoot, "lakefile.lean") : null,
@@ -64,15 +64,15 @@ function collectChecks() {
     const proofName = proof?.proof;
 
     if (!isLeanName(axiom)) {
-      errors.push(`proof metadata entry is missing a valid axiom name: ${axiom ?? "(missing)"}`);
+      errors.push(`proof manifest entry is missing a valid axiom name: ${axiom ?? "(missing)"}`);
       continue;
     }
     if (!isLeanName(proofName)) {
-      errors.push(`proof metadata entry for ${axiom} is missing a valid proof name: ${proofName ?? "(missing)"}`);
+      errors.push(`proof manifest entry for ${axiom} is missing a valid proof name: ${proofName ?? "(missing)"}`);
       continue;
     }
     if (seen.has(axiom)) {
-      errors.push(`multiple proof metadata entries target statement ${axiom}`);
+      errors.push(`multiple proof manifest entries target statement ${axiom}`);
       continue;
     }
     seen.add(axiom);
@@ -84,13 +84,13 @@ function collectChecks() {
 
 function runTypeChecks(entries) {
   if (!proofRoot) {
-    errors.push("proof package is required to type-check proof metadata entries");
+    errors.push("proof package is required to type-check proof manifest entries");
     return;
   }
 
   const modules = inspectorModules(entries);
   if (modules.length === 0) {
-    errors.push("no built proof modules were found to type-check proof metadata entries");
+    errors.push("no built proof modules were found to type-check proof manifest entries");
     return;
   }
 

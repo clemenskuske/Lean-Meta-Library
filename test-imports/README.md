@@ -6,7 +6,7 @@ regression input for the local checker suite and the GitHub import workflow: the
 test passes only when the matching checker rejects the package for the intended
 reason.
 
-The fixtures follow the metadata shape defined in `manifest.config.yaml` and the
+The fixtures follow the manifest shape defined in `manifest.config.yaml` and the
 policy described in `import-submission-expectations.md`. When you edit a fixture,
 make sure its intended failure is the *first* meaningful rejection — otherwise an
 unrelated error could mask the behavior the fixture is meant to guard.
@@ -23,8 +23,8 @@ To reproduce a single fixture, point its intended checker at the fixture's
 manifest. For example:
 
 ```sh
-node .github/actions/test/general/metadata-check.mjs \
-  --meta=test-imports/metadata-check-failure-package/manifest.yaml
+node .github/actions/test/general/manifest-check.mjs \
+  --manifest=test-imports/manifest-check-failure-package/manifest.yaml
 ```
 
 Some fixtures carry a real Mathlib dependency. The suite strips that dependency
@@ -42,17 +42,17 @@ downloading Mathlib. When running a checker by hand you may need to do the same.
   compile during preparation, so `statements/prepare-build-cache.mjs` must
   report the failed `lake build`.
 
-### Files and metadata integrity
+### Files and manifest integrity
 
 - **`missing-proof-file-package`** — the manifest names a `proof` declaration
   whose source file is absent from the proof package, so the package fails to
   build and `proofs/type-matches-statements.mjs` cannot resolve the proof.
-- **`metadata-disk-state-failure-package`** — the package contains a statement
+- **`manifest-disk-state-failure-package`** — the package contains a statement
   Lean file that the manifest does not list, so `statements/no-extra-files.mjs`
   must report the undeclared file.
-- **`metadata-check-failure-package`** — the manifest violates the schema in
+- **`manifest-check-failure-package`** — the manifest violates the schema in
   `manifest.config.yaml` (a missing `bibtex-entries` field or an unexpected extra
-  property), so `general/metadata-check.mjs` must reject it.
+  property), so `general/manifest-check.mjs` must reject it.
 
 ### Submission policy
 
@@ -65,7 +65,7 @@ downloading Mathlib. When running a checker by hand you may need to do the same.
   `general/folder-size.mjs` must reject it.
 - **`filetypes-failure-package`** — the package includes a disallowed file type
   (a `.bin` file), so `general/filetypes.mjs` must reject it.
-- **`missing-license-package`** — the metadata has no `licensePath`, so
+- **`missing-license-package`** — the manifest has no `licensePath`, so
   `general/license.mjs` must reject the submission.
 - **`bad-license-content-package`** — the license file contains no recognized
   license identifier, so `general/license.mjs` must reject its contents.
@@ -95,7 +95,7 @@ downloading Mathlib. When running a checker by hand you may need to do the same.
 - **`final-proof-build-failure-package`** — the final proof composition leaves a
   forbidden proof-side axiom, so `final-proof-build.mjs` must reject the
   composed build.
-- **`unused-sorry-proof-package`** — a non-metadata proof module contains a
+- **`unused-sorry-proof-package`** — a non-manifest proof module contains a
   theorem proved with `sorry`. `final-proof-build.mjs` must reject the final
   build output even though the submitted proof target does not depend on it.
 
@@ -106,9 +106,9 @@ package; statement-theorem rejection; proof-level external
 `DeclarationReferences`; declared-dependency coverage for the actual Lean axiom
 dependencies; statement-level dependency-DAG acyclicity; axiom-gate matching by
 name, type, and source module; and final proof-build dependency and conjecture
-metadata comparison.
+manifest comparison.
 
 Helper modules in `.github/actions/test/` — such as `common.mjs`,
-`general/meta-context.mjs`, `lake-config.mjs`, `lean-imports.mjs`, and
+`general/manifest-context.mjs`, `lake-config.mjs`, `lean-imports.mjs`, and
 `lean-inspect.mjs` — have no standalone fixtures because the checker scripts
 above exercise them.

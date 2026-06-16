@@ -3,18 +3,23 @@
 This file records repository-content expectations for a source repository being
 imported into the Lean Meta Library.
 
-The submission metadata file is the source of truth for submitted entries and
+The submission manifest file is the source of truth for submitted entries and
 paths. It must validate against `manifest.config.yaml`; when this file and the
 schema disagree, follow the schema.
 
 ## Metadata
 
-- The metadata file is selected by the import command or workflow. If no path is
+- The manifest file is selected by the import command or workflow. If no path is
   provided, the default is `manifest.yaml`.
-- The metadata must use the exact field names and shapes from
+- The manifest must use the exact field names and shapes from
   `manifest.config.yaml`.
 - Author-supplied required top-level fields are `abstractPath`,
-  `submissionTitle`, `submissionSlug`, and `bibtex-entries`.
+  `submissionTitle`, `submissionSlug`, `bibtex-entries`, and `licensePath`.
+- `licensePath` must point to a license file whose content contains a
+  recognized license identifier. Recognized identifiers are listed in
+  `lml-env.json` under `submission.allowedLicenseIdentifiers` and include MIT,
+  Apache, GPL, LGPL, AGPL, BSD 2-Clause, BSD 3-Clause, ISC, Creative Commons,
+  and CC0.
 - `statements` and `statementRoot` must appear together when a statement
   package is present. `statementRoot` is a repository-relative folder path;
   the folder must contain a `lakefile.lean` and a `lean-toolchain` file.
@@ -52,9 +57,9 @@ statement or definition.
 Each statement Lean file must:
 
 - build as a Lean module exposed by the statement package Lake file;
-- introduce exactly one direct public declaration for its metadata entry;
-- introduce a Lean `def` when the metadata entry has `Type: Definition`;
-- introduce a Lean `axiom` when the metadata entry has `Type: Axiom`;
+- introduce exactly one direct public declaration for its manifest entry;
+- introduce a Lean `def` when the manifest entry has `Type: Definition`;
+- introduce a Lean `axiom` when the manifest entry has `Type: Axiom`;
 - use a Lean declaration name beginning with the namespace root derived from
   `submissionSlug`.
 
@@ -88,7 +93,7 @@ registry is available.
 
 The proof package is more flexible than the statement package. It may contain
 ordinary proof development needed to build the submitted proof targets, but the
-submitted proof targets named in metadata are the security boundary.
+submitted proof targets named in manifest are the security boundary.
 
 When present, the proof package Lake file must:
 
@@ -104,8 +109,8 @@ When present, the proof package Lake file must:
 
 Proof packages may contain additional Lean files, helper declarations,
 intermediate theorems, tactics, and internal proof development that are not
-listed in the metadata. Those extra files and declarations are not submitted
-proof targets unless a metadata proof entry names them.
+listed in the manifest. Those extra files and declarations are not submitted
+proof targets unless a manifest proof entry names them.
 
 ### Lean Proof Targets
 
@@ -133,7 +138,7 @@ can find a matching `submissions.jsonl` row.
 
 ## Final Proof Build
 
-The final proof-build check copies the metadata-root package tree into an
+The final proof-build check copies the manifest-root package tree into an
 isolated directory, runs `lake update`, `lake clean`, a best-effort cache fetch,
 and `lake build`, then rejects build output reporting `sorry` or `sorryAx`.
 
@@ -148,6 +153,28 @@ The final checker attempts an additional `lean4checker` pass over the composed
 The longer-term target is to extend the axiom gate so trusted-base matches are
 also tied to source module/provenance.
 
+## License
+
+Every submission must include a license file. The `licensePath` manifest field
+must be set and the file it points to must exist. The file content must contain
+at least one of the allowed license identifiers configured in `lml-env.json`
+under `submission.allowedLicenseIdentifiers`.
+
+The current recognized license identifiers are:
+
+- `MIT License`
+- `Apache License`
+- `GNU General Public License`
+- `GNU Lesser General Public License`
+- `GNU Affero General Public License`
+- `BSD 2-Clause License`
+- `BSD 3-Clause License`
+- `ISC License`
+- `Creative Commons`
+- `CC0 1.0 Universal`
+
+The `general/license.mjs` checker enforces this requirement.
+
 ## Toolchain And Mathlib
 
 - Any statement or proof Lake package used by the submission must use the Lean
@@ -161,7 +188,7 @@ also tied to source module/provenance.
 
 ## Files, Folders, And Size Limits
 
-The file policy applies to the repository subtree rooted at the metadata file.
+The file policy applies to the repository subtree rooted at the manifest file.
 
 - `.DS_Store` files are rejected.
 - Unknown extensionless files are rejected.

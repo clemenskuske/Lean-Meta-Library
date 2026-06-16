@@ -5,7 +5,7 @@
 import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 import lmlEnv from "../../../../lml-env.json" with { type: "json" };
-import { loadContext } from "./meta-context.mjs";
+import { loadContext } from "./manifest-context.mjs";
 import {
   fileSize,
   proofPackageRoot,
@@ -15,7 +15,7 @@ import {
   walkFiles
 } from "../common.mjs";
 
-const { packageRoot, meta } = loadContext();
+const { packageRoot, manifest } = loadContext();
 const errors = [];
 const maxPackageBytes = Number(process.env.LML_MAX_PACKAGE_BYTES ?? lmlEnv.submissionLimits.maxPackageBytes);
 const maxFolderBytes = Number(process.env.LML_MAX_FOLDER_BYTES ?? lmlEnv.submissionLimits.maxFolderBytes);
@@ -35,10 +35,10 @@ for (const file of packageFiles) {
 }
 
 for (const folder of [
-  statementPackageRoot(meta) ?? "",
-  proofPackageRoot(meta) ?? "",
-  ...(meta.statements ?? []).map((entry) => dirname(entry?.Statement?.LeanStatement ?? "")).filter(Boolean),
-  ...(meta.proofs ?? []).map((proof) => dirname(proof?.Proof?.File ?? "")).filter(Boolean)
+  statementPackageRoot(manifest) ?? "",
+  proofPackageRoot(manifest) ?? "",
+  ...(manifest.statements ?? []).map((entry) => dirname(entry?.Statement?.LeanStatement ?? "")).filter(Boolean),
+  ...(manifest.proofs ?? []).map((proof) => dirname(proof?.Proof?.File ?? "")).filter(Boolean)
 ]) {
   if (!folder || folder === ".") {
     continue;

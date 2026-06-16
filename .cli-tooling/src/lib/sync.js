@@ -5,7 +5,7 @@ import { getRepoConfig } from "./repo.js";
 
 export function syncRepositoryFiles({ cwd }) {
   const { repo, branch } = getRepoConfig({ cwd });
-  console.log(`Syncing metadata from ${repo}@${branch}.`);
+  console.log(`Syncing manifest from ${repo}@${branch}.`);
 
   downloadFile({ cwd, repo, branch, sourcePath: "submissions.jsonl", targetPath: "submissions.jsonl" });
   downloadFolder({ cwd, repo, branch, sourceDir: "agent-info", targetDir: "agent-info" });
