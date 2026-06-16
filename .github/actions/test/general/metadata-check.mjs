@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Validates metadata against meta.config.yaml, then runs semantic checks that schema cannot express.
+// Validates metadata against manifest.config.yaml, then runs semantic checks that schema cannot express.
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -21,7 +21,7 @@ const errors = [];
 const warnings = [];
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "../../../..");
-const schemaPath = join(repoRoot, "meta.config.yaml");
+const schemaPath = join(repoRoot, "manifest.config.yaml");
 
 requireMeta(context, errors);
 const schemaValid = validateAgainstSchema(rawMeta);

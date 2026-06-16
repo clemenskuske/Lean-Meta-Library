@@ -72,7 +72,7 @@ package/library names are derived from `submissionSlug` as
 ## Metadata File
 
 Create `manifest.yaml` with the user. It is the source of truth for the CLI checks.
-Use `meta.config.yaml` as the schema source of truth. Workflow-created fields
+Use `manifest.config.yaml` as the schema source of truth. Workflow-created fields
 such as `githubRepo`, `submittedBy`, `LakeStatementPackage`,
 `LakeProofPackage`, `submissionIssueNumber`, and `submissionIssueUrl` should
 normally be omitted until tooling writes them.

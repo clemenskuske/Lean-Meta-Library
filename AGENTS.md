@@ -19,14 +19,14 @@ limits. Each present Lake package has its own package-local `lean-toolchain` fil
 should compare those toolchain files against the fixed Lean version, and Lake files against the Mathlib base import
 pin. Std is provided by the fixed Lean version and is not listed separately as a base import.
 
-`meta.config.yaml` is the source of truth for submission metadata shape. Keep
+`manifest.config.yaml` is the source of truth for submission metadata shape. Keep
 READMEs, generated examples, and checker-facing instructions aligned with its
 exact field names, required fields, created fields, and
 `DeclarationReferences` records.
 
 ## Submission dependency policy
 
-The submission-structure model uses statement package terminology, structured proof metadata, and statement-level proof certificates. Keep documentation aligned with `meta.config.yaml`, `import-submission-expectations.md`, and the executable tests, in that order.
+The submission-structure model uses statement package terminology, structured proof metadata, and statement-level proof certificates. Keep documentation aligned with `manifest.config.yaml`, `import-submission-expectations.md`, and the executable tests, in that order.
 
 A submission is the Lean Meta Library registry entry, not a repository. A source repository may host a submission, and a submission may contain up to two Lake packages: a statement-package and a proof-package. Each of those packages is a Lake package; use "submission" for the Lean Meta Library unit and reserve "repository" for the source checkout or GitHub repository.
 
@@ -59,7 +59,7 @@ be run directly: if the matching marker is missing they prepare the relevant pac
 reuse the existing `.lake/build` output. Preparation refreshes old builds in place and warns when it sees a build
 without the current marker; it does not run `lake clean`.
 
-`general/metadata-check.mjs` validates metadata structure against `meta.config.yaml` with Ajv before running
+`general/metadata-check.mjs` validates metadata structure against `manifest.config.yaml` with Ajv before running
 non-file semantic checks that the schema cannot express, such as proof entries targeting metadata `Axiom`
 statements. File-existence checks belong in `general/files-present.mjs`.
 
@@ -104,7 +104,7 @@ The CLI `agent-submission-guide` command prints `agent-info/paper-submission-rea
 
 ## Submission structure rework
 
-`agent-info/submission-api-structure-agent-readme.md` records the current submission structure and remaining target rework. Statement-package and proof-package presence is optional, but the package roles remain separate when both are present; do not mix statement and proof content in one package. Package checks run only when the corresponding package is present, statement entries are `Definition` and `Axiom`, metadata uses the exact names in `meta.config.yaml`, proof-level declaration reference metadata is supported, and final proof checking is built around statement-level proof certificates.
+`agent-info/submission-api-structure-agent-readme.md` records the current submission structure and remaining target rework. Statement-package and proof-package presence is optional, but the package roles remain separate when both are present; do not mix statement and proof content in one package. Package checks run only when the corresponding package is present, statement entries are `Definition` and `Axiom`, metadata uses the exact names in `manifest.config.yaml`, proof-level declaration reference metadata is supported, and final proof checking is built around statement-level proof certificates.
 
 ## Import submission workflow
 

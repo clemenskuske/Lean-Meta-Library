@@ -2,4 +2,4 @@
 
 This package is a negative import fixture for the `general/metadata-check.mjs` checker.
 
-Expected rejection: `metadata check` reports that the metadata does not match `meta.config.yaml`.
+Expected rejection: `metadata check` reports that the metadata does not match `manifest.config.yaml`.

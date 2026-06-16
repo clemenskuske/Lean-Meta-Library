@@ -6,7 +6,7 @@ regression input for the local checker suite and the GitHub import workflow: the
 test passes only when the matching checker rejects the package for the intended
 reason.
 
-The fixtures follow the metadata shape defined in `meta.config.yaml` and the
+The fixtures follow the metadata shape defined in `manifest.config.yaml` and the
 policy described in `import-submission-expectations.md`. When you edit a fixture,
 make sure its intended failure is the *first* meaningful rejection — otherwise an
 unrelated error could mask the behavior the fixture is meant to guard.
@@ -51,7 +51,7 @@ downloading Mathlib. When running a checker by hand you may need to do the same.
   Lean file that the manifest does not list, so `statements/no-extra-files.mjs`
   must report the undeclared file.
 - **`metadata-check-failure-package`** — the manifest violates the schema in
-  `meta.config.yaml` (a missing `bibtex-entries` field or an unexpected extra
+  `manifest.config.yaml` (a missing `bibtex-entries` field or an unexpected extra
   property), so `general/metadata-check.mjs` must reject it.
 
 ### Submission policy

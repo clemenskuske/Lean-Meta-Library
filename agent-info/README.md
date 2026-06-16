@@ -37,7 +37,7 @@ proof. It is not a field on the proof entry, which carries only `axiom` and
 `proof`.
 
 Agents should treat the metadata file as the submission source of truth. For
-metadata shape, treat `meta.config.yaml` as authoritative: it defines the
+metadata shape, treat `manifest.config.yaml` as authoritative: it defines the
 required author-supplied fields, optional statement/proof sections, exact
 created field names, and `DeclarationReferences` record shape.
 

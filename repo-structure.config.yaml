@@ -15,7 +15,7 @@ root:
       required: true
       mayAlsoBeNamed:
         - manifest.yml
-      schema: meta.config.yaml
+      schema: manifest.config.yaml
       description: >
         Submission metadata. The import workflow may receive a different
         repository-relative metadata path, but the default root metadata file is
@@ -153,7 +153,7 @@ buildAndCheckPolicy:
     - "Lake update and build failures reject the submission."
     - "Cache fetch is best-effort and may warn without rejecting the submission."
   firstRunChecks:
-    - "Validate metadata against meta.config.yaml before repository-aware checks."
+    - "Validate metadata against manifest.config.yaml before repository-aware checks."
     - "Check that every metadata-listed repository-local file exists."
     - "Check that statement package files match metadata exactly."
     - "Check allowed file extensions and extensionless filenames from lml-env.json."

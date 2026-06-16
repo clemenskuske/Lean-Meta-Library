@@ -29,7 +29,7 @@ version and compare Lake Mathlib dependencies against the pinned Mathlib
 revision. Std is provided by the fixed Lean version and is not listed separately
 as a base import.
 
-`meta.config.yaml` is the source of truth for submission metadata shape. It is
+`manifest.config.yaml` is the source of truth for submission metadata shape. It is
 the JSON Schema used by `general/metadata-check.mjs`; documentation, generated
 examples, and checker-facing instructions should follow its exact field names,
 required fields, created fields, and declaration-reference shape.

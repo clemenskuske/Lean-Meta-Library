@@ -8,7 +8,7 @@ structure discussion evolves.
 
 When updating code, fixtures, or prose, use this order:
 
-1. `meta.config.yaml` for metadata field names and schema shape.
+1. `manifest.config.yaml` for metadata field names and schema shape.
 2. `import-submission-expectations.md` for repository-content policy.
 3. `.github/actions/test/` and `test-imports/` for currently implemented
    checker behavior.
@@ -37,7 +37,7 @@ depends locally on a present statement package remains allowed.
 
 ## Naming Model
 
-Use `meta.config.yaml` as the source of truth for field names and metadata
+Use `manifest.config.yaml` as the source of truth for field names and metadata
 shape. The schema uses:
 
 - `abstractPath`

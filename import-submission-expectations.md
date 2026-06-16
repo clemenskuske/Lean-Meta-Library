@@ -4,7 +4,7 @@ This file records repository-content expectations for a source repository being
 imported into the Lean Meta Library.
 
 The submission metadata file is the source of truth for submitted entries and
-paths. It must validate against `meta.config.yaml`; when this file and the
+paths. It must validate against `manifest.config.yaml`; when this file and the
 schema disagree, follow the schema.
 
 ## Metadata
@@ -12,7 +12,7 @@ schema disagree, follow the schema.
 - The metadata file is selected by the import command or workflow. If no path is
   provided, the default is `manifest.yaml`.
 - The metadata must use the exact field names and shapes from
-  `meta.config.yaml`.
+  `manifest.config.yaml`.
 - Author-supplied required top-level fields are `abstractPath`,
   `submissionTitle`, `submissionSlug`, and `bibtex-entries`.
 - `statements` and `statementRoot` must appear together when a statement
