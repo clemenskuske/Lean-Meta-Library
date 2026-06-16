@@ -58,7 +58,7 @@ jobs:
 
           const body = process.env.ISSUE_BODY ?? "";
           const lmlEnv = JSON.parse(readFileSync("lml-env.json", "utf8"));
-          const defaultMetadataPath = lmlEnv.submission?.defaultMetadataPath ?? "meta.yaml";
+          const defaultMetadataPath = lmlEnv.submission?.defaultMetadataPath ?? "manifest.yaml";
           const fields = readFields(body);
           const repoUrl = fields["Repo Url"] ?? fields["Git Repo"];
           const sourceBranch = fields["Source Branch"];
@@ -232,13 +232,13 @@ jobs:
           META_PATH: ${{ steps.issue.outputs.meta-path }}
         run: |
           mkdir -p checked-metadata
-          cp "submission/$META_PATH" checked-metadata/meta.yaml
+          cp "submission/$META_PATH" checked-metadata/manifest.yaml
 
       - name: Upload checked metadata
         uses: actions/upload-artifact@v4
         with:
           name: checked-submission-metadata
-          path: checked-metadata/meta.yaml
+          path: checked-metadata/manifest.yaml
           if-no-files-found: error
 
       - name: "Comment progress: checked metadata uploaded"
@@ -314,7 +314,7 @@ jobs:
           import { assertSubmissionRow } from "./.github/actions/submission-schema.mjs";
           import { parseMetaYaml } from "./.github/actions/test/common.mjs";
 
-          const metaPath = "checked-submission/meta.yaml";
+          const metaPath = "checked-submission/manifest.yaml";
           if (!existsSync(metaPath)) {
             throw new Error(`Checked metadata artifact not found: ${metaPath}`);
           }

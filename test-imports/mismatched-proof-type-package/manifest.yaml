@@ -21,16 +21,7 @@ statements:
       LatexDefinition: statements/MismatchedProofType/Statements/ConnectedIffReachable.tex
     DeclarationReferences: []
 proofs:
-  - Name: ConnectedIffReachableProof
-    Type: proof
-    Theorem:
-      Name: MismatchedProofType.Statements.ConnectedIffReachable.connected_iff_reachable
-      LeanStatement: statements/MismatchedProofType/Statements/ConnectedIffReachable.lean
-      LatexDefinition: statements/MismatchedProofType/Statements/ConnectedIffReachable.tex
-      CurrentSubmission: true
-    Proof:
-      File: proofs/ConnectedIffReachableProof.lean
-      Name: MismatchedProofType.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
-    DeclarationReferences: []
+  - axiom: MismatchedProofType.Statements.ConnectedIffReachable.connected_iff_reachable
+    proof: MismatchedProofType.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
 bibtex-entries: []
 submissionSlug: mismatched-proof-type

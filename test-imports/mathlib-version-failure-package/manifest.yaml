@@ -21,16 +21,7 @@ statements:
       LatexDefinition: statements/MathlibVersionFailure/Statements/ConnectedIffReachable.tex
     DeclarationReferences: []
 proofs:
-  - Name: ConnectedIffReachableProof
-    Type: proof
-    Theorem:
-      Name: MathlibVersionFailure.Statements.ConnectedIffReachable.connected_iff_reachable
-      LeanStatement: statements/MathlibVersionFailure/Statements/ConnectedIffReachable.lean
-      LatexDefinition: statements/MathlibVersionFailure/Statements/ConnectedIffReachable.tex
-      CurrentSubmission: true
-    Proof:
-      File: proofs/ConnectedIffReachableProof.lean
-      Name: MathlibVersionFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
-    DeclarationReferences: []
+  - axiom: MathlibVersionFailure.Statements.ConnectedIffReachable.connected_iff_reachable
+    proof: MathlibVersionFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
 bibtex-entries: []
 submissionSlug: mathlib-version-failure

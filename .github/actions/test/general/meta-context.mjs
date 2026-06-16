@@ -4,7 +4,7 @@ import { dirname, isAbsolute, resolve } from "node:path";
 import YAML from "yaml";
 import lmlEnv from "../../../../lml-env.json" with { type: "json" };
 
-export const defaultMetadataPath = String(lmlEnv.submission?.defaultMetadataPath ?? "meta.yaml");
+export const defaultMetadataPath = String(lmlEnv.submission?.defaultMetadataPath ?? "manifest.yaml");
 
 export function loadContext(argv = process.argv.slice(2)) {
   const metaPath = resolveMetaPath(parseMetaArg(argv));
@@ -29,7 +29,7 @@ function parseMetaArg(argv) {
     const arg = args[index];
     if (arg === "--meta") {
       if (metaPath) {
-        throw new Error("Use one metadata file argument, for example: --meta=path/to/meta.yaml.");
+        throw new Error("Use one metadata file argument, for example: --meta=path/to/manifest.yaml.");
       }
       metaPath = args[index + 1];
       index += 1;
@@ -40,7 +40,7 @@ function parseMetaArg(argv) {
     }
     if (arg.startsWith("--meta=")) {
       if (metaPath) {
-        throw new Error("Use one metadata file argument, for example: --meta=path/to/meta.yaml.");
+        throw new Error("Use one metadata file argument, for example: --meta=path/to/manifest.yaml.");
       }
       metaPath = arg.slice("--meta=".length);
       if (!metaPath) {
@@ -55,7 +55,7 @@ function parseMetaArg(argv) {
   }
 
   if (positional.length > 1 || (metaPath && positional.length > 0)) {
-    throw new Error("Use one metadata file argument, for example: --meta=path/to/meta.yaml.");
+    throw new Error("Use one metadata file argument, for example: --meta=path/to/manifest.yaml.");
   }
 
   const selected = metaPath ?? positional[0] ?? defaultMetadataPath;

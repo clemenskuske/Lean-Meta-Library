@@ -21,16 +21,7 @@ statements:
       LatexDefinition: statements/PrepareBuildCacheFailure/Statements/ConnectedIffReachable.tex
     DeclarationReferences: []
 proofs:
-  - Name: ConnectedIffReachableProof
-    Type: proof
-    Theorem:
-      Name: PrepareBuildCacheFailure.Statements.ConnectedIffReachable.connected_iff_reachable
-      LeanStatement: statements/PrepareBuildCacheFailure/Statements/ConnectedIffReachable.lean
-      LatexDefinition: statements/PrepareBuildCacheFailure/Statements/ConnectedIffReachable.tex
-      CurrentSubmission: true
-    Proof:
-      File: proofs/ConnectedIffReachableProof.lean
-      Name: PrepareBuildCacheFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
-    DeclarationReferences: []
+  - axiom: PrepareBuildCacheFailure.Statements.ConnectedIffReachable.connected_iff_reachable
+    proof: PrepareBuildCacheFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
 bibtex-entries: []
 submissionSlug: prepare-build-cache-failure

@@ -21,16 +21,7 @@ statements:
       LatexDefinition: statements/NamespacesCorrectFailure/Statements/ConnectedIffReachable.tex
     DeclarationReferences: []
 proofs:
-  - Name: ConnectedIffReachableProof
-    Type: proof
-    Theorem:
-      Name: NamespacesCorrectFailure.Statements.ConnectedIffReachable.connected_iff_reachable
-      LeanStatement: statements/NamespacesCorrectFailure/Statements/ConnectedIffReachable.lean
-      LatexDefinition: statements/NamespacesCorrectFailure/Statements/ConnectedIffReachable.tex
-      CurrentSubmission: true
-    Proof:
-      File: proofs/ConnectedIffReachableProof.lean
-      Name: NamespacesCorrectFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
-    DeclarationReferences: []
+  - axiom: NamespacesCorrectFailure.Statements.ConnectedIffReachable.connected_iff_reachable
+    proof: NamespacesCorrectFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
 bibtex-entries: []
 submissionSlug: namespaces-correct-failure

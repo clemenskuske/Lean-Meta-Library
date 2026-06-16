@@ -21,16 +21,7 @@ statements:
       LatexDefinition: statements/UnauthorizedStatementImport/Statements/ConnectedIffReachable.tex
     DeclarationReferences: []
 proofs:
-  - Name: ConnectedIffReachableProof
-    Type: proof
-    Theorem:
-      Name: UnauthorizedStatementImport.Statements.ConnectedIffReachable.connected_iff_reachable
-      LeanStatement: statements/UnauthorizedStatementImport/Statements/ConnectedIffReachable.lean
-      LatexDefinition: statements/UnauthorizedStatementImport/Statements/ConnectedIffReachable.tex
-      CurrentSubmission: true
-    Proof:
-      File: proofs/ConnectedIffReachableProof.lean
-      Name: UnauthorizedStatementImport.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
-    DeclarationReferences: []
+  - axiom: UnauthorizedStatementImport.Statements.ConnectedIffReachable.connected_iff_reachable
+    proof: UnauthorizedStatementImport.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
 bibtex-entries: []
 submissionSlug: unauthorized-statement-import

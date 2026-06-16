@@ -21,16 +21,7 @@ statements:
       LatexDefinition: statements/ExtraStatementDeclaration/Statements/ConnectedIffReachable.tex
     DeclarationReferences: []
 proofs:
-  - Name: ConnectedIffReachableProof
-    Type: proof
-    Theorem:
-      Name: ExtraStatementDeclaration.Statements.ConnectedIffReachable.connected_iff_reachable
-      LeanStatement: statements/ExtraStatementDeclaration/Statements/ConnectedIffReachable.lean
-      LatexDefinition: statements/ExtraStatementDeclaration/Statements/ConnectedIffReachable.tex
-      CurrentSubmission: true
-    Proof:
-      File: proofs/ConnectedIffReachableProof.lean
-      Name: ExtraStatementDeclaration.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
-    DeclarationReferences: []
+  - axiom: ExtraStatementDeclaration.Statements.ConnectedIffReachable.connected_iff_reachable
+    proof: ExtraStatementDeclaration.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
 bibtex-entries: []
 submissionSlug: extra-statement-declaration

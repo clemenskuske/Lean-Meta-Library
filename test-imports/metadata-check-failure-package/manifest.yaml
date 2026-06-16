@@ -21,17 +21,8 @@ statements:
       LatexDefinition: statements/MetadataCheckFailure/Statements/ConnectedIffReachable.tex
     DeclarationReferences: []
 proofs:
-  - Name: ConnectedIffReachableProof
-    Type: proof
-    Theorem:
-      Name: MetadataCheckFailure.Statements.ConnectedIffReachable.connected_iff_reachable
-      LeanStatement: statements/MetadataCheckFailure/Statements/ConnectedIffReachable.lean
-      LatexDefinition: statements/MetadataCheckFailure/Statements/ConnectedIffReachable.tex
-      CurrentSubmission: true
-    Proof:
-      File: proofs/ConnectedIffReachableProof.lean
-      Name: MetadataCheckFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
-    DeclarationReferences: []
+  - axiom: MetadataCheckFailure.Statements.ConnectedIffReachable.connected_iff_reachable
+    proof: MetadataCheckFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
 bibtex-entries: []
 submissionSlug: metadata-check-failure
 legacyCompatibilityField: true

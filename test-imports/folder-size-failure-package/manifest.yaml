@@ -21,16 +21,7 @@ statements:
       LatexDefinition: statements/FolderSizeFailure/Statements/ConnectedIffReachable.tex
     DeclarationReferences: []
 proofs:
-  - Name: ConnectedIffReachableProof
-    Type: proof
-    Theorem:
-      Name: FolderSizeFailure.Statements.ConnectedIffReachable.connected_iff_reachable
-      LeanStatement: statements/FolderSizeFailure/Statements/ConnectedIffReachable.lean
-      LatexDefinition: statements/FolderSizeFailure/Statements/ConnectedIffReachable.tex
-      CurrentSubmission: true
-    Proof:
-      File: proofs/ConnectedIffReachableProof.lean
-      Name: FolderSizeFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
-    DeclarationReferences: []
+  - axiom: FolderSizeFailure.Statements.ConnectedIffReachable.connected_iff_reachable
+    proof: FolderSizeFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
 bibtex-entries: []
 submissionSlug: folder-size-failure

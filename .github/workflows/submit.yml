@@ -6,14 +6,14 @@ on:
       meta_path:
         description: Path to the submission metadata file.
         required: false
-        default: meta.yaml
+        default: manifest.yaml
         type: string
   workflow_call:
     inputs:
       meta_path:
         description: Path to the submission metadata file.
         required: false
-        default: meta.yaml
+        default: manifest.yaml
         type: string
     outputs:
       issue-number:
@@ -59,7 +59,7 @@ jobs:
           const repository = process.env.GITHUB_REPOSITORY;
           const serverUrl = process.env.GITHUB_SERVER_URL;
           const lmlEnv = JSON.parse(readFileSync("lml-env.json", "utf8"));
-          const defaultMetadataPath = lmlEnv.submission?.defaultMetadataPath ?? "meta.yaml";
+          const defaultMetadataPath = lmlEnv.submission?.defaultMetadataPath ?? "manifest.yaml";
           const metaPath = process.env.META_PATH || defaultMetadataPath;
           const sourceBranch = process.env.SOURCE_BRANCH;
           const sourceCommit = process.env.SOURCE_COMMIT;
@@ -289,7 +289,7 @@ jobs:
           META_PATH_INPUT: ${{ inputs.meta_path }}
           SOURCE_BRANCH: ${{ github.ref_name }}
         run: |
-          META_PATH="${META_PATH_INPUT:-$(node -e 'console.log(require("./lml-env.json").submission?.defaultMetadataPath || "meta.yaml")')}"
+          META_PATH="${META_PATH_INPUT:-$(node -e 'console.log(require("./lml-env.json").submission?.defaultMetadataPath || "manifest.yaml")')}"
           if git diff --quiet -- "$META_PATH"; then
             echo "Metadata already contains the current submission issue identifier."
             exit 0

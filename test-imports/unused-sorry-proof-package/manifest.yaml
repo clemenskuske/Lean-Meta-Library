@@ -21,16 +21,7 @@ statements:
       LatexDefinition: statements/UnusedSorryProof/Statements/ConnectedIffReachable.tex
     DeclarationReferences: []
 proofs:
-  - Name: ConnectedIffReachableProof
-    Type: proof
-    Theorem:
-      Name: UnusedSorryProof.Statements.ConnectedIffReachable.connected_iff_reachable
-      LeanStatement: statements/UnusedSorryProof/Statements/ConnectedIffReachable.lean
-      LatexDefinition: statements/UnusedSorryProof/Statements/ConnectedIffReachable.tex
-      CurrentSubmission: true
-    Proof:
-      File: proofs/ConnectedIffReachableProof.lean
-      Name: UnusedSorryProof.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
-    DeclarationReferences: []
+  - axiom: UnusedSorryProof.Statements.ConnectedIffReachable.connected_iff_reachable
+    proof: UnusedSorryProof.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
 bibtex-entries: []
 submissionSlug: unused-sorry-proof

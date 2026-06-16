@@ -21,16 +21,7 @@ statements:
       LatexDefinition: statements/MetadataDiskStateFailure/Statements/ConnectedIffReachable.tex
     DeclarationReferences: []
 proofs:
-  - Name: ConnectedIffReachableProof
-    Type: proof
-    Theorem:
-      Name: MetadataDiskStateFailure.Statements.ConnectedIffReachable.connected_iff_reachable
-      LeanStatement: statements/MetadataDiskStateFailure/Statements/ConnectedIffReachable.lean
-      LatexDefinition: statements/MetadataDiskStateFailure/Statements/ConnectedIffReachable.tex
-      CurrentSubmission: true
-    Proof:
-      File: proofs/ConnectedIffReachableProof.lean
-      Name: MetadataDiskStateFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
-    DeclarationReferences: []
+  - axiom: MetadataDiskStateFailure.Statements.ConnectedIffReachable.connected_iff_reachable
+    proof: MetadataDiskStateFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
 bibtex-entries: []
 submissionSlug: metadata-disk-state-failure

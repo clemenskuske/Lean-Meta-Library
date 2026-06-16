@@ -21,16 +21,7 @@ statements:
       LatexDefinition: statements/BuildPackagesFailure/Statements/ConnectedIffReachable.tex
     DeclarationReferences: []
 proofs:
-  - Name: ConnectedIffReachableProof
-    Type: proof
-    Theorem:
-      Name: BuildPackagesFailure.Statements.ConnectedIffReachable.connected_iff_reachable
-      LeanStatement: statements/BuildPackagesFailure/Statements/ConnectedIffReachable.lean
-      LatexDefinition: statements/BuildPackagesFailure/Statements/ConnectedIffReachable.tex
-      CurrentSubmission: true
-    Proof:
-      File: proofs/ConnectedIffReachableProof.lean
-      Name: BuildPackagesFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
-    DeclarationReferences: []
+  - axiom: BuildPackagesFailure.Statements.ConnectedIffReachable.connected_iff_reachable
+    proof: BuildPackagesFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
 bibtex-entries: []
 submissionSlug: build-packages-failure
