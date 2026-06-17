@@ -3,17 +3,43 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Lean Meta Library – Schema Reference</title>
+  <title>Schema Reference – Lean Meta Library</title>
   <style>
     body { margin: 0; padding: 0; }
+    .back-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      height: 40px;
+      background: #1a1a2e;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+    }
+    .back-link {
+      color: #a0a8d0;
+      text-decoration: none;
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .back-link:hover { color: #ffffff; }
+    .back-link::before { content: "←"; }
+    redoc { display: block; margin-top: 40px; }
   </style>
 </head>
 <body>
+  <nav class="back-bar">
+    <a class="back-link" href="index.html">Lean Meta Library</a>
+  </nav>
   <redoc
     spec-url="openapi.yaml"
     expand-responses="200"
-    hide-download-button="false"
-    native-scrollbars="false"
     theme='{
       "colors": {
         "primary": { "main": "#5B4FC5" }

@@ -4,7 +4,7 @@
     {
       "name": "docs",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["serve", "-l", "4321", "docs"],
+      "runtimeArgs": ["serve", "-l", "4321", ".website"],
       "port": 4321
     }
   ]
