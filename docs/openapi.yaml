@@ -35,12 +35,22 @@ tags:
       Fields marked *"Created automatically"* are populated by tooling/workflows
       and must not be included in the initial author-supplied file.
 
+      > **Note:** The manifest currently captures all information and references
+      > required to process a submission. Over time, its scope is expected to shrink
+      > considerably — much of what contributors must supply today should eventually
+      > be derivable automatically from the referenced Lean source code.
+
   - name: Submission Output
     description: |
       The **submission output** is the structured data the import workflow retains
       after a manifest has been successfully processed. It extends the manifest
       with additional fields tracking the Git commit, repository URL, and a
       processed view of the statement and proof packages.
+
+      > **Note:** This schema represents the canonical record the library stores
+      > for each accepted submission. It is expected to grow gradually as new
+      > features are introduced — additions will be additive and
+      > backwards-compatible.
 
 x-tagGroups:
   - name: Manifest
