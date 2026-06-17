@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lean Meta Library – Schema Reference</title>
+  <style>
+    body { margin: 0; padding: 0; }
+  </style>
+</head>
+<body>
+  <redoc
+    spec-url="openapi.yaml"
+    expand-responses="200"
+    hide-download-button="false"
+    native-scrollbars="false"
+    theme='{
+      "colors": {
+        "primary": { "main": "#5B4FC5" }
+      },
+      "typography": {
+        "fontSize": "15px",
+        "fontFamily": "Inter, system-ui, -apple-system, sans-serif",
+        "headings": {
+          "fontFamily": "Inter, system-ui, -apple-system, sans-serif"
+        },
+        "code": {
+          "fontFamily": "ui-monospace, SFMono-Regular, Menlo, monospace",
+          "fontSize": "13px"
+        }
+      },
+      "sidebar": {
+        "width": "280px",
+        "backgroundColor": "#1a1a2e",
+        "textColor": "#e0e0e0"
+      }
+    }'
+  ></redoc>
+  <script src="https://cdn.jsdelivr.net/npm/redoc@latest/bundles/redoc.standalone.js"></script>
+</body>
+</html>

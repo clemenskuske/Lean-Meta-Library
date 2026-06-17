@@ -1,0 +1,619 @@
+openapi: "3.1.0"
+
+info:
+  title: "Lean Meta Library"
+  version: "1.0.0"
+  description: |
+    Schema reference for the **Lean Meta Library** submission pipeline.
+
+    Two schemas govern a submission's lifecycle:
+
+    | Schema | Source file | Purpose |
+    |--------|-------------|---------|
+    | [Manifest](#tag/Manifest) | `manifest.config.yaml` | Author-supplied submission metadata |
+    | [Submission Output](#tag/Submission-Output) | `database-schema.config.yaml` | Processed data retained by the import workflow |
+
+    A contributor authors a `manifest.yaml` and submits it; the import workflow
+    validates it against the **Manifest** schema, then writes the processed result
+    in the shape of the **Submission Output** schema.
+
+  contact:
+    name: "Lean Meta Library on GitHub"
+    url: "https://github.com/clemenskuske/Lean-Meta-Library"
+
+  license:
+    name: "See repository"
+    url: "https://github.com/clemenskuske/Lean-Meta-Library"
+
+tags:
+  - name: Manifest
+    description: |
+      The **manifest** is the author-supplied configuration file that accompanies
+      every submission. Contributors create a `manifest.yaml` at the root of their
+      submission repository.
+
+      Fields marked *"Created automatically"* are populated by tooling/workflows
+      and must not be included in the initial author-supplied file.
+
+  - name: Submission Output
+    description: |
+      The **submission output** is the structured data the import workflow retains
+      after a manifest has been successfully processed. It extends the manifest
+      with additional fields tracking the Git commit, repository URL, and a
+      processed view of the statement and proof packages.
+
+x-tagGroups:
+  - name: Manifest
+    tags:
+      - Manifest
+  - name: Submission Output
+    tags:
+      - Submission Output
+
+paths:
+  /manifest:
+    put:
+      tags:
+        - Manifest
+      summary: Manifest schema
+      description: |
+        Schema for author-supplied `manifest.yaml` files.
+
+        This path documents the **Manifest** data structure; it is not a live HTTP endpoint.
+      operationId: putManifest
+      requestBody:
+        required: true
+        content:
+          application/yaml:
+            schema:
+              $ref: "#/components/schemas/Manifest"
+            example:
+              manifestVersion: "1"
+              SubmissionName: "My Theorem Collection"
+              SubmissionSlug: "MyTheorems"
+              AbstractPath: "abstract.tex"
+              BibEntries:
+                - "@article{mytheorem2024, title={My Theorem}, author={Smith, J.}}"
+              LicenseFile: "LICENSE"
+              StatementSubmissions:
+                rootFolder: "Statements"
+                statements:
+                  - Name: "MyTheorems.Statements.Core.myLemma"
+                    Type: "Axiom"
+                    Title: "My Lemma"
+                    InlineTexReference: "\\forall x, P(x)"
+              ProofSubmissions:
+                rootFolder: "Proofs"
+                proofs:
+                  - Name: "MyTheorems.Proofs.Core.myProof"
+                    AxiomReference: "MyTheorems.Statements.Core.myLemma"
+      responses:
+        "200":
+          description: Manifest validated successfully.
+
+  /output:
+    get:
+      tags:
+        - Submission Output
+      summary: Submission output schema
+      description: |
+        Schema for the data retained by the import workflow after a submission is processed.
+
+        This path documents the **Submission Output** data structure; it is not a live HTTP endpoint.
+      operationId: getOutput
+      responses:
+        "200":
+          description: Submission output data.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubmissionOutput"
+
+components:
+  schemas:
+
+    # -------------------------------------------------------------------------
+    # Primitive building blocks (shared by both schemas)
+    # -------------------------------------------------------------------------
+
+    SafeText:
+      type: string
+      description: >
+        Plain ASCII text accepted by the manifest checkers. Rejects suspicious
+        shell tokens such as backticks, command substitutions, shell separators,
+        and angle brackets.
+      pattern: "^[\\t\\r\\n\\x20-\\x7E]*$"
+      not:
+        anyOf:
+          - pattern: "`"
+          - pattern: "\\$\\("
+          - pattern: "\\$\\{"
+          - pattern: ";"
+          - pattern: "&&"
+          - pattern: "\\|\\|"
+          - pattern: "[<>]"
+
+    RepoRelativePath:
+      allOf:
+        - $ref: "#/components/schemas/SafeText"
+      type: string
+      minLength: 1
+      pattern: "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+      description: "Relative path that must stay inside the repository root."
+
+    LeanName:
+      allOf:
+        - $ref: "#/components/schemas/SafeText"
+      type: string
+      pattern: "^[A-Za-z_][A-Za-z0-9_']*(\\.[A-Za-z_][A-Za-z0-9_']*)*$"
+      description: "A valid Lean 4 fully-qualified declaration name."
+
+    SubmissionScopedName:
+      allOf:
+        - $ref: "#/components/schemas/LeanName"
+      type: string
+      pattern: "^[A-Z][A-Za-z0-9_']*\\.(Statements|Proofs)\\.[A-Za-z_][A-Za-z0-9_']*(\\.[A-Za-z_][A-Za-z0-9_']*)*$"
+      description: >
+        A global Lean declaration name scoped to a submission. Must start with a
+        submission slug in PascalCase, followed by either `.Statements.` or
+        `.Proofs.`, followed by the remaining namespace and declaration name — for
+        example `MySlug.Statements.MyNamespace.my_decl` or
+        `MySlug.Proofs.MyNamespace.my_theorem`.
+
+    SubmissionSlug:
+      allOf:
+        - $ref: "#/components/schemas/SafeText"
+      type: string
+      minLength: 1
+      pattern: "^[A-Za-z][A-Za-z0-9-]*$"
+      description: "Machine-facing identifier. Lean package names are derived from this value."
+
+    # -------------------------------------------------------------------------
+    # Manifest sub-schemas
+    # -------------------------------------------------------------------------
+
+    ManifestStatementEntry:
+      type: object
+      description: "Statement entry in a manifest. Required fields are `Name` and `Type`."
+      additionalProperties: false
+      required:
+        - Name
+        - Type
+      properties:
+        Name:
+          $ref: "#/components/schemas/LeanName"
+          description: "Fully-qualified declaration name for this public statement."
+        Type:
+          type: string
+          enum:
+            - Definition
+            - Axiom
+          description: "Statement entry kind."
+        Title:
+          allOf:
+            - $ref: "#/components/schemas/SafeText"
+          type: string
+          minLength: 1
+          description: "Optional human-readable title for display."
+        InlineTexReference:
+          allOf:
+            - $ref: "#/components/schemas/SafeText"
+          type: string
+          description: "Optional inline TeX snippet for the statement, for display."
+        SemanticDependencies:
+          type: array
+          description: "Semantic dependencies of this statement, as a list of fully-qualified declaration names."
+          items:
+            $ref: "#/components/schemas/LeanName"
+
+    ManifestProofEntry:
+      type: object
+      description: >
+        Proof entry in a manifest. Required fields are `Name` and `AxiomReference`.
+        Both are global Lean declaration names: the leading namespace segment is the
+        submission slug in PascalCase, uniquely identifying the declaration across all
+        submissions.
+      additionalProperties: false
+      required:
+        - Name
+        - AxiomReference
+      properties:
+        Name:
+          $ref: "#/components/schemas/LeanName"
+          description: >
+            Global name of the proof declaration in this submission's proof package,
+            e.g. `SubmissionSlug.Proofs.Namespace.theorem`.
+        AxiomReference:
+          $ref: "#/components/schemas/LeanName"
+          description: >
+            Global name of the statement axiom this proof discharges. May belong to
+            this submission or to another submission.
+        Title:
+          allOf:
+            - $ref: "#/components/schemas/SafeText"
+          type: string
+          minLength: 1
+          description: "Optional human-readable title for display."
+        InlineTexReference:
+          allOf:
+            - $ref: "#/components/schemas/SafeText"
+          type: string
+          description: "Optional inline TeX snippet for the proof, for display."
+        ProofObligations:
+          type: array
+          description: "Dependencies of this proof expressed as proof obligations, each a fully-qualified declaration name."
+          items:
+            $ref: "#/components/schemas/LeanName"
+
+    # -------------------------------------------------------------------------
+    # Manifest (top-level schema from manifest.config.yaml)
+    # -------------------------------------------------------------------------
+
+    Manifest:
+      type: object
+      title: "Lean Meta Library manifest"
+      description: >
+        Schema for Lean Meta Library `manifest.yaml` files. Fields marked as
+        "Created automatically" are populated by tooling/workflows rather than
+        supplied by the initial author.
+      additionalProperties: false
+      required:
+        - AbstractPath
+        - SubmissionName
+        - SubmissionSlug
+        - BibEntries
+      properties:
+        manifestVersion:
+          allOf:
+            - $ref: "#/components/schemas/SafeText"
+          type: string
+          minLength: 1
+          description: 'Version of the manifest format. Currently `"1"`.'
+        leanVersion:
+          allOf:
+            - $ref: "#/components/schemas/SafeText"
+          type: string
+          minLength: 1
+          description: >
+            The Lean version used by the submission packages. Must match the
+            version pinned in `lml-env.json`.
+        mathlibVersion:
+          allOf:
+            - $ref: "#/components/schemas/SafeText"
+          type: string
+          minLength: 1
+          description: >
+            The Mathlib revision used by the submission packages. Must match the
+            revision pinned in `lml-env.json`.
+        LicenseFile:
+          $ref: "#/components/schemas/RepoRelativePath"
+          description: "Repository-relative path to the license file for this submission."
+        StatementSubmissions:
+          type: object
+          description: >
+            The submission's statement package: its root folder and the statement
+            entries it publishes.
+          additionalProperties: false
+          required:
+            - rootFolder
+            - statements
+          properties:
+            rootFolder:
+              $ref: "#/components/schemas/RepoRelativePath"
+              description: >
+                Repository-relative path to the statement package folder. Must
+                contain a `lakefile.lean` and a `lean-toolchain` file.
+            statements:
+              type: array
+              minItems: 1
+              description: "Statement entries published by this submission."
+              items:
+                $ref: "#/components/schemas/ManifestStatementEntry"
+        ProofSubmissions:
+          type: object
+          description: >
+            The submission's proof package: its root folder and the proof entries
+            it records.
+          additionalProperties: false
+          required:
+            - rootFolder
+            - proofs
+          properties:
+            rootFolder:
+              $ref: "#/components/schemas/RepoRelativePath"
+              description: >
+                Repository-relative path to the proof package folder. Must contain
+                a `lakefile.lean` and a `lean-toolchain` file.
+            proofs:
+              type: array
+              description: "Proof entries recorded by this submission."
+              items:
+                $ref: "#/components/schemas/ManifestProofEntry"
+        AbstractPath:
+          $ref: "#/components/schemas/RepoRelativePath"
+          description: >
+            Repository-relative path to `abstract.tex`. The abstract is a short
+            summary of the submission's results.
+        SubmissionName:
+          allOf:
+            - $ref: "#/components/schemas/SafeText"
+          type: string
+          minLength: 1
+          description: "Human-readable submission name."
+        SubmissionSlug:
+          $ref: "#/components/schemas/SubmissionSlug"
+          description: "Machine-facing slug for this submission."
+        BibEntries:
+          type: array
+          description: >
+            BibTeX references for papers whose results are fully or partly
+            formalized in this submission.
+          items:
+            $ref: "#/components/schemas/SafeText"
+        submissionIssueNumber:
+          type: integer
+          minimum: 1
+          description: >
+            Created automatically by the submit workflow. GitHub issue number for
+            the issue used to manage this submission.
+        submissionIssueUrl:
+          allOf:
+            - $ref: "#/components/schemas/SafeText"
+          type: string
+          format: uri
+          description: >
+            Created automatically by the submit workflow. URL of the GitHub issue
+            used to manage this submission.
+        Repo:
+          allOf:
+            - $ref: "#/components/schemas/SafeText"
+          type: string
+          format: uri
+          minLength: 1
+          description: "Created automatically by tooling/workflows. Full repository URL."
+        submittedBy:
+          allOf:
+            - $ref: "#/components/schemas/SafeText"
+          type: string
+          minLength: 1
+          description: "Created automatically by the submit workflow. User who initiated the submission."
+
+    # -------------------------------------------------------------------------
+    # Submission Output sub-schemas
+    # -------------------------------------------------------------------------
+
+    OutputStatementEntry:
+      type: object
+      description: >
+        Statement information entry in the submission output. Required fields are
+        `Name` and `Type`. May carry an optional display title, an inline TeX
+        reference, an inline Lean statement, and semantic dependencies.
+      additionalProperties: false
+      required:
+        - Name
+        - Type
+      properties:
+        Name:
+          $ref: "#/components/schemas/SubmissionScopedName"
+          description: >
+            Fully-qualified statement name of the form
+            `SubmissionSlug.Namespace(s).Name`.
+        Type:
+          type: string
+          enum:
+            - Definition
+            - Axiom
+          description: "Statement entry kind."
+        Title:
+          allOf:
+            - $ref: "#/components/schemas/SafeText"
+          type: string
+          minLength: 1
+          description: "Optional human-readable title for display."
+        InlineTexReference:
+          allOf:
+            - $ref: "#/components/schemas/SafeText"
+          type: string
+          description: "Optional inline TeX snippet for the statement, for display."
+        InlineLeanStatement:
+          allOf:
+            - $ref: "#/components/schemas/SafeText"
+          type: string
+          description: "Optional inline Lean statement, for display."
+        SemanticDependencies:
+          type: array
+          description: >
+            Semantic dependencies of this statement, as a list of names of the
+            form `SubmissionSlug.Namespace(s).Name`.
+          items:
+            $ref: "#/components/schemas/SubmissionScopedName"
+
+    OutputProofEntry:
+      type: object
+      description: >
+        Proof information entry in the submission output. The only required field
+        is `Name`. May carry an optional display title, an inline TeX reference,
+        an inline Lean statement, an axiom reference, and proof obligations.
+      additionalProperties: false
+      required:
+        - Name
+      properties:
+        Name:
+          $ref: "#/components/schemas/SubmissionScopedName"
+          description: >
+            Fully-qualified proof name of the form
+            `SubmissionSlug.Namespace(s).Name`.
+        Title:
+          allOf:
+            - $ref: "#/components/schemas/SafeText"
+          type: string
+          minLength: 1
+          description: "Optional human-readable title for display."
+        InlineTexReference:
+          allOf:
+            - $ref: "#/components/schemas/SafeText"
+          type: string
+          description: "Optional inline TeX snippet for the proof, for display."
+        InlineLeanStatement:
+          allOf:
+            - $ref: "#/components/schemas/SafeText"
+          type: string
+          description: "Optional inline Lean statement, for display."
+        AxiomReference:
+          $ref: "#/components/schemas/SubmissionScopedName"
+          description: >
+            The axiom this proof discharges, as a name of the form
+            `SubmissionSlug.Namespace(s).Name`.
+        ProofObligations:
+          type: array
+          description: >
+            Dependencies of this proof expressed as proof obligations, each a
+            name of the form `SubmissionSlug.Namespace(s).Name`.
+          items:
+            $ref: "#/components/schemas/SubmissionScopedName"
+
+    # -------------------------------------------------------------------------
+    # Submission Output (top-level schema from database-schema.config.yaml)
+    # -------------------------------------------------------------------------
+
+    SubmissionOutput:
+      type: object
+      title: "Lean Meta Library submission output data"
+      description: >
+        Schema for the data stored for a Lean Meta Library submission once it has
+        been imported. Organized around three top-level groups: `SubmissionData`
+        (identifying, bibliographic, and source-repository information),
+        `StatementSubmissions` (the statement package root and its statement
+        entries), and `ProofSubmissions` (the proof package root and its proof
+        entries).
+      additionalProperties: false
+      required:
+        - SubmissionData
+        - StatementSubmissions
+        - ProofSubmissions
+      properties:
+        SubmissionData:
+          type: object
+          description: >
+            Identifying, bibliographic, and source-repository information for
+            the submission.
+          additionalProperties: false
+          required:
+            - SubmissionSlug
+            - SubmissionName
+            - AbstractPath
+            - BibEntries
+            - ManifestPath
+            - SubmissionUserId
+            - Repo
+            - Commit
+          properties:
+            Repo:
+              allOf:
+                - $ref: "#/components/schemas/SafeText"
+              type: string
+              format: uri
+              minLength: 1
+              description: "Full repository URL. Inherited from the manifest's `Repo` field."
+            Commit:
+              allOf:
+                - $ref: "#/components/schemas/SafeText"
+              type: string
+              minLength: 1
+              description: "Full Git SHA of the repository state from which this submission was imported."
+            ManifestPath:
+              $ref: "#/components/schemas/RepoRelativePath"
+              description: "Repository-relative path to the submission's manifest file."
+            SubmissionUserId:
+              allOf:
+                - $ref: "#/components/schemas/SafeText"
+              type: string
+              minLength: 1
+              description: "Identifier of the user who submitted this submission."
+            SubmissionSlug:
+              $ref: "#/components/schemas/SubmissionSlug"
+              description: "Machine-facing slug. Inherited from the manifest's `SubmissionSlug`."
+            SubmissionName:
+              allOf:
+                - $ref: "#/components/schemas/SafeText"
+              type: string
+              minLength: 1
+              description: "Human-readable submission name. Inherited from the manifest's `SubmissionName`."
+            AbstractPath:
+              $ref: "#/components/schemas/RepoRelativePath"
+              description: "Repository-relative path to `abstract.tex`. Inherited from the manifest's `AbstractPath`."
+            BibEntries:
+              type: array
+              description: "BibTeX references. Inherited from the manifest's `BibEntries`."
+              items:
+                $ref: "#/components/schemas/SafeText"
+            LicenseFile:
+              $ref: "#/components/schemas/RepoRelativePath"
+              description: "Repository-relative path to the license file. Inherited from the manifest's `LicenseFile`."
+            manifestVersion:
+              allOf:
+                - $ref: "#/components/schemas/SafeText"
+              type: string
+              minLength: 1
+              description: 'Version of the manifest format. Currently `"1"`.'
+            leanVersion:
+              allOf:
+                - $ref: "#/components/schemas/SafeText"
+              type: string
+              minLength: 1
+              description: "The Lean version used by the submission packages."
+            mathlibVersion:
+              allOf:
+                - $ref: "#/components/schemas/SafeText"
+              type: string
+              minLength: 1
+              description: "The Mathlib revision used by the submission packages."
+            submittedBy:
+              allOf:
+                - $ref: "#/components/schemas/SafeText"
+              type: string
+              minLength: 1
+              description: "User who initiated the submission."
+            submissionIssueNumber:
+              type: integer
+              minimum: 1
+              description: "GitHub issue number for the issue used to manage this submission."
+            submissionIssueUrl:
+              allOf:
+                - $ref: "#/components/schemas/SafeText"
+              type: string
+              format: uri
+              description: "URL of the GitHub issue used to manage this submission."
+        StatementSubmissions:
+          type: object
+          description: "The submission's statement package: its root folder and statement entries."
+          additionalProperties: false
+          required:
+            - rootFolder
+            - statements
+          properties:
+            rootFolder:
+              $ref: "#/components/schemas/RepoRelativePath"
+              description: "Repository-relative path to the statement package folder. Inherited from the manifest's `StatementSubmissions.rootFolder`."
+            statements:
+              type: array
+              minItems: 1
+              description: "Statement entries published by this submission."
+              items:
+                $ref: "#/components/schemas/OutputStatementEntry"
+        ProofSubmissions:
+          type: object
+          description: "The submission's proof package: its root folder and proof entries."
+          additionalProperties: false
+          required:
+            - rootFolder
+            - proofs
+          properties:
+            rootFolder:
+              $ref: "#/components/schemas/RepoRelativePath"
+              description: "Repository-relative path to the proof package folder. Inherited from the manifest's `ProofSubmissions.rootFolder`."
+            proofs:
+              type: array
+              description: "Proof entries recorded by this submission."
+              items:
+                $ref: "#/components/schemas/OutputProofEntry"
