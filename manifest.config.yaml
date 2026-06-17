@@ -13,20 +13,10 @@ type: object
 additionalProperties: false
 
 required:
-  - abstractPath
-  - submissionTitle
-  - submissionSlug
-  - bibtex-entries
-
-dependentRequired:
-  proofs:
-    - proofRoot
-  proofRoot:
-    - proofs
-  statements:
-    - statementRoot
-  statementRoot:
-    - statements
+  - AbstractPath
+  - SubmissionName
+  - SubmissionSlug
+  - BibEntries
 
 properties:
   manifestVersion:
@@ -55,68 +45,86 @@ properties:
       The Mathlib revision used by the submission packages. Must match the
       revision pinned in lml-env.json.
 
-  licensePath:
+  LicenseFile:
     $ref: "#/$defs/repoRelativePath"
     description: >
       Repository-relative path to the license file for this submission.
 
-  statementRoot:
-    $ref: "#/$defs/repoRelativePath"
+  StatementSubmissions:
+    type: object
     description: >
-      Repository-relative path to the folder containing the statement package.
-      The folder must contain a lakefile.lean and a lean-toolchain file.
+      The submission's statement package: its root folder and the statement
+      entries it publishes.
+    additionalProperties: false
+    required:
+      - rootFolder
+      - statements
+    properties:
+      rootFolder:
+        $ref: "#/$defs/repoRelativePath"
+        description: >
+          Repository-relative path to the folder containing the statement
+          package. The folder must contain a lakefile.lean and a lean-toolchain
+          file.
+      statements:
+        type: array
+        minItems: 1
+        description: >
+          Entries that publish the submission's public definitions and axiom
+          statements. Each entry names the public declaration, records whether it
+          is a definition or axiom, points to the Lean declaration, and lists the
+          semantic dependencies used by that declaration.
+        items:
+          $ref: "#/$defs/statementEntry"
 
-  proofRoot:
-    $ref: "#/$defs/repoRelativePath"
+  ProofSubmissions:
+    type: object
     description: >
-      Repository-relative path to the folder containing the proof package.
-      The folder must contain a lakefile.lean and a lean-toolchain file.
+      The submission's proof package: its root folder and the proof entries it
+      records.
+    additionalProperties: false
+    required:
+      - rootFolder
+      - proofs
+    properties:
+      rootFolder:
+        $ref: "#/$defs/repoRelativePath"
+        description: >
+          Repository-relative path to the folder containing the proof package.
+          The folder must contain a lakefile.lean and a lean-toolchain file.
+      proofs:
+        type: array
+        description: >
+          Entries that record proofs for statement axioms. Each entry names the
+          proof declaration and the axiom it discharges. The target axiom may
+          belong to this submission or to another submission.
+        items:
+          $ref: "#/$defs/proofEntry"
 
-  abstractPath:
+  AbstractPath:
     $ref: "#/$defs/repoRelativePath"
     description: >
       Repository-relative path to abstract.tex. The abstract is a short
       summary of the submission's results.
 
-  submissionTitle:
+  SubmissionName:
     allOf:
       - $ref: "#/$defs/safeText"
     type: string
     minLength: 1
-    description: "Human-readable submission title."
+    description: "Human-readable submission name."
 
-  submissionSlug:
+  SubmissionSlug:
     $ref: "#/$defs/submissionSlug"
     description: "Machine-facing slug for this submission. Lean package names are derived from this value."
 
-  bibtex-entries:
+  BibEntries:
     type: array
     description: >
       BibTeX references for papers whose results are fully or partly formalized
       in this submission.
     items:
       $ref: "#/$defs/safeText"
-
-  statements:
-    type: array
-    minItems: 1
-    description: >
-      Entries that publish the submission's public definitions and axiom
-      statements. Each entry names the public declaration, records whether it is
-      a definition or axiom, points to the Lean declaration, and lists the
-      declaration references used by that declaration.
-    items:
-      $ref: "#/$defs/statementEntry"
-
-  proofs:
-    type: array
-    description: >
-      Entries that record proofs for statement axioms. Each entry names the
-      target statement axiom (axiom) and the proof declaration that discharges it
-      (proof), both as global declaration names. The target axiom may belong to
-      this submission or to another submission.
-    items:
-      $ref: "#/$defs/proofEntry"
 
   submissionIssueNumber:
     type: integer
@@ -134,7 +142,7 @@ properties:
       Created automatically by the submit workflow. URL of the GitHub issue used
       to manage this submission.
 
-  githubRepo:
+  Repo:
     allOf:
       - $ref: "#/$defs/safeText"
     type: string
@@ -148,14 +156,6 @@ properties:
     type: string
     minLength: 1
     description: "Created automatically by the submit workflow. User who initiated the submission."
-
-  LakeProofPackage:
-    $ref: "#/$defs/repoRelativePath"
-    description: "Repository-relative path to the Lake proof package folder."
-
-  LakeStatementPackage:
-    $ref: "#/$defs/repoRelativePath"
-    description: "Repository-relative path to the Lake statement package folder."
 
 $defs:
   safeText:
@@ -183,11 +183,17 @@ $defs:
     pattern: "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
     description: "Relative path that must stay inside the repository root."
 
-  leanName:
+  submissionScopedName:
     allOf:
       - $ref: "#/$defs/safeText"
     type: string
-    pattern: "^[A-Za-z_][A-Za-z0-9_']*(\\.[A-Za-z_][A-Za-z0-9_']*)*$"
+    pattern: "^[A-Z][A-Za-z0-9_']*\\.(Statements|Proofs)\\.[A-Za-z_][A-Za-z0-9_']*(\\.[A-Za-z_][A-Za-z0-9_']*)*$"
+    description: >
+      A global Lean declaration name scoped to a submission. It must start with
+      a submission slug in PascalCase, followed by either ".Statements." or
+      ".Proofs.", followed by the remaining namespace and declaration name, for
+      example MySlug.Statements.MyNamespace.my_decl or
+      MySlug.Proofs.MyNamespace.my_theorem.
 
   submissionSlug:
     allOf:
@@ -199,98 +205,74 @@ $defs:
   statementEntry:
     type: object
     description: >
-      Statement entry. Required fields are Name, Type, and Statement.
-      DeclarationReferences is optional.
+      Statement entry. Required fields are Name and Type.
     additionalProperties: false
     required:
       - Name
       - Type
-      - Statement
     properties:
       Name:
-        allOf:
-          - $ref: "#/$defs/safeText"
-        type: string
-        minLength: 1
-        description: "Metadata entry name for this public declaration."
+        $ref: "#/$defs/submissionScopedName"
+        description: "Fully-qualified declaration name for this public statement."
       Type:
         type: string
         enum:
           - Definition
           - Axiom
         description: "Statement entry kind."
-      Statement:
-        $ref: "#/$defs/declarationReference"
-      DeclarationReferences:
+      Title:
+        allOf:
+          - $ref: "#/$defs/safeText"
+        type: string
+        minLength: 1
+        description: "Optional human-readable title for display."
+      InlineTexReference:
+        allOf:
+          - $ref: "#/$defs/safeText"
+        type: string
+        description: "Optional inline TeX reference for the statement, for display."
+      SemanticDependencies:
         type: array
+        description: "Semantic dependencies of this statement, as a list of fully-qualified declaration names."
         items:
-          $ref: "#/$defs/declarationReference"
+          $ref: "#/$defs/submissionScopedName"
 
   proofEntry:
     type: object
     description: >
-      Proof entry. Required fields are axiom and proof. Both are global Lean
-      declaration names: the leading namespace segment is the submission slug in
-      PascalCase, so each name identifies a declaration uniquely across all
-      submissions.
+      Proof entry. Required fields are Name and AxiomReference. Both are global
+      Lean declaration names: the leading namespace segment is the submission
+      slug in PascalCase, so each name identifies a declaration uniquely across
+      all submissions.
     additionalProperties: false
     required:
-      - axiom
-      - proof
+      - Name
+      - AxiomReference
     properties:
-      axiom:
-        $ref: "#/$defs/leanName"
-        description: >
-          Global name of the statement axiom this proof discharges. It may belong
-          to this submission or to another submission; either way the leading
-          namespace segment is that submission's slug in PascalCase.
-      proof:
-        $ref: "#/$defs/leanName"
+      Name:
+        $ref: "#/$defs/submissionScopedName"
         description: >
           Global name of the proof declaration in this submission's proof
-          package, for example SubmissionSlug.Proof.Namespace.theorem.
-
-  declarationReference:
-    type: object
-    description: >
-      Reference to a declaration used by a statement or proof. Use
-      CurrentSubmission for references inside this submission, or SubmissionSlug
-      for references to another submission. LeanStatement and LatexDefinition
-      should be in the same folder.
-    $comment: >
-      Standard JSON Schema cannot compare path prefixes directly. Metadata
-      validation code should check that LeanStatement and LatexDefinition are in
-      the same folder.
-    additionalProperties: false
-    required:
-      - LeanStatement
-      - LatexDefinition
-      - Name
-    oneOf:
-      - required:
-          - CurrentSubmission
-        not:
-          required:
-            - SubmissionSlug
-      - required:
-          - SubmissionSlug
-        not:
-          required:
-            - CurrentSubmission
-    properties:
-      CurrentSubmission:
-        type: boolean
-        const: true
-        description: "True when the referenced declaration belongs to this submission."
-      SubmissionSlug:
-        $ref: "#/$defs/submissionSlug"
-        description: "Submission slug for a referenced declaration from another submission."
-      LeanStatement:
-        $ref: "#/$defs/repoRelativePath"
-        description: "Repository-relative path to the referenced Lean statement file."
-      LatexDefinition:
-        $ref: "#/$defs/repoRelativePath"
-        description: "Repository-relative path to the referenced LaTeX definition file."
-      Name:
-        $ref: "#/$defs/leanName"
-        description: "Referenced Lean declaration name."
+          package, for example SubmissionSlug.Proofs.Namespace.theorem.
+      AxiomReference:
+        $ref: "#/$defs/submissionScopedName"
+        description: >
+          Global name of the statement axiom this proof discharges. It may
+          belong to this submission or to another submission; either way the
+          leading namespace segment is that submission's slug in PascalCase.
+      Title:
+        allOf:
+          - $ref: "#/$defs/safeText"
+        type: string
+        minLength: 1
+        description: "Optional human-readable title for display."
+      InlineTexReference:
+        allOf:
+          - $ref: "#/$defs/safeText"
+        type: string
+        description: "Optional inline TeX reference for the proof, for display."
+      ProofObligations:
+        type: array
+        description: "Dependencies of this proof expressed as proof obligations, each a fully-qualified declaration name."
+        items:
+          $ref: "#/$defs/submissionScopedName"
