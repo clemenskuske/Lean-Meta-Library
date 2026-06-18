@@ -58,7 +58,7 @@ jobs:
           const token = process.env.GITHUB_TOKEN;
           const repository = process.env.GITHUB_REPOSITORY;
           const serverUrl = process.env.GITHUB_SERVER_URL;
-          const lmlEnv = JSON.parse(readFileSync("lml-env.json", "utf8"));
+          const lmlEnv = readJsonIfExists("lml-env.json") ?? {};
           const defaultManifestPath = lmlEnv.submission?.defaultManifestPath ?? "manifest.yaml";
           const manifestPath = process.env.MANIFEST_PATH || defaultManifestPath;
           const sourceBranch = process.env.SOURCE_BRANCH;
@@ -161,6 +161,13 @@ jobs:
             }
             const text = readFileSync(abstractPath, "utf8").trim();
             return text || "_The recorded abstract file is empty._";
+          }
+
+          function readJsonIfExists(path) {
+            if (!existsSync(path)) {
+              return null;
+            }
+            return JSON.parse(readFileSync(path, "utf8"));
           }
 
           function resolveManifestRelativePath(manifestPath, relativePathValue) {
@@ -289,7 +296,7 @@ jobs:
           META_PATH_INPUT: ${{ inputs.manifest_path }}
           SOURCE_BRANCH: ${{ github.ref_name }}
         run: |
-          MANIFEST_PATH="${META_PATH_INPUT:-$(node -e 'console.log(require("./lml-env.json").submission?.defaultManifestPath || "manifest.yaml")')}"
+          MANIFEST_PATH="${META_PATH_INPUT:-$(node -e 'const fs = require("node:fs"); const env = fs.existsSync("lml-env.json") ? require("./lml-env.json") : {}; console.log(env.submission?.defaultManifestPath || "manifest.yaml")')}"
           if git diff --quiet -- "$MANIFEST_PATH"; then
             echo "manifest already contains the current submission issue identifier."
             exit 0
