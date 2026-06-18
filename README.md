@@ -23,21 +23,6 @@ A submission is a Lean Meta Library entry — not a GitHub repository. It consis
 A source repository hosts the submission files. The CLI and the import workflow read the manifest, check the package, and record the result in the shared registry (`submissions.jsonl`).
 
 
-## When Is a Submission Ready
-
-A submission is ready when it is a clear, reproducible mathematical object rather than a snapshot of a whole working project. It should expose the definitions and statement axioms that other people are meant to use, provide proof declarations for the axioms that are claimed as proved, and describe that public surface in a manifest that both humans and the checker can read.
-
-The statement package is intentionally small and quiet: one public declaration per statement file, named under the submission namespace, with matching LaTeX text. The proof package may contain the ordinary Lean work needed to establish those statements, but the manifest names the proof declarations that matter and the axiom each one discharges.
-
-Readiness means the same story is visible in three places: the user's mathematical intention, the manifest, and the Lean artifacts. The package uses the library's fixed Lean and Mathlib versions, includes an accepted license, declares any imported Lean Meta Library dependencies, avoids unrelated build caches or project files, and passes:
-
-```sh
-lml test --manifest=path/to/manifest.yaml
-```
-
-In short: a ready submission is minimal enough to review, explicit enough to import, and checked enough that later work can depend on its public statements.
-
-
 ## Why You Can Trust Imported Statements
 
 Lean Meta Library statements are Lean `axiom` declarations. In ordinary Lean, importing an axiom extends your trusted base — you assert it true without a proof. Here that concern is handled before the statement ever enters the registry:
