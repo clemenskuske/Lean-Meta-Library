@@ -138,8 +138,8 @@ jobs:
               `- Repo Url: ${repoUrl}`,
               `- Source Branch: ${sourceBranch}`,
               `- Source Commit: ${sourceCommit}`,
-              `- manifest File: ${manifestPath}`,
-              `- manifest Url: ${repoBlobUrl(manifestPath)}`
+              `- Manifest File: ${manifestPath}`,
+              `- Manifest Url: ${repoBlobUrl(manifestPath)}`
             ];
             const abstractPath = readTopLevelScalar(readFileSync(manifestPath, "utf8"), "AbstractPath");
             if (abstractPath) {

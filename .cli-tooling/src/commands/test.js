@@ -17,7 +17,7 @@ export async function test({ args, cwd }) {
     throw new Error(`Could not find submission test runner at ${runner}.`);
   }
 
-  validateMetaPath(manifestPath);
+  validateManifestPath(manifestPath);
   run(process.execPath, [runner, `--manifest=${manifestPath}`], { cwd: workspaceRoot, stdio: "inherit" });
 }
 
@@ -66,15 +66,15 @@ function resolveMetaArgument(cwd, manifestPath) {
   return isAbsolute(manifestPath) ? manifestPath : resolve(cwd, manifestPath);
 }
 
-function validateMetaPath(manifestPath) {
+function validateManifestPath(manifestPath) {
   if (!/\.ya?ml$/i.test(manifestPath)) {
     throw new Error("Use a manifest .yaml or .yml file argument: lml test --manifest=path/to/manifest.yaml");
   }
   if (!existsSync(manifestPath)) {
-    throw new Error(`Metadata file not found: ${manifestPath}`);
+    throw new Error(`Manifest file not found: ${manifestPath}`);
   }
   if (!statSync(manifestPath).isFile()) {
-    throw new Error(`Metadata path must be a file: ${manifestPath}`);
+    throw new Error(`Manifest path must be a file: ${manifestPath}`);
   }
 }
 

@@ -1,4 +1,4 @@
-// Metadata path parsing and context loading for submission checks.
+// Manifest path parsing and context loading for submission checks.
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, isAbsolute, resolve } from "node:path";
 import YAML from "yaml";
@@ -9,7 +9,7 @@ export const defaultManifestPath = String(lmlEnv.submission?.defaultManifestPath
 export function loadContext(argv = process.argv.slice(2)) {
   const manifestPath = resolveManifestPath(parseManifestArg(argv));
   if (existsSync(manifestPath) && !statSync(manifestPath).isFile()) {
-    throw new Error(`Metadata path must be a file: ${manifestPath}`);
+    throw new Error(`Manifest path must be a file: ${manifestPath}`);
   }
 
   const packageRoot = dirname(manifestPath);

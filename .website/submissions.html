@@ -789,22 +789,29 @@
       }
 
       function normalizeSubmission(row, index) {
-        const declarations = Array.isArray(row.declarations) ? row.declarations : [];
-        const proofs = Array.isArray(row.proofs) ? row.proofs : [];
+        const data = row.SubmissionData || {};
+        const statementSubmissions = row.StatementSubmissions || {};
+        const proofSubmissions = row.ProofSubmissions || {};
+        const declarations = Array.isArray(row.declarations)
+          ? row.declarations
+          : (Array.isArray(statementSubmissions.statements) ? statementSubmissions.statements.map(normalizeStatementEntry) : []);
+        const proofs = Array.isArray(row.proofs)
+          ? row.proofs
+          : (Array.isArray(proofSubmissions.proofs) ? proofSubmissions.proofs.map(normalizeProofEntry) : []);
         const id = stableId(row, index);
         const normalized = {
           id,
           raw: row,
-          title: row.paperTitle || row.paper?.paperTitle || row.title || `Submission ${index + 1}`,
-          slug: row.namespaceSlug || "",
-          repo: row["Repo Url"] || row["Git Repo"] || "",
+          title: data.SubmissionName || row.paperTitle || row.paper?.paperTitle || row.title || `Submission ${index + 1}`,
+          slug: data.SubmissionSlug || row.namespaceSlug || "",
+          repo: data.Repo || row["Repo Url"] || row["Git Repo"] || "",
           branch: row["Source Branch"] || "",
-          commit: row["Source Commit"] || "",
-          metadataFile: row["Metadata File"] || "",
-          surfaceFolder: row["Surface Folder"] || "",
-          issueUrl: row["Issue Url"] || "",
-          issueNumber: row["Issue Number"] || "",
-          user: row["User Login"] || "",
+          commit: data.Commit || row["Source Commit"] || "",
+          manifestFile: data.ManifestPath || row["Manifest File"] || "",
+          surfaceFolder: statementSubmissions.rootFolder || row["Surface Folder"] || "",
+          issueUrl: data.submissionIssueUrl || row["Issue Url"] || "",
+          issueNumber: data.submissionIssueNumber || row["Issue Number"] || "",
+          user: data.submittedBy || row["User Login"] || "",
           importedAt: row["Imported At"] || "",
           declarations,
           proofs
@@ -812,6 +819,35 @@
         normalized.entries = declarations.map((entry, entryIndex) => normalizeEntry(normalized, entry, entryIndex));
         normalized.stats = summarize(normalized.entries);
         return normalized;
+      }
+
+      function normalizeStatementEntry(entry) {
+        return {
+          name: entry.Name || "",
+          type: entry.Type || "Statement",
+          folder: moduleFolder(entry.Name),
+          usedSurfaceFiles: (entry.SemanticDependencies || []).map((name) => ({
+            definition: name,
+            slug: String(name || "").split(".")[0] || ""
+          })),
+          raw: entry
+        };
+      }
+
+      function normalizeProofEntry(entry) {
+        return {
+          theorem: entry.AxiomReference || "",
+          proof: entry.Name || "",
+          type: "proof",
+          dependencies: entry.ProofObligations || [],
+          raw: entry
+        };
+      }
+
+      function moduleFolder(name) {
+        const parts = String(name || "").split(".");
+        parts.pop();
+        return parts.join("/");
       }
 
       function normalizeEntry(submission, entry, index) {
@@ -872,11 +908,12 @@
       }
 
       function stableId(row, index) {
+        const data = row.SubmissionData || {};
         return encodeURIComponent([
-          row["Issue Number"],
-          row["Repo Url"] || row["Git Repo"],
-          row["Metadata File"],
-          row.namespaceSlug,
+          data.submissionIssueNumber || row["Issue Number"],
+          data.Repo || row["Repo Url"] || row["Git Repo"],
+          data.ManifestPath || row["Manifest File"],
+          data.SubmissionSlug || row.namespaceSlug,
           index
         ].filter(Boolean).join("|") || `submission-${index}`);
       }
@@ -892,7 +929,7 @@
             submission.slug,
             submission.repo,
             submission.user,
-            submission.metadataFile,
+            submission.manifestFile,
             ...submission.entries.map((entry) => entry.name)
           ].join(" ").toLowerCase().includes(query);
         });

@@ -17,10 +17,10 @@ export async function submit({ args, cwd }) {
     throw new Error(`Could not find submit workflow at ${workflowPath}.`);
   }
   if (!existsSync(manifestPath)) {
-    throw new Error(`Metadata file not found: ${manifestPath}.`);
+    throw new Error(`Manifest file not found: ${manifestPath}.`);
   }
   if (!statSync(manifestPath).isFile()) {
-    throw new Error(`Metadata path must be a file: ${manifestPath}.`);
+    throw new Error(`Manifest path must be a file: ${manifestPath}.`);
   }
   if (!isManifestFile(manifestPath)) {
     throw new Error("Use a manifest .yaml or .yml file argument: lml submit [--no-prior-test] --manifest=path/to/manifest.yaml");
@@ -140,7 +140,7 @@ function githubRepo(repoRoot) {
 function toRepoRelativePath(repoRoot, path) {
   const relativePath = relative(repoRoot, path);
   if (relativePath.startsWith("..") || relativePath === "" || isAbsolute(relativePath)) {
-    throw new Error(`Metadata file must be inside the current repository: ${path}`);
+    throw new Error(`Manifest file must be inside the current repository: ${path}`);
   }
   return relativePath.split(sep).join("/");
 }

@@ -1,7 +1,7 @@
 // Adds statement-package dependencies needed by proof manifest before building proofs.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { extname, join, resolve } from "node:path";
-import { validateSubmissionRow } from "../../submission-schema.mjs";
+import { normalizeSubmissionRow, validateSubmissionRow } from "../../submission-schema.mjs";
 import { proofPackageRoot } from "../common.mjs";
 import { slugToPascal } from "../general/manifest-context.mjs";
 
@@ -140,27 +140,22 @@ function parseSubmissionRow(line, path, lineNumber, errors) {
     );
   }
 
-  const normalized = normalizeKeys(row);
-  const slug = stringValue(normalized.submissionslug);
+  const normalized = normalizeSubmissionRow(row);
+  const slug = normalized.submissionSlug;
   const statementPackage = slug ? `${slugToPascal(slug)}.Statements` : null;
-  const statementFolder = normalizePath(
-    normalized.lakestatementpackage ??
-      normalized.statementfolder ??
-      dirnamePath(normalized.statementlakefilepath)
-  );
+  const statementFolder = normalizePath(normalized.statementFolder);
 
   const submission = {
     statementPackage,
-    repoUrl: stringValue(normalized.repourl ?? normalized.gitrepo ?? normalized.githubrepo),
-    sourceBranch: stringValue(normalized.sourcebranch),
-    sourceCommit: stringValue(normalized.sourcecommit),
+    repoUrl: normalized.repoUrl,
+    sourceBranch: normalized.sourceBranch,
+    sourceCommit: normalized.sourceCommit,
     statementFolder
   };
 
   for (const [key, value] of Object.entries({
     statementPackage: submission.statementPackage,
     repoUrl: submission.repoUrl,
-    sourceBranch: submission.sourceBranch,
     sourceCommit: submission.sourceCommit
   })) {
     if (!value) {
@@ -187,24 +182,8 @@ function findSubmissionsJsonl(packageRoot) {
   }
 }
 
-function normalizeKeys(row) {
-  return Object.fromEntries(
-    Object.entries(row).map(([key, value]) => [key.toLowerCase().replace(/[^a-z0-9]/g, ""), value])
-  );
-}
-
-function dirnamePath(path) {
-  const normalized = normalizePath(path);
-  const index = normalized.lastIndexOf("/");
-  return index === -1 ? "" : normalized.slice(0, index);
-}
-
 function normalizePath(path) {
   return String(path ?? "").trim().replace(/^\.?\//, "").replace(/\/$/g, "");
-}
-
-function stringValue(value) {
-  return typeof value === "string" ? value.trim() : "";
 }
 
 function trimTrailingNewline(value) {

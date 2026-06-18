@@ -153,6 +153,7 @@ function substituteManifest(args, newManifestPath) {
 function parseRunnerArgs(args) {
   const runnerOptions = { skipBuildCache: false };
   const checkerArgs = [];
+  const positional = [];
   let manifestPath = null;
 
   for (let i = 0; i < args.length; i++) {
@@ -172,8 +173,17 @@ function parseRunnerArgs(args) {
       checkerArgs.push(arg);
       continue;
     }
-    checkerArgs.push(arg);
+    if (arg.startsWith("-")) {
+      checkerArgs.push(arg);
+      continue;
+    }
+    positional.push(arg);
   }
 
-  return { runnerOptions, manifestPath: manifestPath ?? "manifest.yaml", checkerArgs };
+  if (positional.length > 1 || (manifestPath && positional.length > 0)) {
+    throw new Error("Use one manifest file argument, for example: --manifest=path/to/manifest.yaml.");
+  }
+
+  const selectedManifestPath = manifestPath ?? positional[0] ?? "manifest.yaml";
+  return { runnerOptions, manifestPath: selectedManifestPath, checkerArgs };
 }

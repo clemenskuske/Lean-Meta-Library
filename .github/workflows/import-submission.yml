@@ -58,12 +58,12 @@ jobs:
 
           const body = process.env.ISSUE_BODY ?? "";
           const lmlEnv = JSON.parse(readFileSync("lml-env.json", "utf8"));
-          const defaultMetadataPath = lmlEnv.submission?.defaultMetadataPath ?? "manifest.yaml";
+          const defaultManifestPath = lmlEnv.submission?.defaultManifestPath ?? "manifest.yaml";
           const fields = readFields(body);
           const repoUrl = fields["Repo Url"] ?? fields["Git Repo"];
           const sourceBranch = fields["Source Branch"];
           const sourceCommit = fields["Source Commit"];
-          const manifestPath = fields["manifest File"] ?? defaultMetadataPath;
+          const manifestPath = fields["Manifest File"] ?? defaultManifestPath;
           const submitterId = fields["Submitter Id"] ?? "";
           const submitterLogin = normalizeLogin(fields["Submitted By"] ?? fields["Submitter Login"] ?? "");
 
@@ -310,45 +310,30 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           import { existsSync, readFileSync, writeFileSync } from "node:fs";
-          import { posix as path } from "node:path";
           import { assertSubmissionRow } from "./.github/actions/submission-schema.mjs";
-          import { parseManifestYaml } from "./.github/actions/test/common.mjs";
+          import YAML from "yaml";
 
-          const manifestPath = "checked-submission/manifest.yaml";
-          if (!existsSync(manifestPath)) {
-            throw new Error(`Checked manifest artifact not found: ${manifestPath}`);
+          const checkedManifestPath = "checked-submission/manifest.yaml";
+          if (!existsSync(checkedManifestPath)) {
+            throw new Error(`Checked manifest artifact not found: ${checkedManifestPath}`);
           }
 
-          const manifest = parseManifestYaml(readFileSync(manifestPath, "utf8"));
+          const manifest = YAML.parse(readFileSync(checkedManifestPath, "utf8")) ?? {};
           const repoUrl = process.env.REPO_URL;
-          const sourceBranch = process.env.SOURCE_BRANCH;
-          const sourceCommit = process.env.SOURCE_COMMIT;
-          const manifestPath = process.env.MANIFEST_PATH;
-          const submitterId = process.env.SUBMITTER_ID || process.env.ISSUE_USER_ID;
+          const sourceCommit = String(process.env.SOURCE_COMMIT ?? "").toLowerCase();
+          const sourceManifestPath = process.env.MANIFEST_PATH;
+          const submitterId = String(process.env.SUBMITTER_ID || process.env.ISSUE_USER_ID || "");
           const submitterLogin = process.env.SUBMITTER_LOGIN || process.env.ISSUE_USER_LOGIN;
-          const row = {
-            ...manifest,
-            "Repo Url": repoUrl,
-            "Git Repo": repoUrl,
-            "Source Branch": sourceBranch,
-            "Source Commit": sourceCommit,
-            "manifest File": manifestPath,
-            githubRepo: repoUrl,
-            "Statement Folder": packageFolder(manifest, manifestPath, "statementLakefilePath"),
-            "Declaration Folder": packageFolder(manifest, manifestPath, "statementLakefilePath"),
-            "Proof Folder": packageFolder(manifest, manifestPath, "proofLakefilePath"),
-            "Lake Statement Package": manifest["Lake Statement Package"] || packageFolder(manifest, manifestPath, "statementLakefilePath"),
-            "Lake Proof Package": manifest["Lake Proof Package"] || packageFolder(manifest, manifestPath, "proofLakefilePath"),
-            LakeStatementPackage: manifest.LakeStatementPackage || packageFolder(manifest, manifestPath, "statementLakefilePath"),
-            LakeProofPackage: manifest.LakeProofPackage || packageFolder(manifest, manifestPath, "proofLakefilePath"),
-            submittedBy: submitterLogin,
-            "User Id": Number(submitterId),
-            "User Login": submitterLogin,
-            "Issue Id": Number(process.env.ISSUE_ID),
-            "Issue Number": Number(process.env.ISSUE_NUMBER),
-            "Issue Url": process.env.ISSUE_URL,
-            "Imported At": new Date().toISOString()
-          };
+          const row = submissionRecord({
+            manifest,
+            repoUrl,
+            sourceCommit,
+            sourceManifestPath,
+            submitterId,
+            submitterLogin,
+            issueNumber: Number(process.env.ISSUE_NUMBER),
+            issueUrl: process.env.ISSUE_URL
+          });
           assertSubmissionRow(row, "new submissions.jsonl row");
 
           const logPath = "submissions.jsonl";
@@ -371,30 +356,6 @@ jobs:
           writeFileSync(logPath, nextLogText);
           writeFileSync(".website/submissions-data.js", websiteDataSource(nextLogText));
 
-          function packageFolder(manifest, manifestPathValue, lakefileKey) {
-            const manifestDir = path.dirname(normalizePath(manifestPathValue)).replace(/^\.$/, "");
-            if (manifest[lakefileKey]) {
-              return repoRelativePath(manifestDir, path.dirname(normalizePath(manifest[lakefileKey])));
-            }
-            return manifestDir;
-          }
-
-          function repoRelativePath(base, relativePathValue) {
-            const normalizedBase = normalizePath(base).replace(/^\.$/, "");
-            const normalizedRelative = normalizePath(relativePathValue).replace(/^\.$/, "");
-            if (!normalizedBase) {
-              return normalizedRelative;
-            }
-            if (!normalizedRelative) {
-              return normalizedBase;
-            }
-            return path.join(normalizedBase, normalizedRelative);
-          }
-
-          function normalizePath(value) {
-            return String(value ?? "").replace(/\\/g, "/").replace(/^\.\/+/, "").replace(/\/+/g, "/");
-          }
-
           function parseJsonLine(line, lineNumber) {
             try {
               return JSON.parse(line);
@@ -404,13 +365,46 @@ jobs:
           }
 
           function isSameSubmission(left, right) {
+            const leftData = left.SubmissionData ?? {};
+            const rightData = right.SubmissionData ?? {};
             return (
-              left["Issue Id"] === right["Issue Id"] ||
-              left["Issue Number"] === right["Issue Number"] ||
+              leftData.submissionIssueNumber === rightData.submissionIssueNumber ||
               (
-                normalize(left["Repo Url"] ?? left["Git Repo"]) === normalize(right["Repo Url"]) &&
-                left["manifest File"] === right["manifest File"]
+                normalize(leftData.Repo ?? left["Repo Url"] ?? left["Git Repo"]) === normalize(rightData.Repo ?? right["Repo Url"] ?? right["Git Repo"]) &&
+                (leftData.ManifestPath ?? left["Manifest File"]) === (rightData.ManifestPath ?? right["Manifest File"])
               )
+            );
+          }
+
+          function submissionRecord({ manifest, repoUrl, sourceCommit, sourceManifestPath, submitterId, submitterLogin, issueNumber, issueUrl }) {
+            const submissionData = copyDefined({
+              SubmissionSlug: manifest.SubmissionSlug,
+              SubmissionName: manifest.SubmissionName,
+              AbstractPath: manifest.AbstractPath,
+              BibEntries: manifest.BibEntries ?? [],
+              LicenseFile: manifest.LicenseFile,
+              ManifestPath: sourceManifestPath,
+              SubmissionUserId: submitterId,
+              Repo: repoUrl,
+              Commit: sourceCommit,
+              manifestVersion: manifest.manifestVersion,
+              leanVersion: manifest.leanVersion,
+              mathlibVersion: manifest.mathlibVersion,
+              submittedBy: submitterLogin,
+              submissionIssueNumber: issueNumber,
+              submissionIssueUrl: issueUrl
+            });
+
+            return copyDefined({
+              SubmissionData: submissionData,
+              StatementSubmissions: manifest.StatementSubmissions,
+              ProofSubmissions: manifest.ProofSubmissions
+            });
+          }
+
+          function copyDefined(value) {
+            return Object.fromEntries(
+              Object.entries(value).filter(([, item]) => item !== undefined && item !== null && item !== "")
             );
           }
 

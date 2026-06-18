@@ -3,7 +3,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import lmlEnv from "../../../../lml-env.json" with { type: "json" };
-import { validateSubmissionRow } from "../../submission-schema.mjs";
+import { normalizeSubmissionRow, validateSubmissionRow } from "../../submission-schema.mjs";
 import { leanFiles, namespaceOfDeclaration, relativePath, report, statementPackageRoot } from "../common.mjs";
 import { lakeDependencies, lakeModuleForFile, loadLakeConfig } from "../lake-config.mjs";
 import { parseLeanImports } from "../lean-imports.mjs";
@@ -256,24 +256,20 @@ function parseSubmissionDependency(line, path, lineNumber) {
     );
   }
 
-  const normalized = Object.fromEntries(
-    Object.entries(row).map(([key, value]) => [key.toLowerCase().replace(/[^a-z0-9]/g, ""), value])
-  );
+  const normalized = normalizeSubmissionRow(row);
   const packageFolders = new Set([
-    normalized.statementfolder,
-    normalized.lakestatementpackage
+    normalized.statementFolder
   ].map(normalizePath).filter(Boolean));
 
   const dependency = {
-    repoUrl: stringValue(normalized.repourl ?? normalized.gitrepo ?? normalized.githubrepo),
-    sourceBranch: stringValue(normalized.sourcebranch),
-    sourceCommit: stringValue(normalized.sourcecommit),
+    repoUrl: normalized.repoUrl,
+    sourceBranch: normalized.sourceBranch,
+    sourceCommit: normalized.sourceCommit,
     packageFolders
   };
 
   for (const [key, value] of Object.entries({
     repoUrl: dependency.repoUrl,
-    sourceBranch: dependency.sourceBranch,
     sourceCommit: dependency.sourceCommit
   })) {
     if (!value) {

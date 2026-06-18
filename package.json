@@ -13,6 +13,7 @@
     "agent-info",
     "lml-env.json",
     "manifest.config.yaml",
+    "submission-record.config.yaml",
     "README.md"
   ],
   "scripts": {

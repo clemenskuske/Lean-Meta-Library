@@ -22,7 +22,7 @@ for (const statement of manifest.statements ?? []) {
   }
 }
 
-const statementRoot = statementRootFromMetadata();
+const statementRoot = statementRootFromManifest();
 if (statementRoot && existsSync(statementRoot) && statSync(statementRoot).isDirectory()) {
   for (const file of walkFiles(statementRoot).filter(isStatementPositionFile)) {
     const rel = normalizePath(relative(packageRoot, file));
@@ -32,7 +32,7 @@ if (statementRoot && existsSync(statementRoot) && statSync(statementRoot).isDire
   }
 }
 
-function statementRootFromMetadata() {
+function statementRootFromManifest() {
   if (!manifest.statementRoot) {
     return null;
   }

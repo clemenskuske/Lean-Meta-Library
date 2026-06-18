@@ -35,8 +35,8 @@ if (!manifestPackageSlug(manifest)) {
 
 checkStatementLakefile(statementLakeConfig);
 checkProofLakefile(proofLakeConfig);
-checkStatementMetadataNames();
-checkProofMetadataNames();
+checkStatementManifestNames();
+checkProofManifestNames();
 
 function checkProofLakefile(config) {
   if (!config) {
@@ -67,7 +67,7 @@ function checkStatementLakefile(config) {
   }
 }
 
-function checkStatementMetadataNames() {
+function checkStatementManifestNames() {
   for (const entry of manifest.statements ?? []) {
     const statementName = entry.Statement?.Name;
     if (!statementName) {
@@ -83,7 +83,7 @@ function checkStatementMetadataNames() {
   }
 }
 
-function checkProofMetadataNames() {
+function checkProofManifestNames() {
   for (const proof of manifest.proofs ?? []) {
     const proofName = proof.proof;
     if (!isLeanName(proofName)) {

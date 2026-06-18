@@ -5,6 +5,7 @@ import { ensureAuthenticated } from "../lib/github-auth.js";
 import { ensureGitHubCli } from "../lib/github-cli.js";
 import { run } from "../lib/process.js";
 import { parseManifestYaml } from "../../../.github/actions/test/common.mjs";
+import { normalizeSubmissionRow } from "../../../.github/actions/submission-schema.mjs";
 
 export async function submissionStatus({ args, cwd }) {
   const issueNumber = parseArgs(args);
@@ -241,8 +242,11 @@ function importedSubmission({ repoRoot, issueNumber, sourceCommit, manifestRelPa
     .map((line) => JSON.parse(line));
 
   const row =
-    rows.find((item) => issueNumber && String(item["Issue Number"] ?? "") === String(issueNumber)) ??
-    rows.find((item) => sourceCommit && item["Source Commit"] === sourceCommit && item["Manifest File"] === manifestRelPath) ??
+    rows.find((item) => issueNumber && String(normalizeSubmissionRow(item).issueNumber ?? "") === String(issueNumber)) ??
+    rows.find((item) => {
+      const normalized = normalizeSubmissionRow(item);
+      return sourceCommit && normalized.sourceCommit === sourceCommit && normalized.manifestPath === manifestRelPath;
+    }) ??
     null;
 
   return { imported: Boolean(row), row };
