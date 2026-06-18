@@ -23,6 +23,66 @@ A submission is ready only when all conditions hold:
   current checker.
 - The user is pleased with the result.
 
+## What A Ready Submission Means
+
+A Lean Meta Library submission is meant to be a small public mathematical
+object, not a dump of a working project. It should say, as clearly as possible:
+these are the definitions and statements I want other people to see, these are
+the proofs that justify the axioms I am claiming as proved, and these are the
+dependencies and sources needed to understand the result.
+
+The central distinction is between the public face of the submission and the
+private work that produced it. The statement package is the public face. It
+should contain only the declarations that are being contributed to the library:
+definitions as Lean `def`s and statement-like claims as Lean `axiom`s. Each
+statement should be small enough to inspect, named in the submission namespace,
+and accompanied by human-facing LaTeX text. The proof package may contain more
+ordinary Lean development, but the manifest names the specific proof
+declarations that matter. Those proof declarations are the evidence offered for
+the submitted axioms.
+
+Readiness is therefore not just "Lean builds". A ready submission has made its
+intent explicit. The manifest tells the checker and future readers what the
+submission is called, where its abstract and license live, which declarations
+are public, which proofs discharge which axioms, and which imported Lean Meta
+Library statements are being relied on. Nothing essential should be implicit in
+folder layout, comments, or local naming conventions alone.
+
+The statement files should be deliberately boring. They are the interface that
+future submissions may import, so they should avoid clever machinery,
+implementation helpers, generated declarations, custom commands, and project
+scaffolding. If a declaration is not part of the public mathematical claim, it
+belongs outside the statement package. If a dependency matters semantically, it
+belongs in the manifest.
+
+The proof files carry the complexity instead. They may use helper lemmas and
+internal organization, but each submitted proof target must have a compiled Lean
+type definitionally equal to the axiom it discharges. The checker does not trust
+textual resemblance or author intention; it asks Lean whether the proof has the
+right type, whether it depends on forbidden placeholders such as `sorryAx`, and
+whether its remaining axioms are only the trusted base axioms configured for the
+library.
+
+A ready submission is also reproducible. It uses the Lean version and Mathlib
+revision fixed by the library, includes an accepted license, keeps paths inside
+the manifest root, stays within the file and size policy, and excludes build
+caches or unrelated source-project artifacts. This makes the submission
+portable: the import workflow can check the same thing the author checked
+locally.
+
+In short, a submission is ready when a reader, the CLI, and the Lean kernel can
+all agree on the same story:
+
+- what mathematical objects are being offered;
+- which of them are definitions and which are axioms;
+- which axioms are backed by proof declarations;
+- which prior imported statements are being used;
+- under which fixed Lean and Mathlib environment the claim was checked;
+- under which license the files are being contributed.
+
+If that story is clear, minimal, user-approved, and accepted by
+`lml test --manifest=<path-to-manifest.yaml>`, the submission is ready to send.
+
 ## First Conversation With The User
 
 Before writing the submission package, gather these decisions from the user:
