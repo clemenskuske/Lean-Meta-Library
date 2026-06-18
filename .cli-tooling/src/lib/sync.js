@@ -10,6 +10,7 @@ export function syncRepositoryFiles({ cwd }) {
   downloadFile({ cwd, repo, branch, sourcePath: "submissions.jsonl", targetPath: "submissions.jsonl" });
   downloadFile({ cwd, repo, branch, sourcePath: "manifest.config.yaml", targetPath: "manifest.config.yaml" });
   downloadFile({ cwd, repo, branch, sourcePath: "submission-record.config.yaml", targetPath: "submission-record.config.yaml" });
+  downloadFile({ cwd, repo, branch, sourcePath: ".github/workflows/submit.yml", targetPath: ".github/workflows/submit.yml" });
   downloadFolder({ cwd, repo, branch, sourceDir: "agent-info", targetDir: "agent-info" });
 }
 

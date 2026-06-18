@@ -10,6 +10,7 @@
   "files": [
     ".cli-tooling/src",
     ".github/actions",
+    ".github/workflows/submit.yml",
     "agent-info",
     "lml-env.json",
     "manifest.config.yaml",

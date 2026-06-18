@@ -8,6 +8,7 @@ on:
       - ".cli-tooling/**"
       - ".github/actions/**"
       - ".github/workflows/check-cli-tarball.yml"
+      - ".github/workflows/submit.yml"
       - "agent-info/**"
       - "lml-env.json"
       - "package.json"
