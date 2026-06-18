@@ -164,8 +164,6 @@ function checkCompiledAxioms() {
   const modules = builtModuleNames();
   const composedModuleName = "LmlComposed";
   const composedSource = join(isolatedPackageRoot, `${composedModuleName}.lean`);
-  const composedOlean = join(isolatedPackageRoot, ".lake", "build", "lib", "lean", `${composedModuleName}.olean`);
-  mkdirSync(dirname(composedOlean), { recursive: true });
   writeFileSync(
     composedSource,
     finalProofBuildComposer({ modules, compositionTargets, allowedMathlibAxioms, allowedConjectures }),
@@ -174,6 +172,8 @@ function checkCompiledAxioms() {
 
   const mergedLeanPath = join(tmpRoot, "merged-lean");
   mergeCurrentSubmissionBuilds(mergedLeanPath);
+  const composedOlean = join(mergedLeanPath, `${composedModuleName}.olean`);
+  mkdirSync(dirname(composedOlean), { recursive: true });
   const leanPath = finalProofLeanPath(mergedLeanPath);
   const leanEnv = leanPath ? { ...process.env, LEAN_PATH: leanPath } : process.env;
 
