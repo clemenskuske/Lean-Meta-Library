@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import { join, posix, dirname } from "node:path";
 import { ensureAuthenticated } from "../lib/github-auth.js";
 import { ensureGitHubCli } from "../lib/github-cli.js";
+import { getRepoConfig } from "../lib/repo.js";
 import { run } from "../lib/process.js";
 import { parseManifestYaml } from "../../../.github/actions/test/common.mjs";
 import { normalizeSubmissionRow } from "../../../.github/actions/submission-schema.mjs";
@@ -10,9 +11,8 @@ import { normalizeSubmissionRow } from "../../../.github/actions/submission-sche
 export async function submissionStatus({ args, cwd }) {
   const issueNumber = parseArgs(args);
   const repoRoot = run("git", ["rev-parse", "--show-toplevel"], { cwd });
-  const repo = githubRepo(repoRoot);
-  const branch = currentBranch(repoRoot);
   const headCommit = run("git", ["rev-parse", "HEAD"], { cwd: repoRoot });
+  const repo = getRepoConfig().repo;
 
   ensureGitHubCli();
   ensureAuthenticated();
@@ -21,7 +21,6 @@ export async function submissionStatus({ args, cwd }) {
   const issueFields = readIssueFields(issue.body ?? "");
   const workflow = workflowStatus({
     repo,
-    branch,
     issueTitle: issue.title,
     sourceCommit: issueFields["Source Commit"] ?? null
   });
@@ -76,26 +75,6 @@ function parseIssueRef(ref) {
   throw new Error(`Expected an issue number or GitHub issue URL, got: ${ref}`);
 }
 
-function currentBranch(repoRoot) {
-  const branch = run("git", ["branch", "--show-current"], { cwd: repoRoot });
-  return branch || "(detached)";
-}
-
-function githubRepo(repoRoot) {
-  const remote = run("git", ["remote", "get-url", "origin"], { cwd: repoRoot });
-  const ssh = remote.match(/^git@github\.com:(.+)$/);
-  if (ssh) {
-    return ssh[1].replace(/\.git$/, "");
-  }
-
-  const https = remote.match(/^https:\/\/github\.com\/(.+)$/);
-  if (https) {
-    return https[1].replace(/\.git$/, "");
-  }
-
-  throw new Error(`Origin remote is not a GitHub repository URL: ${remote}`);
-}
-
 function ghJson(args) {
   return JSON.parse(run("gh", args, { stdio: "pipe" }));
 }
@@ -122,15 +101,7 @@ function readIssueFields(body) {
   return fields;
 }
 
-function workflowStatus({ repo, branch, issueTitle, sourceCommit }) {
-  const submit = latestSubmitRun({ repo, branch, sourceCommit });
-  if (isActiveRun(submit)) {
-    return runStatus("uploading", submit, "submit.yml");
-  }
-  if (submit?.conclusion && submit.conclusion !== "success") {
-    return runStatus("uploading failed", submit, "submit.yml");
-  }
-
+function workflowStatus({ repo, issueTitle }) {
   const importer = latestImportRun({ repo, issueTitle });
   if (isActiveRun(importer)) {
     return importRunStatus(repo, importer);
@@ -141,31 +112,7 @@ function workflowStatus({ repo, branch, issueTitle, sourceCommit }) {
   if (importer?.conclusion === "success") {
     return runStatus("completed", importer, "import-submission.yml");
   }
-  if (submit?.conclusion === "success") {
-    return runStatus("waiting for import", submit, "submit.yml");
-  }
-  return { state: "not running" };
-}
-
-function latestSubmitRun({ repo, branch, sourceCommit }) {
-  const runs = ghJsonOptional([
-    "run",
-    "list",
-    "--repo",
-    repo,
-    "--workflow",
-    "submit.yml",
-    "--branch",
-    branch,
-    "--limit",
-    "20",
-    "--json",
-    "databaseId,status,conclusion,headSha,createdAt,updatedAt,url,displayTitle,event"
-  ]);
-  if (!Array.isArray(runs)) {
-    return null;
-  }
-  return runs.find((item) => !sourceCommit || item.headSha === sourceCommit) ?? runs[0] ?? null;
+  return { state: "waiting for import" };
 }
 
 function latestImportRun({ repo, issueTitle }) {
