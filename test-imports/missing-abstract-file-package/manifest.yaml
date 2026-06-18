@@ -1,0 +1,6 @@
+manifestVersion: "1"
+AbstractPath: nonexistent-abstract.tex
+LicenseFile: LICENSE
+SubmissionName: Missing Abstract File Fixture
+SubmissionSlug: missing-abstract-file
+BibEntries: []

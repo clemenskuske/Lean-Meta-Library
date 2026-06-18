@@ -27,6 +27,7 @@ locally without downloading Mathlib.
 
 | Fixture Package | Checker | What It Tests |
 |----------------|---------|---------------|
+| `missing-abstract-file-package` | `general/files-present.mjs` | The manifest's `AbstractPath` points to a file that does not exist on disk; the files-present checker must report the missing file. |
 | `missing-proof-file-package` | `proofs/type-matches-statements.mjs` | The manifest names a `proof` declaration whose source file is absent from the proof package; the package fails to build and the proof declaration cannot be resolved by name. |
 | `manifest-disk-state-failure-package` | `statements/no-extra-files.mjs` | A statement Lean file exists on disk but is not listed in the manifest; the check must report the undeclared file. |
 | `manifest-check-failure-package` | `general/manifest-check.mjs` | The manifest violates the schema (unexpected extra property `legacyCompatibilityField`); the schema validator must reject it. |
@@ -36,9 +37,10 @@ locally without downloading Mathlib.
 | Fixture Package | Checker | What It Tests |
 |----------------|---------|---------------|
 | `mathlib-version-failure-package` | `general/base-import-versions.mjs` | A package's `lean-toolchain` is not the required version; the version checker must reject the mismatch. |
-| `namespaces-correct-failure-package` | `general/namespaces-correct.mjs` | A Lake package name does not match the namespace root derived from `submissionSlug`; the namespace checker must reject it. |
+| `namespaces-correct-failure-package` | `general/namespaces-correct.mjs` | A Lake package name does not match the namespace root derived from `SubmissionSlug`; the namespace checker must reject it. |
 | `folder-size-failure-package` | `general/folder-size.mjs` | The package includes a file that exceeds the size limit; the size checker must flag the oversized file. |
 | `filetypes-failure-package` | `general/filetypes.mjs` | The package includes a disallowed file type (a `.bin` file); the filetype checker must reject it. |
+| `manifest-version-mismatch-package` | `general/manifest-check.mjs` | The manifest sets `leanVersion` and `mathlibVersion` to values that do not match the pinned versions in `lml-env.json`; the manifest checker must reject the mismatched versions. |
 | `missing-license-package` | `general/license.mjs` | The manifest has no `LicenseFile`; the license checker must reject the submission for not declaring a license file. |
 | `bad-license-content-package` | `general/license.mjs` | The license file contains no recognized license identifier; the license checker must reject its contents. |
 

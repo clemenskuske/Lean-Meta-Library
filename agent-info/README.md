@@ -138,9 +138,8 @@ canonical repository state at any time.
 6. Keep proof content focused on the submitted proof targets and any necessary
    internal development.
 7. Include a license file pointed to by `LicenseFile` in the manifest. The file
-   must contain a recognized license identifier (MIT, Apache, GPL, BSD, ISC,
-   Creative Commons, or CC0); the full list is in `lml-env.json` under
-   `submission.allowedLicenseIdentifiers`.
+   must contain a recognized license identifier; see `lml-env.json`
+   `submission.allowedLicenseIdentifiers` for the full list.
 8. Run `lml test --manifest=path/to/manifest.yaml` before calling submission
    work complete.
 9. Run `lml submission-status <issue-id-or-url>` when the user wants to know

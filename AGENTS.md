@@ -93,10 +93,10 @@ express. File-existence checks belong in `general/files-present.mjs`.
 `.github/workflows/submit.yml` creates or updates a GitHub issue for a
 submission manifest. It reads `submissionIssueNumber` from the manifest when
 present, otherwise creates a new issue, labels it `submission`, names it with
-the submission title, starts the body with the abstract, and records the
-submitting login, repository URL, source branch, source commit, and manifest
-file path. It then writes `submissionIssueNumber` and `submissionIssueUrl` back
-to the manifest and commits that update to the source branch.
+the `SubmissionName` value, starts the body with the `AbstractPath` content, and
+records the submitting login, repository URL, source branch, source commit, and
+manifest file path. It then writes `submissionIssueNumber`, `submissionIssueUrl`,
+and `Commit` back to the manifest and commits that update to the source branch.
 
 ## Import Workflow
 

@@ -69,7 +69,7 @@ The expected package/library names are derived from `SubmissionSlug` as
 
 Create `manifest.yaml` with the user. It is the source of truth for the CLI
 checks. Use `manifest.config.yaml` as the schema source of truth.
-Workflow-created fields (`Repo`, `submittedBy`, `submissionIssueNumber`,
+Workflow-created fields (`Repo`, `submittedBy`, `Commit`, `submissionIssueNumber`,
 `submissionIssueUrl`) should normally be omitted until tooling writes them.
 
 The author-supplied required top-level fields are:
@@ -84,8 +84,10 @@ BibEntries: []
 
 `LicenseFile` must point to a file that exists in the submission package. The
 file content must contain a recognized license identifier from
-`lml-env.json`'s `submission.allowedLicenseIdentifiers` (MIT, Apache, GPL,
-LGPL, AGPL, BSD 2-Clause, BSD 3-Clause, ISC, Creative Commons, CC0). Use a
+[`lml-env.json`](../lml-env.json) `submission.allowedLicenseIdentifiers`
+(MIT License, Apache License, GNU General Public License, GNU Lesser General
+Public License, GNU Affero General Public License, BSD 2-Clause License, BSD
+3-Clause License, ISC License, Creative Commons, CC0 1.0 Universal). Use a
 standard license text for the chosen identifier.
 
 A statement package is added as `StatementSubmissions` with `rootFolder` and
@@ -244,8 +246,12 @@ Before submitting or asking the user to submit, confirm:
 
 - The user has approved the title, submission slug, abstract, statement entries,
   proof entry types, dependencies, and bibliographic manifest.
-- A license file is present at `LicenseFile` with a recognized open-source
-  license (MIT, Apache, GPL, BSD, ISC, Creative Commons, or CC0).
+- A license file is present at `LicenseFile` with a recognized license
+  identifier (MIT License, Apache License, GNU General Public License, GNU
+  Lesser General Public License, GNU Affero General Public License, BSD
+  2-Clause License, BSD 3-Clause License, ISC License, Creative Commons, CC0
+  1.0 Universal); see [`lml-env.json`](../lml-env.json)
+  `submission.allowedLicenseIdentifiers` for the canonical list.
 - Every `Definition` and `Axiom` entry has a matching statement file and LaTeX
   file.
 - Every discharged axiom has a matching typed proof file and manifest entry.

@@ -26,7 +26,7 @@ schema disagree, follow the schema.
 - `ProofSubmissions` must be present when a proof package exists. It requires
   `rootFolder` (a repository-relative path to the package folder) and `proofs`.
   The folder must contain a `lakefile.lean` and a `lean-toolchain` file.
-- Workflow/tooling-created fields are `Repo`, `submittedBy`,
+- Workflow/tooling-created fields are `Repo`, `submittedBy`, `Commit`,
   `submissionIssueNumber`, and `submissionIssueUrl`. Authors should omit these
   until tooling writes them.
 

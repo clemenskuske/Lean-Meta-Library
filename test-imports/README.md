@@ -33,6 +33,15 @@ downloading Mathlib. When running a checker by hand you may need to do the same.
 
 ## Fixtures
 
+### Commit and submission identity
+
+- **`commit-hash-failure-package`** — the manifest's `Commit` field is set to a
+  branch name instead of a SHA-1 hash, so `general/commit-is-hash.mjs` must
+  reject it.
+- **`duplicate-slug-package`** — the manifest's `SubmissionSlug` matches an
+  existing slug in the fixture's local `submissions.jsonl`, so
+  `general/slug-unique.mjs` must reject it.
+
 ### Build and cache preparation
 
 - **`build-packages-failure-package`** — the proof package contains an unknown
@@ -44,6 +53,9 @@ downloading Mathlib. When running a checker by hand you may need to do the same.
 
 ### Files and manifest integrity
 
+- **`missing-abstract-file-package`** — the manifest's `AbstractPath` points to
+  a file that does not exist on disk, so `general/files-present.mjs` must report
+  the missing file.
 - **`missing-proof-file-package`** — the manifest names a `proof` declaration
   whose source file is absent from the proof package, so the package fails to
   build and `proofs/type-matches-statements.mjs` cannot resolve the proof.
@@ -65,6 +77,10 @@ downloading Mathlib. When running a checker by hand you may need to do the same.
   `general/folder-size.mjs` must reject it.
 - **`filetypes-failure-package`** — the package includes a disallowed file type
   (a `.bin` file), so `general/filetypes.mjs` must reject it.
+- **`manifest-version-mismatch-package`** — the manifest sets `leanVersion` and
+  `mathlibVersion` fields to values that do not match the pinned versions in
+  `lml-env.json`, so `general/manifest-check.mjs` must reject the mismatched
+  versions.
 - **`missing-license-package`** — the manifest has no `LicenseFile`, so
   `general/license.mjs` must reject the submission.
 - **`bad-license-content-package`** — the license file contains no recognized

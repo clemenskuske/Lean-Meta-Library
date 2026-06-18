@@ -89,13 +89,10 @@ jobs:
             let manifestText = readFileSync(manifestPath, "utf8");
             const issueNumberValue = readTopLevelScalar(manifestText, issueNumberField);
             const issueNumber = issueNumberValue ? Number.parseInt(issueNumberValue, 10) : null;
-            const submissionTitle = readTopLevelScalar(manifestText, "submissionTitle");
-            const submissionSlug = readTopLevelScalar(manifestText, "submissionSlug");
-            const packageSlug = readTopLevelScalar(manifestText, "packageSlug");
-            const paperTitle = readTopLevelScalar(manifestText, "paperTitle");
-            const namespaceSlug = readTopLevelScalar(manifestText, "namespaceSlug");
-            const abstractPath = readTopLevelScalar(manifestText, "abstractPath");
-            const title = submissionTitle || submissionSlug || packageSlug || paperTitle || namespaceSlug || manifestPath;
+            const submissionName = readTopLevelScalar(manifestText, "SubmissionName");
+            const submissionSlug = readTopLevelScalar(manifestText, "SubmissionSlug");
+            const abstractPath = readTopLevelScalar(manifestText, "AbstractPath");
+            const title = submissionName || submissionSlug || manifestPath;
             issueAbstract = readAbstract(manifestPath, abstractPath);
 
             await ensureLabel();
@@ -111,6 +108,9 @@ jobs:
 
             manifestText = setTopLevelScalar(manifestText, issueNumberField, String(issue.number));
             manifestText = setTopLevelScalar(manifestText, issueUrlField, issue.html_url);
+            if (sourceCommit) {
+              manifestText = setTopLevelScalar(manifestText, "Commit", sourceCommit);
+            }
             writeFileSync(manifestPath, manifestText);
             issue = await updateIssue(issue.number, { title, body: issueBody() });
 
@@ -141,7 +141,7 @@ jobs:
               `- manifest File: ${manifestPath}`,
               `- manifest Url: ${repoBlobUrl(manifestPath)}`
             ];
-            const abstractPath = readTopLevelScalar(readFileSync(manifestPath, "utf8"), "abstractPath");
+            const abstractPath = readTopLevelScalar(readFileSync(manifestPath, "utf8"), "AbstractPath");
             if (abstractPath) {
               lines.push(`- Abstract Url: ${repoBlobUrl(resolveManifestRelativePath(manifestPath, abstractPath))}`);
             }

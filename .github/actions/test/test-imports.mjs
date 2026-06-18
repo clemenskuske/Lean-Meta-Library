@@ -31,6 +31,11 @@ const fixtures = [
     stripMathlibDependencyForCheck: true
   },
   {
+    name: "missing-abstract-file-package",
+    checker: "general/files-present.mjs",
+    expected: /abstractPath missing/
+  },
+  {
     name: "manifest-disk-state-failure-package",
     checker: "statements/no-extra-files.mjs",
     expected: /statement file is present on disk but not listed in manifest/
@@ -267,7 +272,6 @@ function materializeFixture({ name, stripMathlibDependencyForCheck }) {
 function candidateLakefiles(fixtureDir) {
   return [
     join(fixtureDir, "lakefile.lean"),
-    join(fixtureDir, "statements", "lakefile.lean"),
     join(fixtureDir, "statements", "lakefile.lean"),
     join(fixtureDir, "proofs", "lakefile.lean")
   ];
