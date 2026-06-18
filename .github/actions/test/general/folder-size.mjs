@@ -3,7 +3,7 @@
 // Defaults come from lml-env.json; local runs may override them with LML_MAX_PACKAGE_BYTES,
 // LML_MAX_FOLDER_BYTES, and LML_MAX_FILE_BYTES.
 import { existsSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import lmlEnv from "../../../../lml-env.json" with { type: "json" };
 import { loadContext } from "./manifest-context.mjs";
 import {

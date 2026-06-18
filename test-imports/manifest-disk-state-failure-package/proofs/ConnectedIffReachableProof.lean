@@ -1,15 +1,15 @@
-import MetadataDiskStateFailure.Statements.ConnectedIffReachable
+import ManifestDiskStateFailure.Statements.ConnectedIffReachable
 
-namespace ExtraStatementDeclaration.Proofs.Statement.ConnectedIffReachable
+namespace ManifestDiskStateFailure.Proofs.Statement.ConnectedIffReachable
 
 theorem connected_iff_reachable (n : Nat) :
-    MetadataDiskStateFailure.Statements.ConnectedGraph.IsConnectedGraph n ↔ True :=
+    ManifestDiskStateFailure.Statements.ConnectedGraph.IsConnectedGraph n ↔ True :=
   by
-    unfold MetadataDiskStateFailure.Statements.ConnectedGraph.IsConnectedGraph
+    unfold ManifestDiskStateFailure.Statements.ConnectedGraph.IsConnectedGraph
     constructor
     · intro _h
       trivial
     · intro _h
       rfl
 
-end ExtraStatementDeclaration.Proofs.Statement.ConnectedIffReachable
+end ManifestDiskStateFailure.Proofs.Statement.ConnectedIffReachable

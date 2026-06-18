@@ -1,0 +1,5 @@
+namespace ManifestDiskStateFailure.Statements.UnlistedStatement
+
+axiom unlisted_statement : True
+
+end ManifestDiskStateFailure.Statements.UnlistedStatement

@@ -5,6 +5,7 @@ import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } 
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createOutputConfig } from "../create-submission/create-output-config.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "../../..");
@@ -37,7 +38,7 @@ const fixtures = [
   {
     name: "manifest-check-failure-package",
     checker: "general/manifest-check.mjs",
-    expected: /manifest schema .*must have required property 'bibtex-entries'|manifest schema .*must NOT have additional properties/
+    expected: /manifest schema .*must NOT have additional properties/
   },
   {
     name: "mathlib-version-failure-package",
@@ -114,6 +115,16 @@ const fixtures = [
     name: "bad-license-content-package",
     checker: "general/license.mjs",
     expected: /license file does not contain a recognized license identifier/
+  },
+  {
+    name: "commit-hash-failure-package",
+    checker: "general/commit-is-hash.mjs",
+    expected: /Commit must be a full SHA-1 hash/
+  },
+  {
+    name: "duplicate-slug-package",
+    checker: "general/slug-unique.mjs",
+    expected: /SubmissionSlug "duplicate-slug" is already taken/
   }
 ];
 
@@ -153,7 +164,7 @@ function runFixture({ name, checker, expected, stripMathlibDependencyForCheck })
       timeout: fixtureTimeoutMs
     });
   } finally {
-    fixture.cleanup();
+    fixture.cleanupAlways();
   }
 
   const output = `${child?.stdout ?? ""}${child?.stderr ?? ""}`;
@@ -190,18 +201,45 @@ function runFixture({ name, checker, expected, stripMathlibDependencyForCheck })
     };
   }
 
+  fixture.cleanupOutputConfig();
   return { ok: true, output };
 }
 
+/**
+ * Prepares a fixture for testing:
+ * - Creates a temp directory copy (if Mathlib stripping is needed) and strips the
+ *   require from lakefiles so builds succeed locally.
+ * - Calls createOutputConfig to produce output.config.<name>.yaml next to the
+ *   manifest that the checker will receive.
+ *
+ * Returns:
+ *   manifestPath       — path to the output config file handed to the checker
+ *   cleanupAlways()    — always call after the checker exits (cleans temp dirs)
+ *   cleanupOutputConfig() — call only when the test passes (deletes the output file)
+ *
+ * On test failure the output config is intentionally left in place so that the
+ * failing input is visible in the fixture's source directory.
+ */
 function materializeFixture({ name, stripMathlibDependencyForCheck }) {
   const sourceDir = join(repoRoot, "test-imports", name);
+  const sourceManifest = join(sourceDir, "manifest.yaml");
+
   if (!stripMathlibDependencyForCheck) {
+    const outputConfigPath = createOutputConfig(sourceManifest, name);
     return {
-      manifestPath: join(sourceDir, "manifest.yaml"),
-      cleanup() {}
+      manifestPath: outputConfigPath,
+      cleanupAlways() {},
+      cleanupOutputConfig() {
+        rmSync(outputConfigPath, { force: true });
+      }
     };
   }
 
+  // Build a temp copy with Mathlib stripped so the checker can run lake without
+  // downloading Mathlib. The checker runs against the temp copy.
+  // A second output config is also written to the source dir so that on failure
+  // it remains visible in the test-imports tree rather than disappearing with the
+  // temp directory.
   const tmpRoot = mkdtempSync(join(tmpdir(), "lml-test-import-"));
   const fixtureDir = join(tmpRoot, basename(sourceDir));
   cpSync(sourceDir, fixtureDir, { recursive: true });
@@ -212,10 +250,16 @@ function materializeFixture({ name, stripMathlibDependencyForCheck }) {
     }
   }
 
+  const tmpOutputConfigPath = createOutputConfig(join(fixtureDir, "manifest.yaml"), name);
+  const sourceOutputConfigPath = createOutputConfig(sourceManifest, name);
+
   return {
-    manifestPath: join(fixtureDir, "manifest.yaml"),
-    cleanup() {
+    manifestPath: tmpOutputConfigPath,
+    cleanupAlways() {
       rmSync(tmpRoot, { recursive: true, force: true });
+    },
+    cleanupOutputConfig() {
+      rmSync(sourceOutputConfigPath, { force: true });
     }
   };
 }

@@ -1,27 +1,17 @@
 manifestVersion: "1"
-proofRoot: "."
-statementRoot: statements
-abstractPath: abstract.tex
-submissionTitle: Extra Statement Declaration Fixture
-statements:
-  - Name: ConnectedGraph
-    Type: Definition
-    Statement:
-      CurrentSubmission: true
-      Name: ExtraStatementDeclaration.Statements.ConnectedGraph.IsConnectedGraph
-      LeanStatement: statements/ExtraStatementDeclaration/Statements/ConnectedGraph.lean
-      LatexDefinition: statements/ExtraStatementDeclaration/Statements/ConnectedGraph.tex
-    DeclarationReferences: []
-  - Name: ConnectedIffReachable
-    Type: Axiom
-    Statement:
-      CurrentSubmission: true
-      Name: ExtraStatementDeclaration.Statements.ConnectedIffReachable.connected_iff_reachable
-      LeanStatement: statements/ExtraStatementDeclaration/Statements/ConnectedIffReachable.lean
-      LatexDefinition: statements/ExtraStatementDeclaration/Statements/ConnectedIffReachable.tex
-    DeclarationReferences: []
-proofs:
-  - axiom: ExtraStatementDeclaration.Statements.ConnectedIffReachable.connected_iff_reachable
-    proof: ExtraStatementDeclaration.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
-bibtex-entries: []
-submissionSlug: extra-statement-declaration
+AbstractPath: abstract.tex
+SubmissionName: Extra Statement Declaration Fixture
+SubmissionSlug: extra-statement-declaration
+BibEntries: []
+StatementSubmissions:
+  rootFolder: statements
+  statements:
+    - Name: ExtraStatementDeclaration.Statements.ConnectedGraph.IsConnectedGraph
+      Type: Definition
+    - Name: ExtraStatementDeclaration.Statements.ConnectedIffReachable.connected_iff_reachable
+      Type: Axiom
+ProofSubmissions:
+  rootFolder: "."
+  proofs:
+    - Name: ExtraStatementDeclaration.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
+      AxiomReference: ExtraStatementDeclaration.Statements.ConnectedIffReachable.connected_iff_reachable

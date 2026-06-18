@@ -1,28 +1,19 @@
 manifestVersion: "1"
-proofRoot: "."
-statementRoot: statements
-abstractPath: abstract.tex
-submissionTitle: Metadata Check Failure Fixture
-statements:
-  - Name: ConnectedGraph
-    Type: Definition
-    Statement:
-      CurrentSubmission: true
-      Name: MetadataCheckFailure.Statements.ConnectedGraph.IsConnectedGraph
-      LeanStatement: statements/MetadataCheckFailure/Statements/ConnectedGraph.lean
-      LatexDefinition: statements/MetadataCheckFailure/Statements/ConnectedGraph.tex
-    DeclarationReferences: []
-  - Name: ConnectedIffReachable
-    Type: Axiom
-    Statement:
-      CurrentSubmission: true
-      Name: MetadataCheckFailure.Statements.ConnectedIffReachable.connected_iff_reachable
-      LeanStatement: statements/MetadataCheckFailure/Statements/ConnectedIffReachable.lean
-      LatexDefinition: statements/MetadataCheckFailure/Statements/ConnectedIffReachable.tex
-    DeclarationReferences: []
-proofs:
-  - axiom: MetadataCheckFailure.Statements.ConnectedIffReachable.connected_iff_reachable
-    proof: MetadataCheckFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
-bibtex-entries: []
-submissionSlug: metadata-check-failure
+AbstractPath: abstract.tex
+LicenseFile: LICENSE
+SubmissionName: Manifest Check Failure Fixture
+SubmissionSlug: manifest-check-failure
+BibEntries: []
+StatementSubmissions:
+  rootFolder: statements
+  statements:
+    - Name: ManifestCheckFailure.Statements.ConnectedGraph.IsConnectedGraph
+      Type: Definition
+    - Name: ManifestCheckFailure.Statements.ConnectedIffReachable.connected_iff_reachable
+      Type: Axiom
+ProofSubmissions:
+  rootFolder: "."
+  proofs:
+    - Name: ManifestCheckFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
+      AxiomReference: ManifestCheckFailure.Statements.ConnectedIffReachable.connected_iff_reachable
 legacyCompatibilityField: true

@@ -1,4 +1,4 @@
-# Metadata Disk State Failure
+# Manifest Disk State Failure
 
 This package is a negative import fixture. The disk contains an additional
 statement file that is not listed in `manifest.yaml`.

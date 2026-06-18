@@ -1,0 +1,7 @@
+manifestVersion: "1"
+AbstractPath: abstract.tex
+LicenseFile: LICENSE
+SubmissionName: Commit Hash Failure Fixture
+SubmissionSlug: commit-hash-failure
+BibEntries: []
+Commit: "main"

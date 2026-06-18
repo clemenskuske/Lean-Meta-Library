@@ -1,0 +1,6 @@
+manifestVersion: "1"
+AbstractPath: abstract.tex
+LicenseFile: LICENSE
+SubmissionName: Duplicate Slug Fixture
+SubmissionSlug: duplicate-slug
+BibEntries: []

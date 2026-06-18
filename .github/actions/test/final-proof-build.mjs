@@ -13,7 +13,7 @@ import {
   writeFileSync
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, delimiter, join, relative, sep } from "node:path";
+import { basename, delimiter, dirname, join, relative, sep } from "node:path";
 import lmlEnv from "../../../lml-env.json" with { type: "json" };
 import { loadContext } from "./general/manifest-context.mjs";
 import {

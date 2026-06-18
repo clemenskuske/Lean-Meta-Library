@@ -1,4 +1,4 @@
-# Metadata Check Failure
+# Manifest Check Failure
 
 This package is a negative import fixture for the `general/manifest-check.mjs` checker.
 

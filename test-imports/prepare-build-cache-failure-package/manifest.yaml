@@ -1,27 +1,17 @@
 manifestVersion: "1"
-proofRoot: "."
-statementRoot: statements
-abstractPath: abstract.tex
-submissionTitle: Prepare Build Cache Failure Fixture
-statements:
-  - Name: ConnectedGraph
-    Type: Definition
-    Statement:
-      CurrentSubmission: true
-      Name: PrepareBuildCacheFailure.Statements.ConnectedGraph.IsConnectedGraph
-      LeanStatement: statements/PrepareBuildCacheFailure/Statements/ConnectedGraph.lean
-      LatexDefinition: statements/PrepareBuildCacheFailure/Statements/ConnectedGraph.tex
-    DeclarationReferences: []
-  - Name: ConnectedIffReachable
-    Type: Axiom
-    Statement:
-      CurrentSubmission: true
-      Name: PrepareBuildCacheFailure.Statements.ConnectedIffReachable.connected_iff_reachable
-      LeanStatement: statements/PrepareBuildCacheFailure/Statements/ConnectedIffReachable.lean
-      LatexDefinition: statements/PrepareBuildCacheFailure/Statements/ConnectedIffReachable.tex
-    DeclarationReferences: []
-proofs:
-  - axiom: PrepareBuildCacheFailure.Statements.ConnectedIffReachable.connected_iff_reachable
-    proof: PrepareBuildCacheFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
-bibtex-entries: []
-submissionSlug: prepare-build-cache-failure
+AbstractPath: abstract.tex
+SubmissionName: Prepare Build Cache Failure Fixture
+SubmissionSlug: prepare-build-cache-failure
+BibEntries: []
+StatementSubmissions:
+  rootFolder: statements
+  statements:
+    - Name: PrepareBuildCacheFailure.Statements.ConnectedGraph.IsConnectedGraph
+      Type: Definition
+    - Name: PrepareBuildCacheFailure.Statements.ConnectedIffReachable.connected_iff_reachable
+      Type: Axiom
+ProofSubmissions:
+  rootFolder: "."
+  proofs:
+    - Name: PrepareBuildCacheFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
+      AxiomReference: PrepareBuildCacheFailure.Statements.ConnectedIffReachable.connected_iff_reachable

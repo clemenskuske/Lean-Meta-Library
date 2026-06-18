@@ -15,7 +15,7 @@ import {
 } from "../common.mjs";
 
 const context = loadContext();
-const { manifestText, namespaceRoot } = context;
+const { manifestText, namespaceRoot, manifest } = context;
 const rawManifest = YAML.parse(manifestText || "") ?? {};
 const errors = [];
 const warnings = [];
@@ -79,23 +79,25 @@ function runRepositoryChecks() {
     }
   }
 
-  const statements = rawManifest.statements ?? [];
+  // Use normalized manifest so both old-format and new-format manifests are handled.
+  const statements = manifest.statements ?? [];
   const statementByName = new Map();
   for (const entry of statements) {
-    const label = entry.Name ?? entry.Statement?.Name ?? "(unnamed)";
-    if (entry.Statement?.Name) {
-      statementByName.set(entry.Statement.Name, entry);
+    const statementName = entry.Statement?.Name ?? entry.Name ?? null;
+    const label = statementName ?? "(unnamed)";
+    if (statementName) {
+      statementByName.set(statementName, entry);
     }
 
     for (const used of entry.DeclarationReferences ?? []) {
       checkDeclarationReference(used, `DeclarationReferences item in statement ${label}`);
-      if (used.Name && namespaceOfDeclaration(used.Name) === namespaceOfDeclaration(entry.Statement?.Name)) {
+      if (used.Name && namespaceOfDeclaration(used.Name) === namespaceOfDeclaration(statementName)) {
         errors.push(`DeclarationReferences item in statement ${label} must point to a different namespace: ${used.Name}`);
       }
     }
   }
 
-  for (const proof of rawManifest.proofs ?? []) {
+  for (const proof of manifest.proofs ?? []) {
     const label = proof.proof ?? proof.axiom ?? "(unnamed proof)";
     if (!isLeanName(proof.axiom)) {
       errors.push(`proof entry ${label} is missing a valid axiom name: ${proof.axiom ?? "(missing)"}`);

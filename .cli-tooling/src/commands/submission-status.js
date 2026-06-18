@@ -1,60 +1,42 @@
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
-import { dirname, isAbsolute, join, posix, relative, resolve, sep } from "node:path";
+import { join, posix, dirname } from "node:path";
 import { ensureAuthenticated } from "../lib/github-auth.js";
 import { ensureGitHubCli } from "../lib/github-cli.js";
-import { lmlEnv } from "../lib/project-env.js";
 import { run } from "../lib/process.js";
 import { parseManifestYaml } from "../../../.github/actions/test/common.mjs";
 
-const defaultManifestPath = String(lmlEnv.submission?.defaultManifestPath ?? "manifest.yaml");
-
 export async function submissionStatus({ args, cwd }) {
-  const manifestPath = parseArgs(args, cwd);
+  const issueNumber = parseArgs(args);
   const repoRoot = run("git", ["rev-parse", "--show-toplevel"], { cwd });
-
-  if (!existsSync(manifestPath)) {
-    throw new Error(`Metadata file not found: ${manifestPath}.`);
-  }
-  if (!statSync(manifestPath).isFile()) {
-    throw new Error(`Metadata path must be a file: ${manifestPath}.`);
-  }
-  if (!isManifestFile(manifestPath)) {
-    throw new Error("Use a manifest .yaml or .yml file argument: lml submission-status path/to/manifest.yaml");
-  }
-
-  const manifestRelPath = toRepoRelativePath(repoRoot, manifestPath);
-  const manifestText = readFileSync(manifestPath, "utf8");
-  const manifest = parseManifestYaml(manifestText);
   const repo = githubRepo(repoRoot);
   const branch = currentBranch(repoRoot);
   const headCommit = run("git", ["rev-parse", "HEAD"], { cwd: repoRoot });
-  const issueNumber = stringValue(manifest.submissionIssueNumber);
 
-  let issue = null;
-  let issueFields = {};
-  let workflow = null;
+  ensureGitHubCli();
+  ensureAuthenticated();
 
-  if (issueNumber) {
-    ensureGitHubCli();
-    ensureAuthenticated();
-    issue = ghJson(["issue", "view", issueNumber, "--repo", repo, "--json", "number,title,state,url,body,labels"]);
-    issueFields = readIssueFields(issue.body ?? "");
-    workflow = workflowStatus({
-      repo,
-      branch,
-      issueTitle: issue.title,
-      sourceCommit: issueFields["Source Commit"] ?? null
-    });
-  } else {
-    workflow = bestEffortWorkflowStatus({ repo, branch, headCommit });
-  }
+  const issue = ghJson(["issue", "view", issueNumber, "--repo", repo, "--json", "number,title,state,url,body,labels"]);
+  const issueFields = readIssueFields(issue.body ?? "");
+  const workflow = workflowStatus({
+    repo,
+    branch,
+    issueTitle: issue.title,
+    sourceCommit: issueFields["Source Commit"] ?? null
+  });
 
   const sourceCommit = issueFields["Source Commit"] ?? null;
+  const manifestRelPath = issueFields["Manifest File"] ?? null;
   const imported = importedSubmission({ repoRoot, issueNumber, sourceCommit, manifestRelPath });
-  const comparison = sourceCommit
-    ? compareWithSourceCommit({ repoRoot, manifestRelPath, sourceCommit, currentManifest: manifest })
-    : null;
+
+  let comparison = null;
+  if (sourceCommit && manifestRelPath) {
+    const manifestFullPath = join(repoRoot, manifestRelPath);
+    const currentManifest = existsSync(manifestFullPath)
+      ? parseManifestYaml(readFileSync(manifestFullPath, "utf8"))
+      : { declarations: [] };
+    comparison = compareWithSourceCommit({ repoRoot, manifestRelPath, sourceCommit, currentManifest });
+  }
 
   printStatus({
     manifestRelPath,
@@ -68,7 +50,7 @@ export async function submissionStatus({ args, cwd }) {
   });
 }
 
-function parseArgs(args, cwd) {
+function parseArgs(args) {
   const positional = [];
   for (const arg of args) {
     if (arg.startsWith("-")) {
@@ -76,18 +58,21 @@ function parseArgs(args, cwd) {
     }
     positional.push(arg);
   }
-  if (positional.length > 1) {
-    throw new Error("Use one manifest file argument: lml submission-status path/to/manifest.yaml");
+  if (positional.length !== 1) {
+    throw new Error("Provide an issue number or URL: lml submission-status <issue-id-or-url>");
   }
-  return resolveMetaArgument(cwd, positional[0] ?? defaultManifestPath);
+  return parseIssueRef(positional[0]);
 }
 
-function resolveMetaArgument(cwd, manifestPath) {
-  return isAbsolute(manifestPath) ? manifestPath : resolve(cwd, manifestPath);
-}
-
-function isManifestFile(path) {
-  return /\.ya?ml$/i.test(path);
+function parseIssueRef(ref) {
+  const urlMatch = ref.match(/github\.com\/[^/]+\/[^/]+\/issues\/(\d+)/);
+  if (urlMatch) {
+    return urlMatch[1];
+  }
+  if (/^\d+$/.test(ref)) {
+    return ref;
+  }
+  throw new Error(`Expected an issue number or GitHub issue URL, got: ${ref}`);
 }
 
 function currentBranch(repoRoot) {
@@ -108,14 +93,6 @@ function githubRepo(repoRoot) {
   }
 
   throw new Error(`Origin remote is not a GitHub repository URL: ${remote}`);
-}
-
-function toRepoRelativePath(repoRoot, path) {
-  const relativePath = relative(repoRoot, path);
-  if (relativePath.startsWith("..") || relativePath === "" || isAbsolute(relativePath)) {
-    throw new Error(`Metadata file must be inside the current repository: ${path}`);
-  }
-  return relativePath.split(sep).join("/");
 }
 
 function ghJson(args) {
@@ -167,20 +144,6 @@ function workflowStatus({ repo, branch, issueTitle, sourceCommit }) {
     return runStatus("waiting for import", submit, "submit.yml");
   }
   return { state: "not running" };
-}
-
-function bestEffortWorkflowStatus({ repo, branch, headCommit }) {
-  const submit = latestSubmitRun({ repo, branch, sourceCommit: headCommit });
-  if (!submit) {
-    return { state: "not running" };
-  }
-  if (isActiveRun(submit)) {
-    return runStatus("uploading", submit, "submit.yml");
-  }
-  if (submit.conclusion && submit.conclusion !== "success") {
-    return runStatus("uploading failed", submit, "submit.yml");
-  }
-  return runStatus("completed", submit, "submit.yml");
 }
 
 function latestSubmitRun({ repo, branch, sourceCommit }) {
@@ -368,8 +331,7 @@ function statementFileForEntry(entry, packageRelRoot) {
 }
 
 function printStatus({ manifestRelPath, issue, issueNumber, imported, workflow, sourceCommit, headCommit, comparison }) {
-  console.log(`Submission status for ${manifestRelPath}`);
-  console.log(`Submitted: ${issueNumber ? `yes (#${issueNumber}${issue?.url ? `, ${issue.url}` : ""})` : "no"}`);
+  console.log(`Submission status for issue #${issueNumber}${issue?.url ? ` (${issue.url})` : ""}`);
   console.log(`Imported: ${imported.imported ? "yes" : "no"}`);
 
   if (issue) {
@@ -377,10 +339,14 @@ function printStatus({ manifestRelPath, issue, issueNumber, imported, workflow, 
     console.log(`Issue title: ${issue.title}`);
   }
 
+  if (manifestRelPath) {
+    console.log(`Manifest file: ${manifestRelPath}`);
+  }
+
   console.log(`Workflow state: ${workflowLine(workflow)}`);
 
   if (!sourceCommit) {
-    console.log("Source commit: unavailable until a submission issue exists");
+    console.log("Source commit: unavailable");
     return;
   }
 
@@ -443,8 +409,4 @@ function indent(text) {
     .split(/\r?\n/)
     .map((line) => `  ${line}`)
     .join("\n");
-}
-
-function stringValue(value) {
-  return typeof value === "string" || typeof value === "number" ? String(value).trim() : "";
 }

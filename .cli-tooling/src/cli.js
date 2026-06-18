@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 import { agentIntroduction } from "./commands/agent-introduction.js";
-import { agentSubmissionGuide } from "./commands/agent-submission-guide.js";
+import { submissionInstruction } from "./commands/submission-instruction.js";
 import { createPaper } from "./commands/create-paper.js";
 import { init } from "./commands/init.js";
 import { login } from "./commands/login.js";
 import { logout } from "./commands/logout.js";
-import { readme } from "./commands/readme.js";
 import { submit } from "./commands/submit.js";
 import { submissionStatus } from "./commands/submission-status.js";
 import { test } from "./commands/test.js";
@@ -13,7 +12,7 @@ import { update } from "./commands/update.js";
 
 const commands = new Map([
   ["agent-introduction", agentIntroduction],
-  ["agent-submission-guide", agentSubmissionGuide],
+  ["submission-instruction", submissionInstruction],
   ["login", login],
   ["logout", logout],
   ["init", init],
@@ -22,7 +21,6 @@ const commands = new Map([
   ["submit", submit],
   ["submission-status", submissionStatus],
   ["create-paper", createPaper],
-  ["readme", readme]
 ]);
 
 const usage = `Lean Meta Library CLI
@@ -33,8 +31,8 @@ Usage:
 
 Commands:
   agent-introduction    Print the Lean Meta Library startup guide for agents.
-  agent-submission-guide
-                         Print the paper-submission readiness guide for agents.
+  submission-instruction
+                        Print the step-by-step guide for making a submission.
   login                 Login to GitHub with the GitHub CLI.
   logout                Logout from GitHub with the GitHub CLI.
   init                  Check local tooling and sync repository manifest.
@@ -44,11 +42,9 @@ Commands:
   submit --manifest=manifest.yaml
                          Run checks and dispatch the submit GitHub workflow.
                          Use --no-prior-test to skip checks.
-  submission-status
+  submission-status <issue-id-or-url>
                          Show submission issue, workflow, commit, and surface status.
   create-paper [slug]   Create a starter submission package.
-  readme                Print the repository README.
-  readme --short (-s)   Print a condensed quick-reference instead.
 
 Options:
   -h, --help            Show this help text.

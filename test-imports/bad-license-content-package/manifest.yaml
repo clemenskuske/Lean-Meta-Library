@@ -1,6 +1,6 @@
 manifestVersion: "1"
-abstractPath: abstract.tex
-licensePath: LICENSE
-submissionTitle: Bad License Content Fixture
-submissionSlug: bad-license-content
-bibtex-entries: []
+AbstractPath: abstract.tex
+LicenseFile: LICENSE
+SubmissionName: Bad License Content Fixture
+SubmissionSlug: bad-license-content
+BibEntries: []

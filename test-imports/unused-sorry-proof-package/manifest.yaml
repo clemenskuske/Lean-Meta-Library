@@ -1,27 +1,17 @@
 manifestVersion: "1"
-proofRoot: "."
-statementRoot: statements
-abstractPath: abstract.tex
-submissionTitle: Unused Sorry Proof Fixture
-statements:
-  - Name: ConnectedGraph
-    Type: Definition
-    Statement:
-      CurrentSubmission: true
-      Name: UnusedSorryProof.Statements.ConnectedGraph.IsConnectedGraph
-      LeanStatement: statements/UnusedSorryProof/Statements/ConnectedGraph.lean
-      LatexDefinition: statements/UnusedSorryProof/Statements/ConnectedGraph.tex
-    DeclarationReferences: []
-  - Name: ConnectedIffReachable
-    Type: Axiom
-    Statement:
-      CurrentSubmission: true
-      Name: UnusedSorryProof.Statements.ConnectedIffReachable.connected_iff_reachable
-      LeanStatement: statements/UnusedSorryProof/Statements/ConnectedIffReachable.lean
-      LatexDefinition: statements/UnusedSorryProof/Statements/ConnectedIffReachable.tex
-    DeclarationReferences: []
-proofs:
-  - axiom: UnusedSorryProof.Statements.ConnectedIffReachable.connected_iff_reachable
-    proof: UnusedSorryProof.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
-bibtex-entries: []
-submissionSlug: unused-sorry-proof
+AbstractPath: abstract.tex
+SubmissionName: Unused Sorry Proof Fixture
+SubmissionSlug: unused-sorry-proof
+BibEntries: []
+StatementSubmissions:
+  rootFolder: statements
+  statements:
+    - Name: UnusedSorryProof.Statements.ConnectedGraph.IsConnectedGraph
+      Type: Definition
+    - Name: UnusedSorryProof.Statements.ConnectedIffReachable.connected_iff_reachable
+      Type: Axiom
+ProofSubmissions:
+  rootFolder: "."
+  proofs:
+    - Name: UnusedSorryProof.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
+      AxiomReference: UnusedSorryProof.Statements.ConnectedIffReachable.connected_iff_reachable

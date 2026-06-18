@@ -1,27 +1,17 @@
 manifestVersion: "1"
-proofRoot: "."
-statementRoot: statements
-abstractPath: abstract.tex
-submissionTitle: Metadata Disk State Failure Fixture
-statements:
-  - Name: ConnectedGraph
-    Type: Definition
-    Statement:
-      CurrentSubmission: true
-      Name: MetadataDiskStateFailure.Statements.ConnectedGraph.IsConnectedGraph
-      LeanStatement: statements/MetadataDiskStateFailure/Statements/ConnectedGraph.lean
-      LatexDefinition: statements/MetadataDiskStateFailure/Statements/ConnectedGraph.tex
-    DeclarationReferences: []
-  - Name: ConnectedIffReachable
-    Type: Axiom
-    Statement:
-      CurrentSubmission: true
-      Name: MetadataDiskStateFailure.Statements.ConnectedIffReachable.connected_iff_reachable
-      LeanStatement: statements/MetadataDiskStateFailure/Statements/ConnectedIffReachable.lean
-      LatexDefinition: statements/MetadataDiskStateFailure/Statements/ConnectedIffReachable.tex
-    DeclarationReferences: []
-proofs:
-  - axiom: MetadataDiskStateFailure.Statements.ConnectedIffReachable.connected_iff_reachable
-    proof: MetadataDiskStateFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
-bibtex-entries: []
-submissionSlug: metadata-disk-state-failure
+AbstractPath: abstract.tex
+SubmissionName: Manifest Disk State Failure Fixture
+SubmissionSlug: manifest-disk-state-failure
+BibEntries: []
+StatementSubmissions:
+  rootFolder: statements
+  statements:
+    - Name: ManifestDiskStateFailure.Statements.ConnectedGraph.IsConnectedGraph
+      Type: Definition
+    - Name: ManifestDiskStateFailure.Statements.ConnectedIffReachable.connected_iff_reachable
+      Type: Axiom
+ProofSubmissions:
+  rootFolder: "."
+  proofs:
+    - Name: ManifestDiskStateFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
+      AxiomReference: ManifestDiskStateFailure.Statements.ConnectedIffReachable.connected_iff_reachable

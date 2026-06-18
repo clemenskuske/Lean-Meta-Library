@@ -18,6 +18,7 @@ export function createSubmissionPackage({ cwd, slug }) {
   write(root, "lakefile.lean", proofLakefile(namespace, mathlib));
   write(root, "manifest.yaml", manifestYaml({ slug, namespace, lmlEnv }));
   write(root, "abstract.tex", abstractTex());
+  write(root, "LICENSE", apacheLicense());
 
   const statementsRoot = join(root, "statements");
   mkdirSync(statementsRoot, { recursive: true });
@@ -88,41 +89,23 @@ function manifestYaml({ slug, namespace, lmlEnv }) {
   return `manifestVersion: "1"
 leanVersion: ${lmlEnv.lean?.version ?? ""}
 mathlibVersion: ${lmlEnv.baseImports?.Mathlib?.revision ?? ""}
-proofRoot: "."
-statementRoot: statements
-abstractPath: abstract.tex
-submissionTitle: Your Submission Paper
-submissionSlug: ${slug}
-statements:
-  - Name: ConnectedGraph
-    Type: Definition
-    Statement:
-      CurrentSubmission: true
-      Name: ${namespace}.Definition.ConnectedGraph.IsConnectedGraph
-      LeanStatement: statements/${namespace}/Statements/ConnectedGraph.lean
-      LatexDefinition: statements/${namespace}/Statements/ConnectedGraph.tex
-    DeclarationReferences: []
-  - Name: ConnectedIffReachable
-    Type: Axiom
-    Statement:
-      CurrentSubmission: true
-      Name: ${namespace}.Axiom.ConnectedIffReachable.connected_iff_reachable
-      LeanStatement: statements/${namespace}/Statements/ConnectedIffReachable.lean
-      LatexDefinition: statements/${namespace}/Statements/ConnectedIffReachable.tex
-    DeclarationReferences: []
-proofs:
-  - Name: ConnectedIffReachableProof
-    Type: proof
-    Theorem:
-      CurrentSubmission: true
-      LeanStatement: statements/${namespace}/Statements/ConnectedIffReachable.lean
-      LatexDefinition: statements/${namespace}/Statements/ConnectedIffReachable.tex
-      Name: ${namespace}.Axiom.ConnectedIffReachable.connected_iff_reachable
-    Proof:
-      File: ${namespace}/Proofs/ConnectedIffReachableProof.lean
-      Name: ${namespace}.Proofs.ConnectedIffReachable.connected_iff_reachable
-    DeclarationReferences: []
-bibtex-entries: []
+AbstractPath: abstract.tex
+LicenseFile: LICENSE
+SubmissionName: Your Submission Paper
+SubmissionSlug: ${slug}
+BibEntries: []
+StatementSubmissions:
+  rootFolder: statements
+  statements:
+    - Name: ${namespace}.Statements.ConnectedGraph.IsConnectedGraph
+      Type: Definition
+    - Name: ${namespace}.Statements.ConnectedIffReachable.connected_iff_reachable
+      Type: Axiom
+ProofSubmissions:
+  rootFolder: "."
+  proofs:
+    - Name: ${namespace}.Proofs.ConnectedIffReachable.connected_iff_reachable
+      AxiomReference: ${namespace}.Statements.ConnectedIffReachable.connected_iff_reachable
 `;
 }
 
@@ -131,15 +114,36 @@ function abstractTex() {
 `;
 }
 
+function apacheLicense() {
+  return `Apache License
+Version 2.0, January 2004
+http://www.apache.org/licenses/
+
+Copyright [YEAR] [AUTHOR]
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+`;
+}
+
 function connectedGraphStatement(namespace) {
   return `import Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected
 
-namespace ${namespace}.Definition.ConnectedGraph
+namespace ${namespace}.Statements.ConnectedGraph
 
 def IsConnectedGraph {V : Type u} (G : SimpleGraph V) : Prop :=
   G.Connected
 
-end ${namespace}.Definition.ConnectedGraph
+end ${namespace}.Statements.ConnectedGraph
 `;
 }
 
@@ -147,13 +151,13 @@ function connectedIffReachableStatement(namespace) {
   return `import Mathlib.Combinatorics.SimpleGraph.Connectivity.Connected
 import ${namespace}.Statements.ConnectedGraph
 
-namespace ${namespace}.Axiom.ConnectedIffReachable
+namespace ${namespace}.Statements.ConnectedIffReachable
 
 axiom connected_iff_reachable {V : Type u} (G : SimpleGraph V) :
-    ${namespace}.Definition.ConnectedGraph.IsConnectedGraph G ↔
+    ${namespace}.Statements.ConnectedGraph.IsConnectedGraph G ↔
       Nonempty V ∧ ∀ u v : V, G.Reachable u v
 
-end ${namespace}.Axiom.ConnectedIffReachable
+end ${namespace}.Statements.ConnectedIffReachable
 `;
 }
 
@@ -164,10 +168,10 @@ import ${namespace}.Statements.ConnectedIffReachable
 namespace ${namespace}.Proofs.ConnectedIffReachable
 
 theorem connected_iff_reachable {V : Type u} (G : SimpleGraph V) :
-    ${namespace}.Definition.ConnectedGraph.IsConnectedGraph G ↔
+    ${namespace}.Statements.ConnectedGraph.IsConnectedGraph G ↔
       Nonempty V ∧ ∀ u v : V, G.Reachable u v :=
   by
-    unfold ${namespace}.Definition.ConnectedGraph.IsConnectedGraph
+    unfold ${namespace}.Statements.ConnectedGraph.IsConnectedGraph
     constructor
     · intro h
       exact ⟨h.nonempty, h.preconnected⟩

@@ -9,6 +9,13 @@ Some fixtures carry a real Mathlib dependency; the runner strips it into a
 temporary copy first (`stripMathlibDependencyForCheck`) so the checks build
 locally without downloading Mathlib.
 
+## Commit and submission identity
+
+| Fixture Package | Checker | What It Tests |
+|----------------|---------|---------------|
+| `commit-hash-failure-package` | `general/commit-is-hash.mjs` | The manifest's `Commit` field is set to a branch name instead of a SHA-1 hash; the checker must reject it. |
+| `duplicate-slug-package` | `general/slug-unique.mjs` | The manifest's `SubmissionSlug` matches an existing slug in the fixture's local `submissions.jsonl`; the uniqueness checker must reject it. |
+
 ## Build and cache preparation
 
 | Fixture Package | Checker | What It Tests |
@@ -22,7 +29,7 @@ locally without downloading Mathlib.
 |----------------|---------|---------------|
 | `missing-proof-file-package` | `proofs/type-matches-statements.mjs` | The manifest names a `proof` declaration whose source file is absent from the proof package; the package fails to build and the proof declaration cannot be resolved by name. |
 | `manifest-disk-state-failure-package` | `statements/no-extra-files.mjs` | A statement Lean file exists on disk but is not listed in the manifest; the check must report the undeclared file. |
-| `manifest-check-failure-package` | `general/manifest-check.mjs` | The manifest violates the schema (missing required `bibtex-entries`, or an unexpected extra property); the schema validator must reject it. |
+| `manifest-check-failure-package` | `general/manifest-check.mjs` | The manifest violates the schema (unexpected extra property `legacyCompatibilityField`); the schema validator must reject it. |
 
 ## Submission policy
 
@@ -32,7 +39,7 @@ locally without downloading Mathlib.
 | `namespaces-correct-failure-package` | `general/namespaces-correct.mjs` | A Lake package name does not match the namespace root derived from `submissionSlug`; the namespace checker must reject it. |
 | `folder-size-failure-package` | `general/folder-size.mjs` | The package includes a file that exceeds the size limit; the size checker must flag the oversized file. |
 | `filetypes-failure-package` | `general/filetypes.mjs` | The package includes a disallowed file type (a `.bin` file); the filetype checker must reject it. |
-| `missing-license-package` | `general/license.mjs` | The manifest has no `licensePath`; the license checker must reject the submission for not declaring a license file. |
+| `missing-license-package` | `general/license.mjs` | The manifest has no `LicenseFile`; the license checker must reject the submission for not declaring a license file. |
 | `bad-license-content-package` | `general/license.mjs` | The license file contains no recognized license identifier; the license checker must reject its contents. |
 
 ## Statement checks

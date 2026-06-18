@@ -1,27 +1,17 @@
 manifestVersion: "1"
-proofRoot: "."
-statementRoot: statements
-abstractPath: abstract.tex
-submissionTitle: Build Packages Failure Fixture
-statements:
-  - Name: ConnectedGraph
-    Type: Definition
-    Statement:
-      CurrentSubmission: true
-      Name: BuildPackagesFailure.Statements.ConnectedGraph.IsConnectedGraph
-      LeanStatement: statements/BuildPackagesFailure/Statements/ConnectedGraph.lean
-      LatexDefinition: statements/BuildPackagesFailure/Statements/ConnectedGraph.tex
-    DeclarationReferences: []
-  - Name: ConnectedIffReachable
-    Type: Axiom
-    Statement:
-      CurrentSubmission: true
-      Name: BuildPackagesFailure.Statements.ConnectedIffReachable.connected_iff_reachable
-      LeanStatement: statements/BuildPackagesFailure/Statements/ConnectedIffReachable.lean
-      LatexDefinition: statements/BuildPackagesFailure/Statements/ConnectedIffReachable.tex
-    DeclarationReferences: []
-proofs:
-  - axiom: BuildPackagesFailure.Statements.ConnectedIffReachable.connected_iff_reachable
-    proof: BuildPackagesFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
-bibtex-entries: []
-submissionSlug: build-packages-failure
+AbstractPath: abstract.tex
+SubmissionName: Build Packages Failure Fixture
+SubmissionSlug: build-packages-failure
+BibEntries: []
+StatementSubmissions:
+  rootFolder: statements
+  statements:
+    - Name: BuildPackagesFailure.Statements.ConnectedGraph.IsConnectedGraph
+      Type: Definition
+    - Name: BuildPackagesFailure.Statements.ConnectedIffReachable.connected_iff_reachable
+      Type: Axiom
+ProofSubmissions:
+  rootFolder: "."
+  proofs:
+    - Name: BuildPackagesFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
+      AxiomReference: BuildPackagesFailure.Statements.ConnectedIffReachable.connected_iff_reachable

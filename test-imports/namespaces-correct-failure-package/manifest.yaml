@@ -1,27 +1,17 @@
 manifestVersion: "1"
-proofRoot: "."
-statementRoot: statements
-abstractPath: abstract.tex
-submissionTitle: Namespaces Correct Failure Fixture
-statements:
-  - Name: ConnectedGraph
-    Type: Definition
-    Statement:
-      CurrentSubmission: true
-      Name: NamespacesCorrectFailure.Statements.ConnectedGraph.IsConnectedGraph
-      LeanStatement: statements/NamespacesCorrectFailure/Statements/ConnectedGraph.lean
-      LatexDefinition: statements/NamespacesCorrectFailure/Statements/ConnectedGraph.tex
-    DeclarationReferences: []
-  - Name: ConnectedIffReachable
-    Type: Axiom
-    Statement:
-      CurrentSubmission: true
-      Name: NamespacesCorrectFailure.Statements.ConnectedIffReachable.connected_iff_reachable
-      LeanStatement: statements/NamespacesCorrectFailure/Statements/ConnectedIffReachable.lean
-      LatexDefinition: statements/NamespacesCorrectFailure/Statements/ConnectedIffReachable.tex
-    DeclarationReferences: []
-proofs:
-  - axiom: NamespacesCorrectFailure.Statements.ConnectedIffReachable.connected_iff_reachable
-    proof: NamespacesCorrectFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
-bibtex-entries: []
-submissionSlug: namespaces-correct-failure
+AbstractPath: abstract.tex
+SubmissionName: Namespaces Correct Failure Fixture
+SubmissionSlug: namespaces-correct-failure
+BibEntries: []
+StatementSubmissions:
+  rootFolder: statements
+  statements:
+    - Name: NamespacesCorrectFailure.Statements.ConnectedGraph.IsConnectedGraph
+      Type: Definition
+    - Name: NamespacesCorrectFailure.Statements.ConnectedIffReachable.connected_iff_reachable
+      Type: Axiom
+ProofSubmissions:
+  rootFolder: "."
+  proofs:
+    - Name: NamespacesCorrectFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
+      AxiomReference: NamespacesCorrectFailure.Statements.ConnectedIffReachable.connected_iff_reachable

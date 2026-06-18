@@ -1,27 +1,17 @@
 manifestVersion: "1"
-proofRoot: "."
-statementRoot: statements
-abstractPath: abstract.tex
-submissionTitle: Unauthorized Statement Import Fixture
-statements:
-  - Name: ConnectedGraph
-    Type: Definition
-    Statement:
-      CurrentSubmission: true
-      Name: UnauthorizedStatementImport.Statements.ConnectedGraph.IsConnectedGraph
-      LeanStatement: statements/UnauthorizedStatementImport/Statements/ConnectedGraph.lean
-      LatexDefinition: statements/UnauthorizedStatementImport/Statements/ConnectedGraph.tex
-    DeclarationReferences: []
-  - Name: ConnectedIffReachable
-    Type: Axiom
-    Statement:
-      CurrentSubmission: true
-      Name: UnauthorizedStatementImport.Statements.ConnectedIffReachable.connected_iff_reachable
-      LeanStatement: statements/UnauthorizedStatementImport/Statements/ConnectedIffReachable.lean
-      LatexDefinition: statements/UnauthorizedStatementImport/Statements/ConnectedIffReachable.tex
-    DeclarationReferences: []
-proofs:
-  - axiom: UnauthorizedStatementImport.Statements.ConnectedIffReachable.connected_iff_reachable
-    proof: UnauthorizedStatementImport.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
-bibtex-entries: []
-submissionSlug: unauthorized-statement-import
+AbstractPath: abstract.tex
+SubmissionName: Unauthorized Statement Import Fixture
+SubmissionSlug: unauthorized-statement-import
+BibEntries: []
+StatementSubmissions:
+  rootFolder: statements
+  statements:
+    - Name: UnauthorizedStatementImport.Statements.ConnectedGraph.IsConnectedGraph
+      Type: Definition
+    - Name: UnauthorizedStatementImport.Statements.ConnectedIffReachable.connected_iff_reachable
+      Type: Axiom
+ProofSubmissions:
+  rootFolder: "."
+  proofs:
+    - Name: UnauthorizedStatementImport.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
+      AxiomReference: UnauthorizedStatementImport.Statements.ConnectedIffReachable.connected_iff_reachable

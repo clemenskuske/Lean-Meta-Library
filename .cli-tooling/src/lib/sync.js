@@ -8,6 +8,8 @@ export function syncRepositoryFiles({ cwd }) {
   console.log(`Syncing manifest from ${repo}@${branch}.`);
 
   downloadFile({ cwd, repo, branch, sourcePath: "submissions.jsonl", targetPath: "submissions.jsonl" });
+  downloadFile({ cwd, repo, branch, sourcePath: "manifest.config.yaml", targetPath: "manifest.config.yaml" });
+  downloadFile({ cwd, repo, branch, sourcePath: "submission-record.config.yaml", targetPath: "submission-record.config.yaml" });
   downloadFolder({ cwd, repo, branch, sourceDir: "agent-info", targetDir: "agent-info" });
 }
 

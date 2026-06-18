@@ -1,5 +1,5 @@
 manifestVersion: "1"
-abstractPath: abstract.tex
-submissionTitle: Missing License Fixture
-submissionSlug: missing-license
-bibtex-entries: []
+AbstractPath: abstract.tex
+SubmissionName: Missing License Fixture
+SubmissionSlug: missing-license
+BibEntries: []

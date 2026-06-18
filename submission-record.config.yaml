@@ -1,22 +1,21 @@
 $schema: "https://json-schema.org/draft/2020-12/schema"
-$id: "https://lean-meta-library.local/schemas/output.config.yaml"
-title: "Lean Meta Library submission output data"
+$id: "https://lean-meta-library.local/schemas/submission-record.config.yaml"
+title: "Lean Meta Library submission record"
 description: >
-  Schema for the data stored for a Lean Meta Library submission once it has been
-  imported. Where manifest.config.yaml describes the author-supplied submission
-  manifest, this output schema describes the structure of the data the workflow
-  retains in the end. It is organized around three top-level groups:
-  SubmissionData, holding the submission's identifying, bibliographic, and
-  source-repository information; StatementSubmissions, holding the statement
-  package root folder and its statement entries; and ProofSubmissions, holding
-  the proof package root folder and its proof entries.
+  Schema for a single record in submissions.jsonl. Each non-empty line of
+  submissions.jsonl is one JSON object that conforms to this schema. Where
+  manifest.config.yaml describes the author-supplied submission manifest,
+  this schema describes the structure of the data the import workflow retains.
+  It is organized around three top-level groups: SubmissionData, holding the
+  submission's identifying, bibliographic, and source-repository information;
+  StatementSubmissions, holding the statement package root folder and its
+  statement entries; and ProofSubmissions, holding the proof package root
+  folder and its proof entries.
 type: object
 additionalProperties: false
 
 required:
   - SubmissionData
-  - StatementSubmissions
-  - ProofSubmissions
 
 properties:
   # ----------------------------------------------------------------------------
@@ -47,20 +46,20 @@ properties:
         format: uri
         minLength: 1
         description: >
-          Full repository URL. Inherited from manifest.config.yaml's githubRepo,
+          Full repository URL. Inherited from manifest.config.yaml's Repo,
           which is created automatically by tooling/workflows.
       Commit:
         allOf:
           - $ref: "#/$defs/safeText"
         type: string
-        minLength: 1
+        pattern: "^[0-9a-f]{40}$"
         description: >
-          New output field. The full Git SHA of the repository state from which
+          The full SHA-1 commit hash of the repository state from which
           this submission was imported.
       ManifestPath:
         $ref: "#/$defs/repoRelativePath"
         description: >
-          New output field. Repository-relative path to the submission's
+          Repository-relative path to the submission's
           manifest file.
       SubmissionUserId:
         allOf:
@@ -68,13 +67,13 @@ properties:
         type: string
         minLength: 1
         description: >
-          New output field. Identifier of the user who submitted this
+          Identifier of the user who submitted this
           submission.
       SubmissionSlug:
         $ref: "#/$defs/submissionSlug"
         description: >
           Machine-facing slug for this submission. Lean package names are derived
-          from this value. Inherited from manifest.config.yaml's submissionSlug.
+          from this value. Inherited from manifest.config.yaml's SubmissionSlug.
       SubmissionName:
         allOf:
           - $ref: "#/$defs/safeText"
@@ -82,26 +81,26 @@ properties:
         minLength: 1
         description: >
           Human-readable submission name. Inherited from manifest.config.yaml's
-          submissionTitle.
+          SubmissionName.
       AbstractPath:
         $ref: "#/$defs/repoRelativePath"
         description: >
           Repository-relative path to abstract.tex. The abstract is a short
           summary of the submission's results. Inherited from
-          manifest.config.yaml's abstractPath.
+          manifest.config.yaml's AbstractPath.
       BibEntries:
         type: array
         description: >
           BibTeX references for papers whose results are fully or partly
           formalized in this submission. Inherited from manifest.config.yaml's
-          bibtex-entries.
+          BibEntries.
         items:
           $ref: "#/$defs/safeText"
       LicenseFile:
         $ref: "#/$defs/repoRelativePath"
         description: >
           Repository-relative path to the submission's license file. Inherited
-          from manifest.config.yaml's licensePath.
+          from manifest.config.yaml's LicenseFile.
 
       manifestVersion:
         allOf:
@@ -127,8 +126,8 @@ properties:
           The Mathlib revision used by the submission packages. Must match the
           revision pinned in lml-env.json.
 
-      # Fields inherited from manifest.config.yaml that have no counterpart in the
-      # requested output structure are preserved here unchanged.
+      # Fields from manifest.config.yaml that have no equivalent in the submission
+      # record are preserved here unchanged.
       submittedBy:
         allOf:
           - $ref: "#/$defs/safeText"
@@ -169,7 +168,7 @@ properties:
         description: >
           Repository-relative path to the folder containing the statement
           package. The folder must contain a lakefile.lean and a lean-toolchain
-          file. Inherited from manifest.config.yaml's statementRoot.
+          file. Inherited from manifest.config.yaml's StatementSubmissions.rootFolder.
       statements:
         type: array
         minItems: 1
@@ -201,7 +200,7 @@ properties:
         description: >
           Repository-relative path to the folder containing the proof package.
           The folder must contain a lakefile.lean and a lean-toolchain file.
-          Inherited from manifest.config.yaml's proofRoot.
+          Inherited from manifest.config.yaml's ProofSubmissions.rootFolder.
       proofs:
         type: array
         description: >
@@ -284,25 +283,25 @@ $defs:
           - $ref: "#/$defs/safeText"
         type: string
         minLength: 1
-        description: "New output field. Optional human-readable title for display."
+        description: "Optional human-readable title for display."
       InlineTexReference:
         allOf:
           - $ref: "#/$defs/safeText"
         type: string
         description: >
-          New output field. Optional inline TeX reference for the statement, for
+          Optional inline TeX reference for the statement, for
           display.
       InlineLeanStatement:
         allOf:
           - $ref: "#/$defs/safeText"
         type: string
         description: >
-          New output field. Optional inline Lean statement for the statement, for
+          Optional inline Lean statement for the statement, for
           display.
       SemanticDependencies:
         type: array
         description: >
-          New output field. Semantic dependencies of this statement, as a list of
+          Semantic dependencies of this statement, as a list of
           names of the form SubmissionSlug.Namespace(s).Name.
         items:
           $ref: "#/$defs/submissionScopedName"
@@ -311,13 +310,14 @@ $defs:
     type: object
     description: >
       Proof information entry. The Name is the fully-qualified declaration name
-      of the form SubmissionSlug.Namespace(s).Name. The only required field is
-      Name. May carry an optional display Title, an inline TeX reference, an
-      inline Lean statement, an axiom reference, and proof obligations expressed
-      as dependencies.
+      of the form SubmissionSlug.Namespace(s).Name. Required fields are Name and
+      AxiomReference. May carry an optional display Title, an inline TeX
+      reference, an inline Lean statement, and proof obligations expressed as
+      dependencies.
     additionalProperties: false
     required:
       - Name
+      - AxiomReference
     properties:
       Name:
         $ref: "#/$defs/submissionScopedName"
@@ -329,31 +329,31 @@ $defs:
           - $ref: "#/$defs/safeText"
         type: string
         minLength: 1
-        description: "New output field. Optional human-readable title for display."
+        description: "Optional human-readable title for display."
       InlineTexReference:
         allOf:
           - $ref: "#/$defs/safeText"
         type: string
         description: >
-          New output field. Optional inline TeX reference for the proof, for
+          Optional inline TeX reference for the proof, for
           display.
       InlineLeanStatement:
         allOf:
           - $ref: "#/$defs/safeText"
         type: string
         description: >
-          New output field. Optional inline Lean statement for the proof, for
+          Optional inline Lean statement for the proof, for
           display.
       AxiomReference:
         $ref: "#/$defs/submissionScopedName"
         description: >
-          New output field. The axiom this proof discharges, as a name of the
+          The axiom this proof discharges, as a name of the
           form SubmissionSlug.Namespace(s).Name. Mirrors the inherited axiom
           field in the requested dependency-name form.
       ProofObligations:
         type: array
         description: >
-          New output field. Dependencies of this proof expressed as proof
+          Dependencies of this proof expressed as proof
           obligations, each a name of the form
           SubmissionSlug.Namespace(s).Name.
         items:

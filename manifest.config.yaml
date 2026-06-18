@@ -17,6 +17,7 @@ required:
   - SubmissionName
   - SubmissionSlug
   - BibEntries
+  - LicenseFile
 
 properties:
   manifestVersion:
@@ -150,6 +151,13 @@ properties:
     minLength: 1
     description: "Created automatically by tooling/workflows. Full repository URL."
 
+  Commit:
+    allOf:
+      - $ref: "#/$defs/safeText"
+    type: string
+    pattern: "^[0-9a-f]{40}$"
+    description: "Created automatically by tooling/workflows. Full SHA-1 commit hash of the source repository."
+
   submittedBy:
     allOf:
       - $ref: "#/$defs/safeText"
@@ -231,6 +239,11 @@ $defs:
           - $ref: "#/$defs/safeText"
         type: string
         description: "Optional inline TeX reference for the statement, for display."
+      InlineLeanStatement:
+        allOf:
+          - $ref: "#/$defs/safeText"
+        type: string
+        description: "Optional inline Lean statement for the statement, for display."
       SemanticDependencies:
         type: array
         description: "Semantic dependencies of this statement, as a list of fully-qualified declaration names."
@@ -271,6 +284,11 @@ $defs:
           - $ref: "#/$defs/safeText"
         type: string
         description: "Optional inline TeX reference for the proof, for display."
+      InlineLeanStatement:
+        allOf:
+          - $ref: "#/$defs/safeText"
+        type: string
+        description: "Optional inline Lean statement for the proof, for display."
       ProofObligations:
         type: array
         description: "Dependencies of this proof expressed as proof obligations, each a fully-qualified declaration name."

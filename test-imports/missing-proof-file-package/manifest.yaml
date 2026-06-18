@@ -1,27 +1,17 @@
 manifestVersion: "1"
-proofRoot: "."
-statementRoot: statements
-abstractPath: abstract.tex
-submissionTitle: Missing Proof File Fixture
-statements:
-  - Name: ConnectedGraph
-    Type: Definition
-    Statement:
-      CurrentSubmission: true
-      Name: MissingProofFile.Statements.ConnectedGraph.IsConnectedGraph
-      LeanStatement: statements/MissingProofFile/Statements/ConnectedGraph.lean
-      LatexDefinition: statements/MissingProofFile/Statements/ConnectedGraph.tex
-    DeclarationReferences: []
-  - Name: ConnectedIffReachable
-    Type: Axiom
-    Statement:
-      CurrentSubmission: true
-      Name: MissingProofFile.Statements.ConnectedIffReachable.connected_iff_reachable
-      LeanStatement: statements/MissingProofFile/Statements/ConnectedIffReachable.lean
-      LatexDefinition: statements/MissingProofFile/Statements/ConnectedIffReachable.tex
-    DeclarationReferences: []
-proofs:
-  - axiom: MissingProofFile.Statements.ConnectedIffReachable.connected_iff_reachable
-    proof: MissingProofFile.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
-bibtex-entries: []
-submissionSlug: missing-proof-file
+AbstractPath: abstract.tex
+SubmissionName: Missing Proof File Fixture
+SubmissionSlug: missing-proof-file
+BibEntries: []
+StatementSubmissions:
+  rootFolder: statements
+  statements:
+    - Name: MissingProofFile.Statements.ConnectedGraph.IsConnectedGraph
+      Type: Definition
+    - Name: MissingProofFile.Statements.ConnectedIffReachable.connected_iff_reachable
+      Type: Axiom
+ProofSubmissions:
+  rootFolder: "."
+  proofs:
+    - Name: MissingProofFile.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
+      AxiomReference: MissingProofFile.Statements.ConnectedIffReachable.connected_iff_reachable

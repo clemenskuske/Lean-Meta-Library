@@ -13,32 +13,28 @@ schema disagree, follow the schema.
   provided, the default is `manifest.yaml`.
 - The manifest must use the exact field names and shapes from
   `manifest.config.yaml`.
-- Author-supplied required top-level fields are `abstractPath`,
-  `submissionTitle`, `submissionSlug`, `bibtex-entries`, and `licensePath`.
-- `licensePath` must point to a license file whose content contains a
-  recognized license identifier. Recognized identifiers are listed in
-  `lml-env.json` under `submission.allowedLicenseIdentifiers` and include MIT,
-  Apache, GPL, LGPL, AGPL, BSD 2-Clause, BSD 3-Clause, ISC, Creative Commons,
-  and CC0.
-- `statements` and `statementRoot` must appear together when a statement
-  package is present. `statementRoot` is a repository-relative folder path;
-  the folder must contain a `lakefile.lean` and a `lean-toolchain` file.
-- `proofs` and `proofRoot` must appear together when a proof package is
-  present. `proofRoot` is a repository-relative folder path; the folder must
-  contain a `lakefile.lean` and a `lean-toolchain` file.
-- Workflow/tooling-created fields include `githubRepo`, `submittedBy`,
-  `LakeStatementPackage`, `LakeProofPackage`, `submissionIssueNumber`, and
-  `submissionIssueUrl`.
-- Declaration references use exactly one of `CurrentSubmission: true` or
-  `SubmissionSlug`, plus `LeanStatement`, `LatexDefinition`, and `Name`.
-  `LeanStatement` and `LatexDefinition` must be in the same folder.
+- Author-supplied required top-level fields are `AbstractPath`, `SubmissionName`,
+  `SubmissionSlug`, `BibEntries`, and `LicenseFile`.
+- `LicenseFile` must point to a license file whose content contains a recognized
+  license identifier. Recognized identifiers are listed in `lml-env.json` under
+  `submission.allowedLicenseIdentifiers` and include MIT, Apache, GPL, LGPL,
+  AGPL, BSD 2-Clause, BSD 3-Clause, ISC, Creative Commons, and CC0.
+- `StatementSubmissions` must be present when a statement package exists. It
+  requires `rootFolder` (a repository-relative path to the package folder) and
+  `statements`. The folder must contain a `lakefile.lean` and a `lean-toolchain`
+  file.
+- `ProofSubmissions` must be present when a proof package exists. It requires
+  `rootFolder` (a repository-relative path to the package folder) and `proofs`.
+  The folder must contain a `lakefile.lean` and a `lean-toolchain` file.
+- Workflow/tooling-created fields are `Repo`, `submittedBy`,
+  `submissionIssueNumber`, and `submissionIssueUrl`. Authors should omit these
+  until tooling writes them.
 
 ## Statement Package
 
 The statement package is intentionally strict. When present, it contains only
-the submitted statement Lean/LaTeX files, current-submission declaration
-reference Lean/LaTeX files, and its Lake file. No other Lean or LaTeX files may
-be present in the statement package.
+the submitted statement Lean/LaTeX files and its Lake file. No other Lean or
+LaTeX files may be present in the statement package.
 
 The statement package Lake file must:
 
@@ -61,7 +57,7 @@ Each statement Lean file must:
 - introduce a Lean `def` when the manifest entry has `Type: Definition`;
 - introduce a Lean `axiom` when the manifest entry has `Type: Axiom`;
 - use a Lean declaration name beginning with the namespace root derived from
-  `submissionSlug`.
+  `SubmissionSlug`.
 
 Statement files are checked with a conservative syntax policy. They may use
 imports, namespaces, sections, opens, universes, variables, declarations, and
@@ -82,18 +78,17 @@ Statement imports are restricted. A statement file may directly import:
 - the pinned Mathlib base import listed in `lml-env.json` under `baseImports`;
 - Std modules provided by the fixed Lean version;
 - local statement modules from the same submission;
-- external imported-submission statement packages that are both present in the
-  statement Lake file and declared in that statement's `DeclarationReferences`.
+- external imported-submission statement packages listed in that statement's
+  `SemanticDependencies` and present in the statement Lake file.
 
 External statement dependencies are matched through `submissions.jsonl` by
-repository URL, source branch or commit, and package folder information when the
-registry is available.
+global declaration name when the registry is available.
 
 ## Proof Package
 
 The proof package is more flexible than the statement package. It may contain
 ordinary proof development needed to build the submitted proof targets, but the
-submitted proof targets named in manifest are the security boundary.
+submitted proof targets named in the manifest are the security boundary.
 
 When present, the proof package Lake file must:
 
@@ -103,25 +98,26 @@ When present, the proof package Lake file must:
 - use the fixed Lean version from `lml-env.json`;
 - pin Mathlib to `lml-env.json`'s `baseImports.Mathlib.revision` whenever it
   declares Mathlib;
-- build so every declaration named by `proofs[].proof` is available;
-- use only local Lake dependencies on the current submission's statement package
-  when local dependencies are present.
+- build so every declaration named by `ProofSubmissions.proofs[].Name` is
+  available;
+- use only local Lake dependencies on the current submission's
+  `StatementSubmissions` package when local dependencies are present.
 
 Proof packages may contain additional Lean files, helper declarations,
-intermediate theorems, tactics, and internal proof development that are not
-listed in the manifest. Those extra files and declarations are not submitted
-proof targets unless a manifest proof entry names them.
+intermediate theorems, tactics, and internal proof development not listed in the
+manifest. Those extra declarations are not submitted proof targets unless a
+manifest proof entry names them.
 
 ### Lean Proof Targets
 
-Each proof entry names a target statement axiom (`axiom`) and a proof
-declaration (`proof`), both as global Lean names. Each listed proof must:
+Each proof entry has `Name` (the global name of the proof declaration) and
+`AxiomReference` (the global name of the statement axiom it discharges). Each
+listed proof must:
 
 - resolve, by name, to a declaration in the built proof package;
-- use a `proof` name beginning with the namespace root derived from
-  `submissionSlug`;
-- have a compiled Lean type definitionally equal to the type of the `axiom`
-  declaration it discharges, as checked by Lean `isDefEq`.
+- have a `Name` beginning with the namespace root derived from `SubmissionSlug`;
+- have a compiled Lean type definitionally equal to the type of the
+  `AxiomReference` declaration, as checked by Lean `isDefEq`.
 
 For submitted proof targets, compiled axiom dependencies are controlled:
 
@@ -130,11 +126,11 @@ For submitted proof targets, compiled axiom dependencies are controlled:
 - The proof target may bottom out only in allowed base axioms from
   `lml-env.json`.
 
-The target `axiom` may belong to this submission or to another submission; the
-leading namespace segment of its global name identifies the owning submission.
-When the target axiom belongs to another submission, the proof checker augments
-proof Lake files with the required external statement-package dependency when it
-can find a matching `submissions.jsonl` row.
+The `AxiomReference` may belong to this submission or to another submission;
+the leading namespace segment of its global name identifies the owning
+submission. When the target axiom belongs to another submission, the proof
+checker augments proof Lake files with the required external statement-package
+dependency when it can find a matching `submissions.jsonl` row.
 
 ## Final Proof Build
 
@@ -155,7 +151,7 @@ also tied to source module/provenance.
 
 ## License
 
-Every submission must include a license file. The `licensePath` manifest field
+Every submission must include a license file. The `LicenseFile` manifest field
 must be set and the file it points to must exist. The file content must contain
 at least one of the allowed license identifiers configured in `lml-env.json`
 under `submission.allowedLicenseIdentifiers`.

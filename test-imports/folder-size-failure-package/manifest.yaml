@@ -1,27 +1,17 @@
 manifestVersion: "1"
-proofRoot: "."
-statementRoot: statements
-abstractPath: abstract.tex
-submissionTitle: Folder Size Failure Fixture
-statements:
-  - Name: ConnectedGraph
-    Type: Definition
-    Statement:
-      CurrentSubmission: true
-      Name: FolderSizeFailure.Statements.ConnectedGraph.IsConnectedGraph
-      LeanStatement: statements/FolderSizeFailure/Statements/ConnectedGraph.lean
-      LatexDefinition: statements/FolderSizeFailure/Statements/ConnectedGraph.tex
-    DeclarationReferences: []
-  - Name: ConnectedIffReachable
-    Type: Axiom
-    Statement:
-      CurrentSubmission: true
-      Name: FolderSizeFailure.Statements.ConnectedIffReachable.connected_iff_reachable
-      LeanStatement: statements/FolderSizeFailure/Statements/ConnectedIffReachable.lean
-      LatexDefinition: statements/FolderSizeFailure/Statements/ConnectedIffReachable.tex
-    DeclarationReferences: []
-proofs:
-  - axiom: FolderSizeFailure.Statements.ConnectedIffReachable.connected_iff_reachable
-    proof: FolderSizeFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
-bibtex-entries: []
-submissionSlug: folder-size-failure
+AbstractPath: abstract.tex
+SubmissionName: Folder Size Failure Fixture
+SubmissionSlug: folder-size-failure
+BibEntries: []
+StatementSubmissions:
+  rootFolder: statements
+  statements:
+    - Name: FolderSizeFailure.Statements.ConnectedGraph.IsConnectedGraph
+      Type: Definition
+    - Name: FolderSizeFailure.Statements.ConnectedIffReachable.connected_iff_reachable
+      Type: Axiom
+ProofSubmissions:
+  rootFolder: "."
+  proofs:
+    - Name: FolderSizeFailure.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
+      AxiomReference: FolderSizeFailure.Statements.ConnectedIffReachable.connected_iff_reachable

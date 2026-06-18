@@ -1,27 +1,17 @@
 manifestVersion: "1"
-proofRoot: "."
-statementRoot: statements
-abstractPath: abstract.tex
-submissionTitle: Sorry Proof Fixture
-statements:
-  - Name: ConnectedGraph
-    Type: Definition
-    Statement:
-      CurrentSubmission: true
-      Name: SorryProof.Statements.ConnectedGraph.IsConnectedGraph
-      LeanStatement: statements/SorryProof/Statements/ConnectedGraph.lean
-      LatexDefinition: statements/SorryProof/Statements/ConnectedGraph.tex
-    DeclarationReferences: []
-  - Name: ConnectedIffReachable
-    Type: Axiom
-    Statement:
-      CurrentSubmission: true
-      Name: SorryProof.Statements.ConnectedIffReachable.connected_iff_reachable
-      LeanStatement: statements/SorryProof/Statements/ConnectedIffReachable.lean
-      LatexDefinition: statements/SorryProof/Statements/ConnectedIffReachable.tex
-    DeclarationReferences: []
-proofs:
-  - axiom: SorryProof.Statements.ConnectedIffReachable.connected_iff_reachable
-    proof: SorryProof.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
-bibtex-entries: []
-submissionSlug: sorry-proof
+AbstractPath: abstract.tex
+SubmissionName: Sorry Proof Fixture
+SubmissionSlug: sorry-proof
+BibEntries: []
+StatementSubmissions:
+  rootFolder: statements
+  statements:
+    - Name: SorryProof.Statements.ConnectedGraph.IsConnectedGraph
+      Type: Definition
+    - Name: SorryProof.Statements.ConnectedIffReachable.connected_iff_reachable
+      Type: Axiom
+ProofSubmissions:
+  rootFolder: "."
+  proofs:
+    - Name: SorryProof.Proofs.Statement.ConnectedIffReachable.connected_iff_reachable
+      AxiomReference: SorryProof.Statements.ConnectedIffReachable.connected_iff_reachable
