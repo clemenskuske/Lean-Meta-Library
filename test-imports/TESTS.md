@@ -49,8 +49,14 @@ locally without downloading Mathlib.
 | Fixture Package | Checker | What It Tests |
 |----------------|---------|---------------|
 | `statement-file-context-failure-package` | `statements/file-context.mjs` | A statement file uses a forbidden `#eval` command; the file-context checker must reject it. |
-| `extra-statement-declaration-package` | `statements/introduced-declarations.mjs` | A statement file introduces an extra helper declaration instead of exactly one; the declarations checker must reject it. |
+| `extra-statement-declaration-package` | `statements/introduced-declarations.mjs` | A statement file introduces an unlisted helper declaration; the declarations checker must reject it. |
 | `unauthorized-statement-import-package` | `statements/imports.mjs` | A statement imports an external module not listed in its `DeclarationReferences`; the import checker must reject the unauthorized dependency. |
+
+## Acceptance checks
+
+| Fixture Package | Checker | What It Tests |
+|----------------|---------|---------------|
+| `shared-statement-declarations-package` | `statements/introduced-declarations.mjs` | One statement file introduces multiple manifest-listed declarations; the declarations checker must accept it. |
 
 ## Proof checks
 

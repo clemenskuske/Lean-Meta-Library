@@ -133,8 +133,9 @@ canonical repository state at any time.
    slug, abstract, public `Definition`/`Axiom` entries, proof types, proof
    sources, dependencies, and BibTeX entries.
 4. Run `lml update` before depending on imported-submission context.
-5. Keep statement content small: one submitted declaration per statement file,
-   plus the matching LaTeX file.
+5. Keep statement content small: every submitted declaration must be listed in
+   the manifest, and statement files should contain only those public entries
+   plus the matching LaTeX text.
 6. Keep proof content focused on the submitted proof targets and any necessary
    internal development.
 7. Include a license file pointed to by `LicenseFile` in the manifest. The file

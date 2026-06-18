@@ -57,7 +57,7 @@ A submission may contain only a statement package, only a proof package, or
 both. When both are present, keep them separate:
 
 - The statement package contains its `lakefile.lean`, `lean-toolchain`, and the
-  Lean and LaTeX statement files named by the manifest.
+  Lean and LaTeX statement files implied by the manifest statement names.
 - The proof package contains its `lakefile.lean`, `lean-toolchain`, proof files
   named by the manifest, and any internal proof development needed to build
   those proof targets.
@@ -133,22 +133,23 @@ Each submitted statement file must:
 - import only pinned Mathlib base modules from `lml-env.json`, Std modules
   provided by the fixed Lean version, local statement modules, or authorized
   imported statement packages;
-- introduce exactly one direct public declaration recorded by the manifest;
+- introduce only direct public declarations recorded by the manifest;
 - use a Lean declaration name beginning with the namespace root derived from
   `SubmissionSlug`;
-- avoid helper declarations, private declarations, generated declarations,
-  instances, structures, classes, inductives, macros, custom syntax, `unsafe`,
-  `run_cmd`, `#eval`, `#print`, `extern`, and `IO`.
+- avoid unlisted helper declarations, private declarations, generated
+  declarations, instances, structures, classes, inductives, macros, custom
+  syntax, `unsafe`, `run_cmd`, `#eval`, `#print`, `extern`, and `IO`.
 
-The direct declaration rules are:
+The direct declaration rules for each manifest entry are:
 
-- `Definition` entries must introduce one `def`.
-- `Axiom` entries must introduce one `axiom`.
+- `Definition` entries must resolve to one `def`.
+- `Axiom` entries must resolve to one `axiom`.
 - Statement entries must not introduce theorems.
 
 The statement package may not contain extra `.lean` or `.tex` files beyond the
-manifest-listed statement files and `lakefile.lean`. Every statement entry
-should also have a LaTeX file explaining it in paper-facing language.
+manifest-implied statement files and `lakefile.lean`. Every statement module
+should also have a LaTeX file explaining its public entries in paper-facing
+language.
 
 ## Dependencies
 
@@ -201,7 +202,8 @@ For an arbitrary project, use this workflow:
 1. Inspect its Lake files, toolchain, imports, namespaces, and declarations.
 2. Ask the user which declarations form the intended submission statements.
 3. Create a CLI starter package if useful for the current checker.
-4. Translate selected entries into one-declaration statement files.
+4. Translate selected entries into minimal statement files, grouping closely
+   related entries when appropriate.
 5. Copy or adapt only the proof code needed for submitted proof entries.
 6. Replace references to source-project namespaces with the new package
    namespaces as needed.
@@ -252,10 +254,10 @@ Before submitting or asking the user to submit, confirm:
   2-Clause License, BSD 3-Clause License, ISC License, Creative Commons, CC0
   1.0 Universal); see [`lml-env.json`](../lml-env.json)
   `submission.allowedLicenseIdentifiers` for the canonical list.
-- Every `Definition` and `Axiom` entry has a matching statement file and LaTeX
-  file.
+- Every `Definition` and `Axiom` entry has a matching declaration in a statement
+  file and paper-facing LaTeX text.
 - Every discharged axiom has a matching typed proof file and manifest entry.
-- Statement files contain exactly one direct public declaration each.
+- Statement files contain only manifest-listed direct public declarations.
 - Proof targets contain no forbidden placeholders or local proof-package axioms.
 - Any external dependency is backed by a matching row in `submissions.jsonl`.
 - `lml test --manifest=<slug>-package/manifest.yaml` passes for the exact

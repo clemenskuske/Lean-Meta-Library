@@ -16,7 +16,7 @@ lml --help
 
 A submission is a Lean Meta Library entry — not a GitHub repository. It consists of:
 
-- **Statements** — public `Definition` or `Axiom` declarations, each in its own Lean file with a matching LaTeX description.
+- **Statements** — public `Definition` or `Axiom` declarations in statement Lean files, with matching LaTeX descriptions.
 - **Proofs** — Lean proof declarations that discharge the statement axioms.
 - **Manifest** — a `manifest.yaml` tying everything together: title, abstract, bibliography, and the locations of the statement and proof packages.
 

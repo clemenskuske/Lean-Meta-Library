@@ -51,7 +51,7 @@ The current fixture suite in `test-imports/` covers:
 - statement syntax policy;
 - proof type matching with Lean `isDefEq`;
 - `sorryAx` and local proof-axiom rejection;
-- extra statement declaration rejection;
+- unlisted statement declaration rejection;
 - unauthorized statement imports;
 - final proof-build forbidden axiom checks.
 

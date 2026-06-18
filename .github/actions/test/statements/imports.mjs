@@ -120,9 +120,11 @@ function policyByStatementFile() {
     if (!file) {
       continue;
     }
-    byFile.set(file, {
-      packages: new Set(declarationReferences(entry).map(referencePackage).filter(Boolean))
-    });
+    const policy = byFile.get(file) ?? { packages: new Set() };
+    for (const pkg of declarationReferences(entry).map(referencePackage).filter(Boolean)) {
+      policy.packages.add(pkg);
+    }
+    byFile.set(file, policy);
   }
   return byFile;
 }

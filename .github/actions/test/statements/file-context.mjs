@@ -41,8 +41,9 @@ const allowedCommandKinds = new Set([
   "Lean.Parser.Command.noncomputable"
 ]);
 
-for (const entry of manifest.statements ?? []) {
-  const leanFile = entry?.Statement?.LeanStatement;
+const statementFiles = new Set((manifest.statements ?? []).map((entry) => entry?.Statement?.LeanStatement).filter(Boolean));
+
+for (const leanFile of statementFiles) {
   if (!leanFile) {
     continue;
   }

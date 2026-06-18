@@ -1,0 +1,13 @@
+manifestVersion: "1"
+AbstractPath: abstract.tex
+LicenseFile: LICENSE
+SubmissionName: Shared Statement Declarations Fixture
+SubmissionSlug: shared-statement-declarations
+BibEntries: []
+StatementSubmissions:
+  rootFolder: statements
+  statements:
+    - Name: SharedStatementDeclarations.Statements.Pair.first
+      Type: Definition
+    - Name: SharedStatementDeclarations.Statements.Pair.second
+      Type: Axiom

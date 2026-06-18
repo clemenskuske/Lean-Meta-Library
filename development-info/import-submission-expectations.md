@@ -46,18 +46,22 @@ The statement package Lake file must:
   declares Mathlib.
 
 Each statement LaTeX file is the paper-facing text for the matching Lean
-statement or definition.
+statement file's public entries.
 
 ### Statement Lean Files
 
 Each statement Lean file must:
 
 - build as a Lean module exposed by the statement package Lake file;
-- introduce exactly one direct public declaration for its manifest entry;
-- introduce a Lean `def` when the manifest entry has `Type: Definition`;
-- introduce a Lean `axiom` when the manifest entry has `Type: Axiom`;
+- introduce only direct public declarations listed by manifest entries;
 - use a Lean declaration name beginning with the namespace root derived from
   `SubmissionSlug`.
+
+Each statement manifest entry must:
+
+- resolve to exactly one direct declaration in its statement file;
+- resolve to a Lean `def` when it has `Type: Definition`;
+- resolve to a Lean `axiom` when it has `Type: Axiom`.
 
 Statement files are checked with a conservative syntax policy. They may use
 imports, namespaces, sections, opens, universes, variables, declarations, and
@@ -66,7 +70,7 @@ imports, namespaces, sections, opens, universes, variables, declarations, and
 They must not:
 
 - introduce extra public, private, generated, instance, helper, or hidden
-  declarations;
+  declarations not listed by manifest entries;
 - use theorem declarations as submitted statement content;
 - use `abbrev`, unsafe declarations, or typeclass instances for submitted
   declarations;
@@ -78,8 +82,8 @@ Statement imports are restricted. A statement file may directly import:
 - the pinned Mathlib base import listed in `lml-env.json` under `baseImports`;
 - Std modules provided by the fixed Lean version;
 - local statement modules from the same submission;
-- external imported-submission statement packages listed in that statement's
-  `SemanticDependencies` and present in the statement Lake file.
+- external imported-submission statement packages listed by the statement
+  entries' `SemanticDependencies` and present in the statement Lake file.
 
 External statement dependencies are matched through `submissions.jsonl` by
 global declaration name when the registry is available.

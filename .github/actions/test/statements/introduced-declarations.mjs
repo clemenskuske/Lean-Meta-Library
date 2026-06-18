@@ -1,6 +1,8 @@
 #!/usr/bin/env node
-// Uses Lean to verify that each manifest statement file introduces exactly one simple declaration.
-// The check diffs the environment before and after importing the module, so hidden public, private, generated, or instance declarations are rejected.
+// Uses Lean to verify that each manifest statement entry resolves to one simple declaration.
+// The check diffs the environment before and after importing each module, so hidden
+// public, private, generated, or instance declarations are rejected unless they
+// are explicitly listed as submitted statements.
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { loadContext } from "../general/manifest-context.mjs";
@@ -31,17 +33,15 @@ ensurePreparedLakePackage({
 const statementLakeConfig = statements.length > 0 && statementRoot && existsSync(join(statementRoot, "lakefile.lean"))
   ? loadLakeConfig(statementRoot, "statement lakefile", errors)
   : null;
-const statementFiles = statements
-  .map((entry) => join(packageRoot, statementLeanFileForEntry(entry) ?? ""))
-  .filter(existsSync);
+const entriesByFile = statementEntriesByFile(statements);
+const statementFiles = [...entriesByFile.keys()].map((file) => join(packageRoot, file)).filter(existsSync);
 const importsByFile = parseLeanImports(statementFiles, errors);
 
-for (const entry of statements) {
-  checkStatementEntry(entry);
+for (const [leanFile, entries] of entriesByFile) {
+  checkStatementFile(leanFile, entries);
 }
 
-function checkStatementEntry(entry) {
-  const leanFile = statementLeanFileForEntry(entry);
+function checkStatementFile(leanFile, entries) {
   const statementPath = join(packageRoot, leanFile ?? "");
   const source = readIfExists(statementPath);
   const label = leanFile ?? "(missing statement file)";
@@ -72,32 +72,60 @@ function checkStatementEntry(entry) {
     return;
   }
 
-  const statementName = statementNameForEntry(entry);
-  const directDeclarations = declarations.filter((declaration) => isPrimaryDeclarationForEntry(declaration.name, statementName));
-  if (directDeclarations.length !== 1) {
-    errors.push(
-      `${label} should introduce exactly one direct declaration under ${statementName}, found ${formatCount(directDeclarations)}`
-    );
+  const primaryDeclarations = new Set();
+  const primaryEntryByDeclaration = new Map();
+  for (const entry of entries) {
+    const statementName = statementNameForEntry(entry);
+    const directDeclarations = declarations.filter((declaration) => isPrimaryDeclarationForEntry(declaration.name, statementName));
+    if (directDeclarations.length !== 1) {
+      errors.push(
+        `${label} should introduce exactly one direct declaration for ${statementName}, found ${formatCount(directDeclarations)}`
+      );
+      continue;
+    }
+
+    const primary = directDeclarations[0];
+    const previousEntry = primaryEntryByDeclaration.get(primary.name);
+    if (previousEntry) {
+      errors.push(`${label} declaration ${primary.name} is matched by multiple statement entries: ${statementNameForEntry(previousEntry)}, ${statementName}`);
+      continue;
+    }
+
+    primaryDeclarations.add(primary);
+    primaryEntryByDeclaration.set(primary.name, entry);
+
+    if (!allowedKindForEntry(entry.Type, primary.kind)) {
+      errors.push(`${label} declaration ${primary.name} has kind ${primary.kind}, which is not allowed for ${entry.Type}`);
+    }
+    if (primary.isAbbrev) {
+      errors.push(`${label} declaration ${primary.name} is an abbrev, which is not allowed for ${entry.Type}`);
+    }
+    if (primary.isUnsafe) {
+      errors.push(`${label} declaration ${primary.name} is unsafe`);
+    }
+    if (primary.isInstance) {
+      errors.push(`${label} declaration ${primary.name} is registered as a typeclass instance`);
+    }
   }
 
-  const primary = directDeclarations[0];
-  if (primary && !allowedKindForEntry(entry.Type, primary.kind)) {
-    errors.push(`${label} declaration ${primary.name} has kind ${primary.kind}, which is not allowed for ${entry.Type}`);
-  }
-  if (primary?.isAbbrev) {
-    errors.push(`${label} declaration ${primary.name} is an abbrev, which is not allowed for ${entry.Type}`);
-  }
-  if (primary?.isUnsafe) {
-    errors.push(`${label} declaration ${primary.name} is unsafe`);
-  }
-  if (primary?.isInstance) {
-    errors.push(`${label} declaration ${primary.name} is registered as a typeclass instance`);
-  }
-
-  const extras = declarations.filter((declaration) => declaration !== primary);
+  const extras = declarations.filter((declaration) => !primaryDeclarations.has(declaration));
   for (const extra of extras) {
     errors.push(`${label} introduces extra declaration ${extra.name} (${describeDeclaration(extra)})`);
   }
+}
+
+function statementEntriesByFile(entries) {
+  const byFile = new Map();
+  for (const entry of entries) {
+    const leanFile = statementLeanFileForEntry(entry);
+    if (!leanFile) {
+      continue;
+    }
+    const existing = byFile.get(leanFile) ?? [];
+    existing.push(entry);
+    byFile.set(leanFile, existing);
+  }
+  return byFile;
 }
 
 function statementLeanFileForEntry(entry) {

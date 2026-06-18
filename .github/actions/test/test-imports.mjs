@@ -86,7 +86,7 @@ const fixtures = [
   {
     name: "extra-statement-declaration-package",
     checker: "statements/introduced-declarations.mjs",
-    expected: /introduces extra declaration|should introduce exactly one direct declaration/,
+    expected: /introduces extra declaration/,
     stripMathlibDependencyForCheck: true
   },
   {
@@ -133,6 +133,13 @@ const fixtures = [
   }
 ];
 
+const acceptedFixtures = [
+  {
+    name: "shared-statement-declarations-package",
+    checker: "statements/introduced-declarations.mjs"
+  }
+];
+
 let failed = false;
 
 for (const fixture of fixtures) {
@@ -150,11 +157,26 @@ for (const fixture of fixtures) {
   }
 }
 
+for (const fixture of acceptedFixtures) {
+  console.log(`RUN ${fixture.name}: expecting acceptance from ${fixture.checker}`);
+  const result = runAcceptedFixture(fixture);
+  if (result.ok) {
+    console.log(`PASS ${fixture.name}: accepted by ${fixture.checker}`);
+    continue;
+  }
+
+  failed = true;
+  console.error(`FAIL ${fixture.name}: ${result.reason}`);
+  if (result.output) {
+    console.error(indent(result.output.trimEnd()));
+  }
+}
+
 if (failed) {
   process.exit(1);
 }
 
-console.log(`All ${fixtures.length} negative import fixtures failed as expected.`);
+console.log(`All ${fixtures.length} negative import fixtures failed as expected, and ${acceptedFixtures.length} acceptance fixtures passed.`);
 
 function runFixture({ name, checker, expected, stripMathlibDependencyForCheck }) {
   const checkerPath = join(here, checker);
@@ -203,6 +225,52 @@ function runFixture({ name, checker, expected, stripMathlibDependencyForCheck })
       ok: false,
       output,
       reason: `${checker} rejected the fixture for an unexpected reason`
+    };
+  }
+
+  fixture.cleanupOutputConfig();
+  return { ok: true, output };
+}
+
+function runAcceptedFixture({ name, checker, stripMathlibDependencyForCheck }) {
+  const checkerPath = join(here, checker);
+  const fixture = materializeFixture({ name, stripMathlibDependencyForCheck });
+  let child;
+
+  try {
+    child = spawnSync(process.execPath, [checkerPath, `--manifest=${fixture.manifestPath}`], {
+      cwd: repoRoot,
+      encoding: "utf8",
+      maxBuffer: 1024 * 1024 * 20,
+      timeout: fixtureTimeoutMs
+    });
+  } finally {
+    fixture.cleanupAlways();
+  }
+
+  const output = `${child?.stdout ?? ""}${child?.stderr ?? ""}`;
+
+  if (child.error) {
+    return {
+      ok: false,
+      output,
+      reason: `could not run ${checker}: ${child.error.message}`
+    };
+  }
+
+  if (child.signal) {
+    return {
+      ok: false,
+      output,
+      reason: `${checker} exited after signal ${child.signal}`
+    };
+  }
+
+  if (child.status !== 0) {
+    return {
+      ok: false,
+      output,
+      reason: `${checker} rejected a fixture that should be accepted`
     };
   }
 

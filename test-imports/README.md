@@ -1,19 +1,20 @@
-# Import Failure Fixtures
+# Import Fixtures
 
-This folder holds small Lean Meta Library submission packages that are **meant to
-fail** an import check. Each one is a deliberately broken submission used as a
-regression input for the local checker suite and the GitHub import workflow: the
-test passes only when the matching checker rejects the package for the intended
-reason.
+This folder holds small Lean Meta Library submission packages used as regression
+inputs for the local checker suite and the GitHub import workflow. Most
+fixtures are deliberately broken and are **meant to fail** an import check; a
+small acceptance section records valid edge cases that must continue to pass.
 
 The fixtures follow the manifest shape defined in `manifest.config.yaml` and the
 policy described in `development-info/import-submission-expectations.md`. When you edit a fixture,
 make sure its intended failure is the *first* meaningful rejection — otherwise an
-unrelated error could mask the behavior the fixture is meant to guard.
+unrelated error could mask the behavior the fixture is meant to guard. For
+acceptance fixtures, keep them minimal enough that failures point clearly at the
+behavior under test.
 
 ## Running
 
-Run the full negative suite from the repository root:
+Run the fixture suite from the repository root:
 
 ```sh
 npm run test:imports
@@ -91,12 +92,18 @@ downloading Mathlib. When running a checker by hand you may need to do the same.
 - **`statement-file-context-failure-package`** — a statement file uses a
   forbidden `#eval` command, so `statements/file-context.mjs` must reject it.
 - **`extra-statement-declaration-package`** — a statement file introduces an
-  extra helper declaration instead of exactly one, so
+  unlisted helper declaration, so
   `statements/introduced-declarations.mjs` must reject it.
 - **`unauthorized-statement-import-package`** — a statement imports an external
   module that is not listed in its `DeclarationReferences` (derived from
   `SemanticDependencies` in the manifest), so `statements/imports.mjs` must
   reject it.
+
+### Acceptance checks
+
+- **`shared-statement-declarations-package`** — one statement Lean file
+  introduces multiple manifest-listed declarations, so
+  `statements/introduced-declarations.mjs` must accept it.
 
 ### Proof checks
 
