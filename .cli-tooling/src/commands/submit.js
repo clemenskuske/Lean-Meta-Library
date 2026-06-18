@@ -305,7 +305,7 @@ function issueBody({ repoRoot, manifestPath, manifestPathForIssue, abstractPath,
 
 function recordSubmissionIssue({ manifestPath, issue, commit }) {
   let manifestText = readFileSync(manifestPath, "utf8");
-  manifestText = setTopLevelScalar(manifestText, issueNumberField, String(issue.number));
+  manifestText = setTopLevelScalar(manifestText, issueNumberField, issue.number);
   manifestText = setTopLevelScalar(manifestText, issueUrlField, issue.url);
   manifestText = setTopLevelScalar(manifestText, "Commit", commit);
   writeFileSync(manifestPath, manifestText);
@@ -358,6 +358,9 @@ function setTopLevelScalar(text, key, value) {
 }
 
 function quoteYamlScalar(value) {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return String(value);
+  }
   return JSON.stringify(String(value));
 }
 
