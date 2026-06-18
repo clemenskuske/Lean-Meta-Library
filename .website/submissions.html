@@ -383,24 +383,6 @@
         </div>
 
         <section class="nav-section">
-          <h2 class="section-title">Data</h2>
-          <div class="stack">
-            <a id="build-link" class="nav-link" href="#build-info">
-              <span class="node-name">Output Config</span>
-              <span class="badge">YAML</span>
-            </a>
-            <a class="nav-link" href="./submissions-data.js" target="_blank" rel="noopener">
-              <span class="node-name">Raw data snapshot</span>
-              <span class="badge">JS</span>
-            </a>
-            <a class="nav-link" href="schemas.html">
-              <span class="node-name">Schema Reference</span>
-              <span class="badge">docs</span>
-            </a>
-          </div>
-        </section>
-
-        <section class="nav-section">
           <h2 class="section-title">Submissions</h2>
           <div id="submission-list" class="stack"></div>
         </section>
@@ -431,14 +413,12 @@
         submissions: [],
         nodes: [],
         nodeByName: new Map(),
-        loadedFrom: "",
-        active: "build-info",
+        active: "overview",
         query: ""
       };
 
       const els = {
         title: document.querySelector("#site-title"),
-        buildLink: document.querySelector("#build-link"),
         submissionList: document.querySelector("#submission-list"),
         outline: document.querySelector("#dependency-outline"),
         nodeSearch: document.querySelector("#node-search"),
@@ -458,7 +438,6 @@
         try {
           const result = await fetchRows();
           state.rows = result.rows;
-          state.loadedFrom = result.path;
           state.submissions = state.rows.map(normalizeSubmission);
           state.nodes = state.submissions.flatMap((submission) => submission.nodes);
           state.nodeByName = new Map(state.nodes.map((node) => [node.name, node]));
@@ -576,7 +555,7 @@
       }
 
       function route() {
-        state.active = decodeURIComponent(window.location.hash.replace(/^#/, "")) || "build-info";
+        state.active = decodeURIComponent(window.location.hash.replace(/^#/, "")) || "overview";
         renderSidebar();
         renderContent();
       }
@@ -585,9 +564,11 @@
         els.title.textContent = state.submissions.length
           ? `${state.submissions.length} submissions`
           : "No submissions yet";
-        els.buildLink.classList.toggle("active", state.active === "build-info");
         els.submissionList.innerHTML = state.submissions.length
-          ? state.submissions.map((submission) => navLink(submissionHref(submission), submission.title, `${submission.nodes.length} nodes`, state.active === submissionRoute(submission))).join("")
+          ? [
+              navLink("#overview", "Overview", `${state.nodes.length} nodes`, state.active === "overview"),
+              ...state.submissions.map((submission) => navLink(submissionHref(submission), submission.title, `${submission.nodes.length} nodes`, state.active === submissionRoute(submission)))
+            ].join("")
           : `<div class="empty">Once submissions.jsonl has rows, they will appear here.</div>`;
         els.outline.innerHTML = renderOutline();
         renderNodeList();
@@ -643,8 +624,8 @@
       }
 
       function renderContent() {
-        if (state.active === "build-info") {
-          renderBuildInfo();
+        if (state.active === "overview") {
+          renderOverview();
           return;
         }
         const submission = state.submissions.find((item) => submissionRoute(item) === state.active);
@@ -660,21 +641,21 @@
         els.content.innerHTML = `<div class="empty">Select a submission or declaration from the sidebar.</div>`;
       }
 
-      function renderBuildInfo() {
+      function renderOverview() {
         els.content.innerHTML = `
           <div class="topline">
             <div>
-              <h2>Output Config</h2>
+              <h2>Submissions</h2>
               <div class="meta-line">
-                <span>Each line in <code>submissions.jsonl</code> has the same record shape as <code>output.config.yaml</code>.</span>
+                <span>Browse imported submissions, statement targets, proof targets, and recorded dependencies.</span>
               </div>
             </div>
             <a class="pill mobile-home" href="index.html">Home</a>
           </div>
           <section class="panel">
             <div class="panel-head">
-              <h3>Loaded Data</h3>
-              <span class="badge">${escapeHtml(state.loadedFrom || "not loaded")}</span>
+              <h3>Library Contents</h3>
+              <span class="badge">${state.submissions.length}</span>
             </div>
             <div class="panel-body">
               <div class="grid">
@@ -683,15 +664,17 @@
                 ${fact("Proofs", state.nodes.filter((node) => node.kind === "proof").length)}
                 ${fact("Dependencies", dependencyCount())}
               </div>
-              ${infoTable([
-                ["Output shape", code("output.config.yaml")],
-                ["Registry", code("submissions.jsonl")],
-                ["Schema source", code("submission-record.config.yaml")],
-                ["Embedded snapshot", code("submissions-data.js")]
-              ])}
             </div>
           </section>
-          ${state.submissions.length === 0 ? `<div class="empty">No imported submissions yet. The browser is ready for future rows in submissions.jsonl.</div>` : ""}
+          <section class="panel">
+            <div class="panel-head">
+              <h3>Submission List</h3>
+              <span class="badge">${state.submissions.length}</span>
+            </div>
+            <div class="panel-body">
+              ${state.submissions.length ? state.submissions.map((submission) => navLink(submissionHref(submission), submission.title, `${submission.nodes.length} nodes`, false)).join("") : `<div class="empty">No imported submissions yet.</div>`}
+            </div>
+          </section>
         `;
       }
 
@@ -714,8 +697,8 @@
 
           <section class="panel">
             <div class="panel-head">
-              <h3>Submission Data</h3>
-              <span class="badge">output.config.yaml</span>
+              <h3>Submission</h3>
+              <span class="badge">${escapeHtml(submission.slug || "entry")}</span>
             </div>
             <div class="panel-body">
               <div class="grid">
