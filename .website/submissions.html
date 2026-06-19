@@ -1138,7 +1138,7 @@
       }
 
       function dependencyGraphNodeHtml(item, position) {
-        const label = item.node ? nodeDisplayName(item.node) : item.name;
+        const label = dependencyGraphNodeLabel(item);
         const href = item.node ? nodeHref(item.node) : "";
         const classes = [
           "graph-node",
@@ -1153,6 +1153,10 @@
         return href
           ? `<a class="${escapeAttr(classes)}" style="${escapeAttr(style)}" href="${href}" title="${escapeAttr(label)}" aria-label="${escapeAttr(label)}">${body}</a>`
           : `<div class="${escapeAttr(classes)}" style="${escapeAttr(style)}" title="${escapeAttr(label)}" aria-label="${escapeAttr(label)}">${body}</div>`;
+      }
+
+      function dependencyGraphNodeLabel(item) {
+        return item.node?.title || item.node?.raw?.Title || item.name || "Unnamed";
       }
 
       function navLink(href, label, badge, active) {
