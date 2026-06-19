@@ -783,7 +783,27 @@ function mergeCurrentSubmissionBuilds(targetRoot, requiredProofPackages = []) {
       linkTree(root, targetRoot);
     }
   }
+  for (const { root, dependency } of buildLibraryRoots()) {
+    if (dependency) {
+      linkDependencyBuildTree(root, targetRoot);
+    }
+  }
   linkTree(join(isolatedPackageRoot, ".lake", "build", "lib", "lean"), targetRoot);
+}
+
+function linkDependencyBuildTree(sourceRoot, targetRoot) {
+  if (!existsSync(sourceRoot)) {
+    return;
+  }
+  for (const entry of readdirSync(sourceRoot, { withFileTypes: true })) {
+    if (!entry.isDirectory() || isIgnoredModule(entry.name) || isIgnoredDependencyModule(entry.name)) {
+      continue;
+    }
+    const source = join(sourceRoot, entry.name);
+    const target = join(targetRoot, entry.name);
+    mkdirSync(target, { recursive: true });
+    linkTree(source, target);
+  }
 }
 
 function linkTree(sourceRoot, targetRoot) {
