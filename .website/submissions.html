@@ -575,7 +575,7 @@
         return {
           submission,
           name: entry.Name || "",
-          title: entry.Title || shortName(entry.Name),
+          title: entry.Title || "",
           kind: entry.Type === "Definition" ? "definition" : "axiom",
           tex: entry.InlineTexReference || "",
           lean: entry.InlineLeanStatement || "",
@@ -588,7 +588,7 @@
         return {
           submission,
           name: entry.Name || "",
-          title: entry.Title || shortName(entry.Name),
+          title: entry.Title || "",
           kind: "proof",
           tex: entry.InlineTexReference || "",
           lean: entry.InlineLeanStatement || "",
@@ -662,11 +662,11 @@
         nextSeen.add(node.name);
         const children = repeated ? [] : node.dependencies.map((name) => state.nodeByName.get(name)).filter(Boolean);
         if (children.length === 0) {
-          return `<a class="leaf" href="${nodeHref(node)}">${escapeHtml(node.title || node.name)}</a>`;
+          return `<a class="leaf" href="${nodeHref(node)}">${escapeHtml(nodeDisplayName(node))}</a>`;
         }
         return `
           <details>
-            <summary><a href="${nodeHref(node)}">${escapeHtml(node.title || node.name)}</a></summary>
+            <summary><a href="${nodeHref(node)}">${escapeHtml(nodeDisplayName(node))}</a></summary>
             ${children.map((child) => outlineNode(child, nextSeen)).join("")}
           </details>
         `;
@@ -880,7 +880,7 @@
         els.content.innerHTML = `
           <div class="topline">
             <div>
-              <h2>${escapeHtml(node.title || node.name)}</h2>
+              <h2>${escapeHtml(nodeDisplayName(node))}</h2>
               <div class="meta-line">
                 <span>${escapeHtml(node.submission.title)}</span>
                 <span>${escapeHtml(node.kind)}</span>
@@ -899,6 +899,7 @@
             </div>
             <div class="panel-body">
               ${infoTable([
+                ...(node.title ? [["Title", escapeHtml(node.title)]] : []),
                 ["Name", code(node.name || "Not recorded")],
                 ["Type", code(node.raw.Type || node.kind)],
                 ["Submission", internalLink(submissionHref(node.submission), node.submission.title)],
@@ -956,7 +957,7 @@
         if (!node) return "";
         return `
           <a class="node-link${state.active === node.name ? " active" : ""}" href="${nodeHref(node)}">
-            <span class="node-name">${escapeHtml(node.name || node.title)}</span>
+            <span class="node-name">${escapeHtml(nodeDisplayName(node))}</span>
             <span class="badge ${escapeAttr(node.kind)}">${escapeHtml(node.kind)}</span>
           </a>
         `;
@@ -997,7 +998,7 @@
       function nodeSummary(node) {
         return `
           <div class="record-row">
-            <a class="record-title" href="${nodeHref(node)}">${escapeHtml(node.name || node.title)}</a>
+            <a class="record-title" href="${nodeHref(node)}">${escapeHtml(nodeDisplayName(node))}</a>
             <div class="record-meta">
               <span class="badge ${escapeAttr(node.kind)}">${escapeHtml(node.kind)}</span>
               ${internalLink(submissionHref(node.submission), node.submission.title)}
@@ -1048,17 +1049,16 @@
         return `#${encodeURIComponent(node.name)}`;
       }
 
+      function nodeDisplayName(node) {
+        return node?.title || node?.name || "Unnamed";
+      }
+
       function slugify(value) {
         return String(value || "")
           .trim()
           .toLowerCase()
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/^-|-$/g, "") || "submission";
-      }
-
-      function shortName(name) {
-        const parts = String(name || "").split(".");
-        return parts.slice(-2).join(".") || name || "Unnamed";
       }
 
       function shortCommit(value) {
@@ -1080,7 +1080,7 @@
       function inlineDependencyLink(name) {
         const node = state.nodeByName.get(name);
         return node
-          ? `<a class="inline-node" href="${nodeHref(node)}">${escapeHtml(node.name || node.title)}</a>`
+          ? `<a class="inline-node" href="${nodeHref(node)}">${escapeHtml(nodeDisplayName(node))}</a>`
           : `<span class="inline-node">${escapeHtml(name)}</span>`;
       }
 
