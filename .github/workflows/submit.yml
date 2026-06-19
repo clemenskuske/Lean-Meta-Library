@@ -121,7 +121,7 @@ jobs:
 
             await addLabel(issue.number);
 
-            manifestText = setTopLevelScalar(manifestText, issueNumberField, String(issue.number));
+            manifestText = setTopLevelScalar(manifestText, issueNumberField, issue.number);
             manifestText = setTopLevelScalar(manifestText, issueUrlField, issue.html_url);
             if (sourceCommit) {
               manifestText = setTopLevelScalar(manifestText, "Commit", sourceCommit);
@@ -220,6 +220,9 @@ jobs:
           }
 
           function quoteYamlScalar(value) {
+            if (typeof value === "number" && Number.isFinite(value)) {
+              return String(value);
+            }
             return JSON.stringify(String(value));
           }
 

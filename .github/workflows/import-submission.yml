@@ -153,6 +153,17 @@ jobs:
           git checkout --detach "$SOURCE_COMMIT"
           test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
 
+      - name: Normalize workflow-created manifest fields
+        env:
+          MANIFEST_PATH: ${{ steps.issue.outputs.manifest-path }}
+          REPO_URL: ${{ steps.issue.outputs.repo-url }}
+          SOURCE_COMMIT: ${{ steps.issue.outputs.source-commit }}
+          SUBMITTER_LOGIN: ${{ steps.issue.outputs.submitter-login || github.event.issue.user.login }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+        run: |
+          node "$GITHUB_WORKSPACE/.github/actions/normalize-submission-manifest.mjs" "$GITHUB_WORKSPACE/submission/$MANIFEST_PATH"
+
       - name: "Comment progress: repository checked out"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
