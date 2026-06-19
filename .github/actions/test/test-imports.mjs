@@ -151,6 +151,14 @@ const fixtures = [
 
 const acceptedFixtures = [
   {
+    name: "statement-only-package",
+    checker: "run-all.mjs"
+  },
+  {
+    name: "proof-only-package",
+    checker: "run-all.mjs"
+  },
+  {
     name: "shared-statement-declarations-package",
     checker: "statements/introduced-declarations.mjs"
   },

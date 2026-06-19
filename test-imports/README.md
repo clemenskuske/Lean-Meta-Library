@@ -105,6 +105,11 @@ downloading Mathlib. When running a checker by hand you may need to do the same.
 
 ### Acceptance checks
 
+- **`statement-only-package`** — a submission with `StatementSubmissions` and no
+  `ProofSubmissions`; the full first-run checker must accept it.
+- **`proof-only-package`** — a submission with `ProofSubmissions` and no
+  `StatementSubmissions`; the full first-run checker must accept the package
+  shape when there are no submitted proof targets.
 - **`shared-statement-declarations-package`** — one statement Lean file
   introduces multiple manifest-listed declarations, so
   `statements/introduced-declarations.mjs` must accept it.
@@ -139,8 +144,7 @@ downloading Mathlib. When running a checker by hand you may need to do the same.
 
 ## Notes for future fixtures
 
-Coverage still to add: submissions with only a statement package or only a proof
-package; statement-theorem rejection; proof-level external
+Coverage still to add: statement-theorem rejection; proof-level external
 `SemanticDependencies`; statement-level dependency-DAG acyclicity; axiom-gate
 matching by name, type, and source module; and final proof-build dependency and
 conjecture manifest comparison.

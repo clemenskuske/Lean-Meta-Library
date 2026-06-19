@@ -41,6 +41,9 @@ ensurePreparedLakePackage({
 checkCompiledProofAxioms();
 
 function checkCompiledProofAxioms() {
+  if (proofs.length === 0) {
+    return;
+  }
   if (!proofRoot) {
     errors.push("proof package is required to inspect proof axiom dependencies");
     return;

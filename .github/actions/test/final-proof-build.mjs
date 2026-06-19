@@ -48,15 +48,19 @@ try {
     errors.push("lml-env.json checks.allowedMathlibAxioms must list at least one Lean axiom name");
   } else {
     const compositionPlan = proofCompositionPlan();
-    augmentFinalProofLakefile(compositionPlan.requiredPackages);
-    if (errors.length === 0) {
-      runLake(["update"], "lake update");
-      runLake(["clean"], "lake clean");
-      fetchBuildCache();
-      runLake(["build"], "lake build");
-      buildImportedProofDependencies(compositionPlan.requiredProofPackages);
+    if (compositionPlan.compositionTargets.length === 0) {
+      warnings.push("no proof targets were submitted; skipping final proof build");
+    } else {
+      augmentFinalProofLakefile(compositionPlan.requiredPackages);
       if (errors.length === 0) {
-        checkCompiledAxioms(compositionPlan);
+        runLake(["update"], "lake update");
+        runLake(["clean"], "lake clean");
+        fetchBuildCache();
+        runLake(["build"], "lake build");
+        buildImportedProofDependencies(compositionPlan.requiredProofPackages);
+        if (errors.length === 0) {
+          checkCompiledAxioms(compositionPlan);
+        }
       }
     }
   }

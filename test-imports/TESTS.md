@@ -57,6 +57,8 @@ locally without downloading Mathlib.
 
 | Fixture Package | Checker | What It Tests |
 |----------------|---------|---------------|
+| `statement-only-package` | `run-all.mjs` | A submission with statements but no proof package must pass the full first-run checker. |
+| `proof-only-package` | `run-all.mjs` | A submission with a proof package but no statement package must pass the full first-run checker when it has no submitted proof targets. |
 | `shared-statement-declarations-package` | `statements/introduced-declarations.mjs` | One statement file introduces multiple manifest-listed declarations; the declarations checker must accept it. |
 | `unused-sorry-proof-package` | `final-proof-build.mjs` | A non-manifest proof module is proved with `sorry`, but the submitted proof target does not depend on it; the final build checker must accept it. |
 
