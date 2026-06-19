@@ -381,17 +381,15 @@
       .graph-node {
         position: absolute;
         z-index: 1;
-        display: grid;
-        place-items: center;
-        width: 72px;
-        height: 34px;
-        border: 1px solid var(--line);
-        border-radius: 7px;
-        padding: 0 8px;
+        display: block;
+        width: 18px;
+        height: 18px;
+        border: 2px solid currentColor;
+        border-radius: 50%;
+        padding: 0;
         background: var(--panel);
         color: var(--text);
-        box-shadow: 0 6px 18px rgba(32, 33, 36, 0.06);
-        overflow: hidden;
+        box-shadow: 0 4px 10px rgba(32, 33, 36, 0.08);
       }
 
       .graph-node:hover {
@@ -400,7 +398,8 @@
       }
 
       .graph-node.current {
-        box-shadow: 0 0 0 3px rgba(32, 33, 36, 0.12);
+        outline: 4px double currentColor;
+        outline-offset: 3px;
       }
 
       .graph-node.external {
@@ -408,29 +407,18 @@
       }
 
       .graph-node.definition {
-        border-color: var(--accent);
-        background: var(--accent-soft);
         color: var(--accent);
+        background: var(--accent);
       }
 
       .graph-node.proof {
-        border-color: var(--proof);
-        background: #eeebfb;
         color: var(--proof);
+        background: var(--proof);
       }
 
       .graph-node.axiom {
-        border-color: var(--warn);
-        background: #fff3df;
-        color: var(--warn);
-      }
-
-      .graph-node-meta {
-        color: inherit;
-        font-size: 0.62rem;
-        font-weight: 800;
-        line-height: 1.1;
-        text-transform: uppercase;
+        color: #b42318;
+        background: #b42318;
       }
 
       code,
@@ -1091,10 +1079,10 @@
       }
 
       function dependencyGraphLayout(nodes) {
-        const nodeWidth = 72;
-        const nodeHeight = 34;
-        const xGap = 22;
-        const yGap = 56;
+        const nodeWidth = 18;
+        const nodeHeight = 18;
+        const xGap = 30;
+        const yGap = 42;
         const margin = 18;
         const byDepth = new Map();
         for (const node of nodes) {
@@ -1133,7 +1121,7 @@
         const startY = from.y + from.height;
         const endX = to.x + to.width / 2;
         const endY = to.y;
-        const control = Math.max(28, Math.abs(endY - startY) / 2);
+        const control = Math.max(10, Math.abs(endY - startY) / 2);
         return `M ${startX} ${startY} C ${startX} ${startY + control}, ${endX} ${endY - control}, ${endX} ${endY}`;
       }
 
@@ -1147,12 +1135,9 @@
           item.node ? "" : "external"
         ].filter(Boolean).join(" ");
         const style = `left: ${position.x}px; top: ${position.y}px;`;
-        const body = `
-          <span class="graph-node-meta">${escapeHtml(item.current ? "selected" : item.kind)}</span>
-        `;
         return href
-          ? `<a class="${escapeAttr(classes)}" style="${escapeAttr(style)}" href="${href}" title="${escapeAttr(label)}" aria-label="${escapeAttr(label)}">${body}</a>`
-          : `<div class="${escapeAttr(classes)}" style="${escapeAttr(style)}" title="${escapeAttr(label)}" aria-label="${escapeAttr(label)}">${body}</div>`;
+          ? `<a class="${escapeAttr(classes)}" style="${escapeAttr(style)}" href="${href}" title="${escapeAttr(label)}" aria-label="${escapeAttr(label)}"></a>`
+          : `<div class="${escapeAttr(classes)}" style="${escapeAttr(style)}" title="${escapeAttr(label)}" aria-label="${escapeAttr(label)}"></div>`;
       }
 
       function dependencyGraphNodeLabel(item) {
