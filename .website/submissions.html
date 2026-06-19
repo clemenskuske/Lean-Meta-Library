@@ -729,18 +729,6 @@
           </section>
           <section class="panel">
             <div class="panel-head">
-              <h3>Views</h3>
-            </div>
-            <div class="panel-body">
-              <div class="record-list">
-                ${viewRow("Submissions", "Imported submission records with source, license, and rendered abstracts.", "#submissions", state.submissions.length)}
-                ${viewRow("Statements", "Public definitions and axioms exposed by imported submissions.", "#statements", statementNodes().length)}
-                ${viewRow("Proofs", "Proof declarations and the statement axioms they discharge.", "#proofs", proofNodes().length)}
-              </div>
-            </div>
-          </section>
-          <section class="panel">
-            <div class="panel-head">
               <h3>Recent Submissions</h3>
               <span class="badge">${state.submissions.length}</span>
             </div>
@@ -968,18 +956,6 @@
         return node
           ? nodeLink(node)
           : `<div class="node-link"><span class="node-name">${escapeHtml(name)}</span><span class="badge">external</span></div>`;
-      }
-
-      function viewRow(title, description, href, count) {
-        return `
-          <div class="record-row">
-            <a class="record-title" href="${escapeAttr(href)}">${escapeHtml(title)}</a>
-            <div class="record-meta">
-              <span>${escapeHtml(String(count))} entries</span>
-            </div>
-            <p>${escapeHtml(description)}</p>
-          </div>
-        `;
       }
 
       function submissionSummary(submission) {
