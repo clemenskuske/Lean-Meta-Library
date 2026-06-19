@@ -733,7 +733,16 @@ function dependencyBuildRoots(packageRoot) {
       return;
     }
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
-      if (!entry.isDirectory() || [".git", ".lake", "node_modules"].includes(entry.name)) {
+      if (!entry.isDirectory() || [".git", "node_modules"].includes(entry.name)) {
+        continue;
+      }
+      if (entry.name === ".lake") {
+        const nestedPackagesRoot = join(dir, ".lake/packages");
+        if (existsSync(nestedPackagesRoot)) {
+          for (const nestedPackageRoot of walkDirs(nestedPackagesRoot)) {
+            visit(nestedPackageRoot, depth + 1);
+          }
+        }
         continue;
       }
       visit(join(dir, entry.name), depth + 1);
