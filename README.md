@@ -32,7 +32,7 @@ Lean Meta Library statements are `Definition` or `axiom` declarations — formal
 Each submission is one of two kinds:
 
 - **Proven fact** — a proof exists and the registry has verified it against the statement. When you import one, you are using a result the Lean kernel has already confirmed.
-- **Conjecture** — the statement is assumed true but not yet proven. The manifest says so explicitly. Importing one knowingly extends your trusted base with an unproven assumption.
+- **Conjecture** — the statement is assumed true but not yet proven.
 
 
 ## How to Create a Submission
