@@ -344,6 +344,83 @@
         overflow-wrap: anywhere;
       }
 
+      .graph-scroll {
+        overflow: auto;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--soft);
+      }
+
+      .dependency-graph {
+        position: relative;
+        isolation: isolate;
+      }
+
+      .graph-edge-layer {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+      }
+
+      .graph-edge {
+        fill: none;
+        stroke: #9aa39d;
+        stroke-width: 1.5;
+      }
+
+      .graph-node {
+        position: absolute;
+        z-index: 1;
+        display: grid;
+        align-content: center;
+        gap: 4px;
+        width: 220px;
+        height: 64px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 8px 10px;
+        background: var(--panel);
+        color: var(--text);
+        box-shadow: 0 6px 18px rgba(32, 33, 36, 0.06);
+        overflow: hidden;
+      }
+
+      .graph-node:hover {
+        border-color: var(--accent);
+        background: var(--accent-soft);
+        text-decoration: none;
+      }
+
+      .graph-node.current {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(15, 107, 99, 0.12);
+      }
+
+      .graph-node.external {
+        border-style: dashed;
+      }
+
+      .graph-node-name {
+        color: inherit;
+        font-size: 0.78rem;
+        font-weight: 800;
+        line-height: 1.18;
+        overflow: hidden;
+        overflow-wrap: anywhere;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+      }
+
+      .graph-node-meta {
+        color: var(--muted);
+        font-size: 0.68rem;
+        font-weight: 800;
+        line-height: 1.1;
+        text-transform: uppercase;
+      }
+
       code,
       pre {
         border-radius: 6px;
@@ -921,6 +998,16 @@
 
           <section class="panel">
             <div class="panel-head">
+              <h3>Dependency DAG</h3>
+              <span class="badge">${dependencyGraphFor(node).nodes.length}</span>
+            </div>
+            <div class="panel-body">
+              ${renderDependencyGraph(node)}
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
               <h3>Dependents</h3>
               <span class="badge">${dependents.length}</span>
             </div>
@@ -943,6 +1030,147 @@
             <div class="panel-body">${node.lean ? `<pre>${escapeHtml(node.lean)}</pre>` : `<div class="empty">No InlineLeanStatement recorded.</div>`}</div>
           </section>
         `;
+      }
+
+      function renderDependencyGraph(root) {
+        const graph = dependencyGraphFor(root);
+        const layout = dependencyGraphLayout(graph.nodes);
+        const edgePaths = graph.edges
+          .map((edge) => dependencyGraphEdgePath(edge, layout.positions))
+          .filter(Boolean)
+          .map((path) => `<path class="graph-edge" d="${escapeAttr(path)}"></path>`)
+          .join("");
+        const graphNodes = graph.nodes.map((item) => dependencyGraphNodeHtml(item, layout.positions.get(item.name))).join("");
+
+        return `
+          <div class="graph-scroll">
+            <div class="dependency-graph" style="width: ${layout.width}px; height: ${layout.height}px;">
+              <svg class="graph-edge-layer" width="${layout.width}" height="${layout.height}" viewBox="0 0 ${layout.width} ${layout.height}" aria-hidden="true">
+                <defs>
+                  <marker id="dependency-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+                    <path d="M 0 0 L 8 4 L 0 8 z" fill="#9aa39d"></path>
+                  </marker>
+                </defs>
+                <g marker-end="url(#dependency-arrow)">${edgePaths}</g>
+              </svg>
+              ${graphNodes}
+            </div>
+          </div>
+        `;
+      }
+
+      function dependencyGraphFor(root) {
+        const nodes = new Map();
+        const edgeSet = new Set();
+        const edges = [];
+
+        function remember(name, depth) {
+          const existing = nodes.get(name);
+          const resolved = state.nodeByName.get(name);
+          if (!existing) {
+            nodes.set(name, {
+              name,
+              depth,
+              node: resolved,
+              kind: resolved?.kind || "external",
+              current: name === root.name
+            });
+            return;
+          }
+          existing.depth = Math.max(existing.depth, depth);
+        }
+
+        function visit(name, depth, path) {
+          remember(name, depth);
+          const resolved = state.nodeByName.get(name);
+          if (!resolved || path.has(name)) return;
+
+          const nextPath = new Set(path);
+          nextPath.add(name);
+          for (const dependency of resolved.dependencies) {
+            remember(dependency, depth + 1);
+            const edgeKey = `${name}\n${dependency}`;
+            if (!edgeSet.has(edgeKey)) {
+              edgeSet.add(edgeKey);
+              edges.push({ from: name, to: dependency });
+            }
+            if (!nextPath.has(dependency)) {
+              visit(dependency, depth + 1, nextPath);
+            }
+          }
+        }
+
+        visit(root.name, 0, new Set());
+        return {
+          nodes: [...nodes.values()].sort((left, right) => left.depth - right.depth || left.name.localeCompare(right.name)),
+          edges
+        };
+      }
+
+      function dependencyGraphLayout(nodes) {
+        const nodeWidth = 220;
+        const nodeHeight = 64;
+        const xGap = 76;
+        const yGap = 26;
+        const margin = 18;
+        const byDepth = new Map();
+        for (const node of nodes) {
+          if (!byDepth.has(node.depth)) byDepth.set(node.depth, []);
+          byDepth.get(node.depth).push(node);
+        }
+
+        const depths = [...byDepth.keys()].sort((left, right) => left - right);
+        const maxRows = Math.max(1, ...[...byDepth.values()].map((items) => items.length));
+        const width = margin * 2 + depths.length * nodeWidth + Math.max(0, depths.length - 1) * xGap;
+        const height = margin * 2 + maxRows * nodeHeight + Math.max(0, maxRows - 1) * yGap;
+        const positions = new Map();
+
+        depths.forEach((depth, column) => {
+          const items = byDepth.get(depth);
+          const columnHeight = items.length * nodeHeight + Math.max(0, items.length - 1) * yGap;
+          const topOffset = margin + Math.max(0, (height - margin * 2 - columnHeight) / 2);
+          items.forEach((item, row) => {
+            positions.set(item.name, {
+              x: margin + column * (nodeWidth + xGap),
+              y: topOffset + row * (nodeHeight + yGap),
+              width: nodeWidth,
+              height: nodeHeight
+            });
+          });
+        });
+
+        return { width, height, positions };
+      }
+
+      function dependencyGraphEdgePath(edge, positions) {
+        const from = positions.get(edge.from);
+        const to = positions.get(edge.to);
+        if (!from || !to) return "";
+        const startX = from.x + from.width;
+        const startY = from.y + from.height / 2;
+        const endX = to.x;
+        const endY = to.y + to.height / 2;
+        const control = Math.max(34, Math.abs(endX - startX) / 2);
+        return `M ${startX} ${startY} C ${startX + control} ${startY}, ${endX - control} ${endY}, ${endX} ${endY}`;
+      }
+
+      function dependencyGraphNodeHtml(item, position) {
+        const label = item.node ? nodeDisplayName(item.node) : item.name;
+        const href = item.node ? nodeHref(item.node) : "";
+        const classes = [
+          "graph-node",
+          item.kind,
+          item.current ? "current" : "",
+          item.node ? "" : "external"
+        ].filter(Boolean).join(" ");
+        const style = `left: ${position.x}px; top: ${position.y}px;`;
+        const body = `
+          <span class="graph-node-name">${escapeHtml(label)}</span>
+          <span class="graph-node-meta">${escapeHtml(item.current ? "selected" : item.kind)}</span>
+        `;
+        return href
+          ? `<a class="${escapeAttr(classes)}" style="${escapeAttr(style)}" href="${href}">${body}</a>`
+          : `<div class="${escapeAttr(classes)}" style="${escapeAttr(style)}">${body}</div>`;
       }
 
       function navLink(href, label, badge, active) {
