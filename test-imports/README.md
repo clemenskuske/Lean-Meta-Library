@@ -144,12 +144,14 @@ downloading Mathlib. When running a checker by hand you may need to do the same.
 - **`final-proof-build-failure-package`** — the final proof composition leaves a
   forbidden proof-side axiom, so `final-proof-build.mjs` must reject the
   composed build.
+- **`unused-sorry-proof-package`** — an accepted proof fixture whose copied
+  output manifest must be updated with generated `AxiomDependencies`.
 
 ## Notes for future fixtures
 
 Coverage still to add: statement-theorem rejection; proof-level external
 `SemanticDependencies`; axiom-gate matching by name, type, and source module;
-and final proof-build dependency and conjecture manifest comparison.
+and final proof-build conjecture manifest comparison.
 
 Helper modules in `.github/actions/test/` — such as `common.mjs`,
 `general/manifest-context.mjs`, `lake-config.mjs`, `lean-imports.mjs`, and

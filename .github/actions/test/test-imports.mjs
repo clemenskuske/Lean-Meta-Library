@@ -169,7 +169,8 @@ const acceptedFixtures = [
   },
   {
     name: "unused-sorry-proof-package",
-    checker: "final-proof-build.mjs"
+    checker: "final-proof-build.mjs",
+    expectAxiomDependencies: true
   }
 ];
 
@@ -335,7 +336,7 @@ function runFixture({ name, checker, expected, stripMathlibDependencyForCheck })
   return { ok: true, output };
 }
 
-function runAcceptedFixture({ name, checker, stripMathlibDependencyForCheck }) {
+function runAcceptedFixture({ name, checker, stripMathlibDependencyForCheck, expectAxiomDependencies }) {
   const checkerPath = join(here, checker);
   const fixture = materializeFixture({ name, stripMathlibDependencyForCheck });
   let child;
@@ -375,6 +376,21 @@ function runAcceptedFixture({ name, checker, stripMathlibDependencyForCheck }) {
       output,
       reason: `${checker} rejected a fixture that should be accepted`
     };
+  }
+
+  if (expectAxiomDependencies) {
+    const manifest = YAML.parse(readFileSync(fixture.manifestPath, "utf8")) ?? {};
+    const proofs = manifest?.ProofSubmissions?.proofs ?? [];
+    const missingDependencies = proofs
+      .filter((proof) => !Array.isArray(proof?.AxiomDependencies))
+      .map((proof) => proof?.Name ?? "<unnamed proof>");
+    if (missingDependencies.length > 0) {
+      return {
+        ok: false,
+        output,
+        reason: `${checker} did not write AxiomDependencies for ${missingDependencies.join(", ")}`
+      };
+    }
   }
 
   fixture.cleanupOutputConfig();

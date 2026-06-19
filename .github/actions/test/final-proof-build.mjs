@@ -14,6 +14,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, delimiter, dirname, join, relative, sep } from "node:path";
+import YAML from "yaml";
 import lmlEnv from "../../../lml-env.json" with { type: "json" };
 import { normalizeSubmissionRow, validateSubmissionRow } from "../submission-schema.mjs";
 import { loadContext, slugToPascal } from "./general/manifest-context.mjs";
@@ -221,7 +222,10 @@ function checkCompiledAxioms(compositionPlan) {
   }
   if (verifyResult.status !== 0) {
     errors.push(`final composed proof build has forbidden axioms\n${verifyResult.stdout}${verifyResult.stderr}`.trim());
+    return;
   }
+
+  writeAxiomDependenciesToManifest(parseAxiomDependencyOutput(verifyResult.stdout));
 }
 
 function proofCompositionPlan() {
@@ -1043,9 +1047,13 @@ structure AllowedAxiom where
   actual : Name
   expected : Name
 
+structure ComposedTarget where
+  proof : Name
+  composed : Name
+
 def allowedBaseAxioms : Array AllowedAxiom := ${leanAllowedAxiomArray(allowedMathlibAxioms)}
 def allowedConjectureAxioms : Array AllowedAxiom := ${leanAllowedAxiomArray(allowedConjectures)}
-def composedTargets : Array Name := ${leanNameArray(compositionTargets.map((entry) => entry.composed))}
+def composedTargets : Array ComposedTarget := ${leanComposedTargetArray(compositionTargets)}
 
 def sameAxiomType (candidate allowed : ConstantInfo) : CoreM Bool := do
   if candidate.levelParams.length != allowed.levelParams.length then
@@ -1092,15 +1100,18 @@ def checkAxiom (owner : Name) (axiomName : Name) : CoreM Bool := do
 
 #eval show CoreM Unit from do
   let mut failed := false
-  for composedName in composedTargets do
+  for target in composedTargets do
     try
-      let axioms <- collectAxioms composedName
+      let axioms <- collectAxioms target.composed
+      IO.println s!"AXIOM_DEPENDENCIES_BEGIN\\t{target.proof}"
       for axiomName in axioms do
-        if (← checkAxiom composedName axiomName) then
+        IO.println s!"AXIOM_DEPENDENCY\\t{target.proof}\\t{axiomName}"
+      for axiomName in axioms do
+        if (← checkAxiom target.composed axiomName) then
           failed := true
     catch error =>
       let message <- error.toMessageData.toString
-      IO.eprintln s!"COMPOSED_TARGET_NOT_FOUND\\t{composedName}\\t{message}"
+      IO.eprintln s!"COMPOSED_TARGET_NOT_FOUND\\t{target.composed}\\t{message}"
       failed := true
 
   if failed then
@@ -1118,6 +1129,10 @@ function leanAllowedAxiomArray(names) {
   return `#[${names.filter(isLeanName).map((name) => `{ actual := \`${name}, expected := \`${name} }`).join(", ")}]`;
 }
 
+function leanComposedTargetArray(entries) {
+  return `#[${entries.map((entry) => `{ proof := \`${entry.proof}, composed := \`${entry.composed} }`).join(", ")}]`;
+}
+
 function leanProofEntryArray(entries) {
   return `#[${entries.map((entry) => `{
   statement := \`${entry.statement},
@@ -1129,6 +1144,57 @@ function leanProofEntryArray(entries) {
 
 function isLeanName(name) {
   return /^[A-Za-z_][A-Za-z0-9_']*(\.[A-Za-z_][A-Za-z0-9_']*)*$/.test(String(name ?? ""));
+}
+
+function parseAxiomDependencyOutput(output) {
+  const dependencies = new Map();
+
+  for (const line of String(output ?? "").split(/\r?\n/)) {
+    const [tag, proofName, axiomName] = line.split("\t");
+    if (tag === "AXIOM_DEPENDENCIES_BEGIN" && isLeanName(proofName)) {
+      if (!dependencies.has(proofName)) {
+        dependencies.set(proofName, new Set());
+      }
+      continue;
+    }
+
+    if (tag === "AXIOM_DEPENDENCY" && isLeanName(proofName) && isLeanName(axiomName)) {
+      if (!dependencies.has(proofName)) {
+        dependencies.set(proofName, new Set());
+      }
+      dependencies.get(proofName).add(axiomName);
+    }
+  }
+
+  return new Map(
+    [...dependencies].map(([proofName, names]) => [proofName, [...names].sort()])
+  );
+}
+
+function writeAxiomDependenciesToManifest(dependenciesByProof) {
+  if (dependenciesByProof.size === 0) {
+    return;
+  }
+
+  const manifest = YAML.parse(readFileSync(context.manifestPath, "utf8")) ?? {};
+  const proofs = manifest?.ProofSubmissions?.proofs;
+  if (!Array.isArray(proofs)) {
+    return;
+  }
+
+  let changed = false;
+  for (const proof of proofs) {
+    const proofName = proof?.Name;
+    if (!dependenciesByProof.has(proofName)) {
+      continue;
+    }
+    proof.AxiomDependencies = dependenciesByProof.get(proofName);
+    changed = true;
+  }
+
+  if (changed) {
+    writeFileSync(context.manifestPath, YAML.stringify(manifest, { lineWidth: 0 }), "utf8");
+  }
 }
 
 function relativePath(root, path) {

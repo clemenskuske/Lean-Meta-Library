@@ -153,6 +153,11 @@ and type.
 The final checker attempts an additional `lean4checker` pass over the composed
 `.olean` output when `lean4checker` is available.
 
+After a successful composed proof verification, the checker records the axiom
+names collected from each final composed proof target in that proof entry's
+workflow-created `AxiomDependencies` field. The import workflow carries this
+field into the checked manifest artifact and then into `submissions.jsonl`.
+
 The longer-term target is to extend the axiom gate so trusted-base matches are
 also tied to source module/provenance.
 

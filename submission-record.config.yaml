@@ -271,6 +271,13 @@ $defs:
       example MySlug.Statements.MyNamespace.my_decl or
       MySlug.Proofs.MyNamespace.my_theorem.
 
+  leanName:
+    allOf:
+      - $ref: "#/$defs/safeText"
+    type: string
+    pattern: "^[A-Za-z_][A-Za-z0-9_']*(\\.[A-Za-z_][A-Za-z0-9_']*)*$"
+    description: "Fully-qualified Lean declaration name."
+
   submissionSlug:
     allOf:
       - $ref: "#/$defs/safeText"
@@ -381,3 +388,10 @@ $defs:
           SubmissionSlug.Namespace(s).Name.
         items:
           $ref: "#/$defs/submissionScopedName"
+      AxiomDependencies:
+        type: array
+        description: >
+          Created by the final proof build. Fully-qualified axiom names
+          collected from the final composed proof target.
+        items:
+          $ref: "#/$defs/leanName"
