@@ -103,15 +103,24 @@ const fixtures = [
     stripMathlibDependencyForCheck: true
   },
   {
-    name: "unused-sorry-proof-package",
-    checker: "final-proof-build.mjs",
-    expected: /final proof build output reports a sorry/,
-    stripMathlibDependencyForCheck: true
-  },
-  {
     name: "unauthorized-statement-import-package",
     checker: "statements/imports.mjs",
     expected: /statement lakefile does not declare an authorized dependency|not listed in that statement entry's DeclarationReferences manifest/
+  },
+  {
+    name: "statement-wrong-commit-package",
+    checker: "statements/imports.mjs",
+    expected: /statement lakefile dependency is not allowed by submissions\.jsonl/
+  },
+  {
+    name: "proof-obligation-wrong-commit-package",
+    checker: "proofs/imports.mjs",
+    expected: /proof lakefile dependency is not allowed by submissions\.jsonl/
+  },
+  {
+    name: "proof-statement-wrong-commit-package",
+    checker: "proofs/imports.mjs",
+    expected: /proof lakefile dependency is not allowed by submissions\.jsonl/
   },
   {
     name: "manifest-version-mismatch-package",
@@ -144,6 +153,10 @@ const acceptedFixtures = [
   {
     name: "shared-statement-declarations-package",
     checker: "statements/introduced-declarations.mjs"
+  },
+  {
+    name: "unused-sorry-proof-package",
+    checker: "final-proof-build.mjs"
   }
 ];
 
@@ -226,6 +239,8 @@ function testUnicodeDisplayTextManifestCheck() {
   const manifestPath = join(tmpRoot, "manifest.yaml");
   writeFileSync(manifestPath, [
     'manifestVersion: "1"',
+    'leanVersion: "v4.30.0"',
+    'mathlibVersion: "c5ea00351c28e24afc9f0f84379aa41082b1188f"',
     "AbstractPath: abstract.tex",
     "LicenseFile: LICENSE",
     "SubmissionName: Unicode Display Fixture",

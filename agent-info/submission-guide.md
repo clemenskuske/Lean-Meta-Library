@@ -189,7 +189,8 @@ proof targets must be clean:
 
 The current final proof build copies the manifest-root package tree into an
 isolated directory, runs `lake update`, `lake clean`, a best-effort cache fetch,
-and `lake build`, then rejects build output that reports `sorry` or `sorryAx`.
+and `lake build`. Build output from declarations outside the submitted proof
+targets is not treated as part of the proof trust boundary.
 
 It then composes each submitted proof target onto the statement axiom it
 discharges. Composed outputs may rely only on allowed base axioms listed in

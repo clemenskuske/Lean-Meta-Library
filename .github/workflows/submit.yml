@@ -209,7 +209,7 @@ jobs:
               return text.replace(pattern, line);
             }
 
-            const insertionPoint = text.search(/^declarations:/m);
+            const insertionPoint = text.search(/^(StatementSubmissions|ProofSubmissions):/m);
             if (insertionPoint >= 0) {
               const prefix = text.slice(0, insertionPoint);
               const suffix = text.slice(insertionPoint);

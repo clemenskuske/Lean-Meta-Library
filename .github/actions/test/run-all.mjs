@@ -24,10 +24,12 @@ const staticChecks = [
   "general/namespaces-correct.mjs",
   "general/folder-size.mjs",
   "general/filetypes.mjs",
+  "general/license.mjs",
   "general/commit-is-hash.mjs",
   "general/slug-unique.mjs",
   "statements/file-context.mjs",
-  "statements/imports.mjs"
+  "statements/imports.mjs",
+  "proofs/imports.mjs"
 ];
 const leanChecks = [
   "proofs/no-forbidden-axioms.mjs",

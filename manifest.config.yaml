@@ -13,6 +13,8 @@ type: object
 additionalProperties: false
 
 required:
+  - leanVersion
+  - mathlibVersion
   - AbstractPath
   - SubmissionName
   - SubmissionSlug
@@ -103,7 +105,10 @@ properties:
           $ref: "#/$defs/proofEntry"
 
   AbstractPath:
-    $ref: "#/$defs/repoRelativePath"
+    allOf:
+      - $ref: "#/$defs/repoRelativePath"
+    type: string
+    pattern: "\\.tex$"
     description: >
       Repository-relative path to abstract.tex. The abstract is a short
       summary of the submission's results.

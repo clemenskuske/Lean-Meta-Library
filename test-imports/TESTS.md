@@ -51,12 +51,14 @@ locally without downloading Mathlib.
 | `statement-file-context-failure-package` | `statements/file-context.mjs` | A statement file uses a forbidden `#eval` command; the file-context checker must reject it. |
 | `extra-statement-declaration-package` | `statements/introduced-declarations.mjs` | A statement file introduces an unlisted helper declaration; the declarations checker must reject it. |
 | `unauthorized-statement-import-package` | `statements/imports.mjs` | A statement imports an external module not listed in its `DeclarationReferences`; the import checker must reject the unauthorized dependency. |
+| `statement-wrong-commit-package` | `statements/imports.mjs` | A statement imports an external submitted statement package, but its Lake dependency is pinned to a different commit than `submissions.jsonl`; the import checker must reject it. |
 
 ## Acceptance checks
 
 | Fixture Package | Checker | What It Tests |
 |----------------|---------|---------------|
 | `shared-statement-declarations-package` | `statements/introduced-declarations.mjs` | One statement file introduces multiple manifest-listed declarations; the declarations checker must accept it. |
+| `unused-sorry-proof-package` | `final-proof-build.mjs` | A non-manifest proof module is proved with `sorry`, but the submitted proof target does not depend on it; the final build checker must accept it. |
 
 ## Proof checks
 
@@ -65,10 +67,11 @@ locally without downloading Mathlib.
 | `mismatched-proof-type-package` | `proofs/type-matches-statements.mjs` | The proof theorem has the expected name but a Lean type that differs from the statement; the type-matching checker must reject the mismatch. |
 | `sorry-proof-package` | `proofs/no-forbidden-axioms.mjs` | The submitted proof uses `sorry`; the axiom checker must reject the resulting `sorryAx` dependency. |
 | `undeclared-proof-obligation-package` | `proofs/no-forbidden-axioms.mjs` | The submitted proof uses an axiom that is not listed in `ProofObligations`; the axiom checker must reject the undeclared dependency. |
+| `proof-obligation-wrong-commit-package` | `proofs/imports.mjs` | A proof lists an external submitted statement in `ProofObligations`, but its Lake dependency is pinned to a different commit than `submissions.jsonl`; the proof import checker must reject it. |
+| `proof-statement-wrong-commit-package` | `proofs/imports.mjs` | A proof targets an external submitted statement, but its Lake dependency is pinned to a different commit than `submissions.jsonl`; the proof import checker must reject it. |
 
 ## Final proof build
 
 | Fixture Package | Checker | What It Tests |
 |----------------|---------|---------------|
 | `final-proof-build-failure-package` | `final-proof-build.mjs` | The final proof composition leaves a forbidden proof-side axiom; the final build step must reject the composed build. |
-| `unused-sorry-proof-package` | `final-proof-build.mjs` | A non-manifest proof module is proved with `sorry`; the final build checker must reject the build output even though the submitted proof target does not depend on it. |

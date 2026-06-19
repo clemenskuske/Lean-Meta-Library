@@ -98,12 +98,19 @@ downloading Mathlib. When running a checker by hand you may need to do the same.
   module that is not listed in its `DeclarationReferences` (derived from
   `SemanticDependencies` in the manifest), so `statements/imports.mjs` must
   reject it.
+- **`statement-wrong-commit-package`** — a statement imports an external
+  statement package listed in `submissions.jsonl`, but the statement lakefile
+  pins the dependency to the wrong commit, so `statements/imports.mjs` must
+  reject it.
 
 ### Acceptance checks
 
 - **`shared-statement-declarations-package`** — one statement Lean file
   introduces multiple manifest-listed declarations, so
   `statements/introduced-declarations.mjs` must accept it.
+- **`unused-sorry-proof-package`** — a non-manifest proof module contains a
+  theorem proved with `sorry`, but the submitted proof target does not depend on
+  it, so `final-proof-build.mjs` must accept it.
 
 ### Proof checks
 
@@ -116,15 +123,19 @@ downloading Mathlib. When running a checker by hand you may need to do the same.
 - **`undeclared-proof-obligation-package`** — the submitted proof depends on a
   statement axiom that is not listed in the proof entry's `ProofObligations`, so
   `proofs/no-forbidden-axioms.mjs` must reject the undeclared axiom dependency.
+- **`proof-obligation-wrong-commit-package`** — a proof lists an external
+  submitted statement in `ProofObligations`, but the proof lakefile pins the
+  corresponding statement package to the wrong commit, so `proofs/imports.mjs`
+  must reject it.
+- **`proof-statement-wrong-commit-package`** — a proof targets an external
+  submitted statement, but the proof lakefile pins that statement package to the
+  wrong commit, so `proofs/imports.mjs` must reject it.
 
 ### Final proof build
 
 - **`final-proof-build-failure-package`** — the final proof composition leaves a
   forbidden proof-side axiom, so `final-proof-build.mjs` must reject the
   composed build.
-- **`unused-sorry-proof-package`** — a non-manifest proof module contains a
-  theorem proved with `sorry`. `final-proof-build.mjs` must reject the final
-  build output even though the submitted proof target does not depend on it.
 
 ## Notes for future fixtures
 

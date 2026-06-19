@@ -15,7 +15,8 @@ import {
 import { tmpdir } from "node:os";
 import { basename, delimiter, dirname, join, relative, sep } from "node:path";
 import lmlEnv from "../../../lml-env.json" with { type: "json" };
-import { loadContext } from "./general/manifest-context.mjs";
+import { normalizeSubmissionRow, validateSubmissionRow } from "../submission-schema.mjs";
+import { loadContext, slugToPascal } from "./general/manifest-context.mjs";
 import {
   maxBuildOutputBytes,
   report,
@@ -25,6 +26,7 @@ import {
 const context = loadContext();
 const errors = [];
 const warnings = [];
+const submissionRecords = loadSubmissionRecords(context.packageRoot);
 const tmpRoot = mkdtempSync(join(tmpdir(), "lml-final-proof-build-"));
 const isolatedPackageRoot = join(tmpRoot, "package");
 const isolatedStatementRoot = context.manifest.statementRoot
@@ -45,13 +47,17 @@ try {
   } else if (allowedMathlibAxioms.length === 0) {
     errors.push("lml-env.json checks.allowedMathlibAxioms must list at least one Lean axiom name");
   } else {
-    runLake(["update"], "lake update");
-    runLake(["clean"], "lake clean");
-    fetchBuildCache();
-    const build = runLake(["build"], "lake build");
-    checkBuildOutputForSorry(build);
+    const compositionPlan = proofCompositionPlan();
+    augmentFinalProofLakefile(compositionPlan.requiredPackages);
     if (errors.length === 0) {
-      checkCompiledAxioms();
+      runLake(["update"], "lake update");
+      runLake(["clean"], "lake clean");
+      fetchBuildCache();
+      runLake(["build"], "lake build");
+      buildImportedProofDependencies(compositionPlan.requiredProofPackages);
+      if (errors.length === 0) {
+        checkCompiledAxioms(compositionPlan);
+      }
     }
   }
 } finally {
@@ -146,16 +152,9 @@ function mathlibImportModules(root) {
   return [...modules].sort();
 }
 
-function checkBuildOutputForSorry(result) {
-  const output = `${result?.stdout ?? ""}${result?.stderr ?? ""}`;
-  if (outputReportsSorry(output)) {
-    errors.push("final proof build output reports a sorry");
-  }
-}
-
-function checkCompiledAxioms() {
-  const compositionTargets = proofCompositionTargets();
-  const allowedConjectures = unresolvedConjectureAxiomNames(compositionTargets);
+function checkCompiledAxioms(compositionPlan) {
+  const compositionTargets = compositionPlan.compositionTargets;
+  const allowedConjectures = compositionPlan.allowedConjectures;
   if (compositionTargets.length === 0) {
     warnings.push("no proof targets were found for final axiom inspection");
     return;
@@ -221,45 +220,410 @@ function checkCompiledAxioms() {
   }
 }
 
-function proofCompositionTargets() {
-  return (context.manifest.proofs ?? [])
-    .map((proof) => {
-      const statement = proof?.axiom ?? null;
-      const proofTarget = proof?.proof ?? null;
-      return {
-        statement,
-        proof: proofTarget,
-        composed: composedNameForStatement(statement),
-        deps: []
-      };
-    })
-    .filter((entry) => isLeanName(entry.statement) && isLeanName(entry.proof) && isLeanName(entry.composed));
+function proofCompositionPlan() {
+  const currentEntries = currentProofEntries();
+  const currentProofByStatement = mapProofsByStatement(currentEntries);
+  const registry = registryProofIndex();
+  const proofByStatement = new Map([...registry.proofByStatement, ...currentProofByStatement]);
+  const knownStatements = knownStatementIndex();
+  const compositionTargets = [];
+  const queuedComposed = new Set();
+  const includedStatements = new Set();
+  const queue = [];
+
+  for (const entry of currentEntries) {
+    enqueueCompositionTarget(entry);
+  }
+
+  for (let index = 0; index < queue.length; index += 1) {
+    const entry = queue[index];
+    for (const dep of entry.deps) {
+      const depEntry = proofByStatement.get(dep);
+      if (!depEntry || includedStatements.has(depEntry.statement)) {
+        continue;
+      }
+      enqueueCompositionTarget(depEntry);
+    }
+  }
+
+  const allowedConjectures = unresolvedConjectureAxiomNames({
+    compositionTargets,
+    knownStatements,
+    proofByStatement
+  });
+  const requiredStatementPackages = requiredCurrentStatementPackages(currentEntries, registry.submissionsByPackage);
+  const requiredProofPackages = requiredRegistryProofPackages(compositionTargets);
+  const requiredPackages = uniquePackages([...requiredStatementPackages, ...requiredProofPackages]);
+
+  return { compositionTargets, allowedConjectures, requiredPackages, requiredProofPackages };
+
+  function enqueueCompositionTarget(entry) {
+    if (queuedComposed.has(entry.composed)) {
+      return;
+    }
+    queuedComposed.add(entry.composed);
+    includedStatements.add(entry.statement);
+    compositionTargets.push(entry);
+    queue.push(entry);
+  }
 }
 
-function unresolvedConjectureAxiomNames(compositionTargets) {
+function currentProofEntries() {
+  return (context.manifest.proofs ?? [])
+    .map((proof) => proofEntry({
+      statement: proof?.axiom,
+      proof: proof?.proof,
+      deps: proof?.deps,
+      source: "current"
+    }))
+    .filter(Boolean);
+}
+
+function registryProofIndex() {
+  const proofEntries = [];
+  const submissionsByPackage = new Map();
+
+  for (const record of submissionRecords) {
+    const submission = submissionFromRecord(record);
+    if (!submission) {
+      continue;
+    }
+    submissionsByPackage.set(submission.statementPackage, submission);
+    submissionsByPackage.set(submission.proofPackage, submission);
+
+    for (const proof of record.proofs) {
+      const entry = proofEntry({
+        statement: proof?.AxiomReference ?? proof?.axiom,
+        proof: proof?.Name ?? proof?.proof,
+        deps: proof?.ProofObligations ?? proof?.deps,
+        source: "registry",
+        submission
+      });
+      if (entry) {
+        proofEntries.push(entry);
+      }
+    }
+  }
+
+  return {
+    proofByStatement: mapProofsByStatement(proofEntries),
+    submissionsByPackage
+  };
+}
+
+function knownStatementIndex() {
+  const statements = new Map();
+  for (const statement of currentStatementEntries()) {
+    addKnownStatement(statements, statement, "current manifest");
+  }
+  for (const record of submissionRecords) {
+    for (const statement of record.statements) {
+      addKnownStatement(statements, statement, "submissions.jsonl");
+    }
+  }
+  return statements;
+}
+
+function currentStatementEntries() {
+  return (context.manifest.statements ?? []).map((entry) => ({
+    Name: entry?.Statement?.Name ?? entry?.Name ?? entry?.name,
+    Type: entry?.Type ?? entry?.type
+  }));
+}
+
+function addKnownStatement(statements, statement, source) {
+  const name = statement?.Name ?? statement?.name;
+  if (!isLeanName(name)) {
+    return;
+  }
+  const type = statement?.Type ?? statement?.type ?? "";
+  if (statements.has(name) && statements.get(name).type !== type) {
+    warnings.push(`statement ${name} has conflicting ${source} types; using the first imported type`);
+    return;
+  }
+  if (!statements.has(name)) {
+    statements.set(name, { name, type, source });
+  }
+}
+
+function proofEntry({ statement, proof, deps, source, submission = null }) {
+  if (!isLeanName(statement) || !isLeanName(proof)) {
+    return null;
+  }
+  const composed = composedNameForProof(proof);
+  if (!isLeanName(composed)) {
+    return null;
+  }
+  return {
+    statement,
+    proof,
+    composed,
+    deps: Array.isArray(deps) ? deps.filter(isLeanName) : [],
+    source,
+    submission
+  };
+}
+
+function mapProofsByStatement(entries) {
+  const byStatement = new Map();
+  for (const entry of entries) {
+    if (byStatement.has(entry.statement)) {
+      continue;
+    }
+    byStatement.set(entry.statement, entry);
+  }
+  return byStatement;
+}
+
+function unresolvedConjectureAxiomNames({ compositionTargets, knownStatements, proofByStatement }) {
   const composedStatements = new Set(compositionTargets.map((entry) => entry.statement));
   const conjectures = new Set();
   for (const entry of compositionTargets) {
     for (const dep of entry.deps) {
-      if (!composedStatements.has(dep)) {
+      if (composedStatements.has(dep) || proofByStatement.has(dep)) {
+        continue;
+      }
+      const statement = knownStatements.get(dep);
+      if (statement?.type === "Axiom") {
         conjectures.add(dep);
+        continue;
+      }
+      if (!statement) {
+        errors.push(`proof obligation ${dep} is not a composed proof target and is not a known unproved submission axiom`);
       }
     }
   }
   return [...conjectures].filter(isLeanName).sort();
 }
 
-function composedNameForStatement(statementName) {
-  return isLeanName(statementName) ? `${statementName}._lml_composed` : null;
+function requiredCurrentStatementPackages(currentEntries, submissionsByPackage) {
+  const namespaceRoot = context.namespaceRoot;
+  const packages = new Map();
+  for (const entry of currentEntries) {
+    for (const name of [entry.statement, ...entry.deps]) {
+      const packageName = statementPackageForName(name, namespaceRoot);
+      if (!packageName || packages.has(packageName)) {
+        continue;
+      }
+      const submission = submissionsByPackage.get(packageName);
+      if (!submission) {
+        errors.push(`cannot add final proof statement dependency ${packageName}: no matching submissions.jsonl row`);
+        continue;
+      }
+      packages.set(packageName, {
+        name: packageName,
+        kind: "statement",
+        submission,
+        folder: submission.statementFolder
+      });
+    }
+  }
+  return [...packages.values()];
+}
+
+function requiredRegistryProofPackages(compositionTargets) {
+  const packages = new Map();
+  for (const entry of compositionTargets) {
+    if (entry.source !== "registry" || !entry.submission?.proofPackage) {
+      continue;
+    }
+    if (entry.submission.proofPackage === currentProofPackageName()) {
+      continue;
+    }
+    packages.set(entry.submission.proofPackage, {
+      name: entry.submission.proofPackage,
+      kind: "proof",
+      submission: entry.submission,
+      folder: entry.submission.proofFolder
+    });
+  }
+  return [...packages.values()];
+}
+
+function uniquePackages(packages) {
+  const byName = new Map();
+  for (const pkg of packages) {
+    if (pkg?.name && !byName.has(pkg.name)) {
+      byName.set(pkg.name, pkg);
+    }
+  }
+  return [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function statementPackageForName(name, namespaceRoot) {
+  if (!isLeanName(name)) {
+    return null;
+  }
+  const submissionNamespace = name.split(".")[0];
+  if (!submissionNamespace || submissionNamespace === namespaceRoot) {
+    return null;
+  }
+  return `${submissionNamespace}.Statements`;
+}
+
+function currentProofPackageName() {
+  return context.namespaceRoot ? `${context.namespaceRoot}.Proofs` : null;
+}
+
+function submissionFromRecord(record) {
+  const slug = record.submissionSlug;
+  const namespace = slug ? slugToPascal(slug) : null;
+  if (!namespace) {
+    return null;
+  }
+  return {
+    namespace,
+    statementPackage: `${namespace}.Statements`,
+    proofPackage: `${namespace}.Proofs`,
+    repoUrl: record.repoUrl,
+    sourceBranch: record.sourceBranch,
+    sourceCommit: record.sourceCommit,
+    statementFolder: packageSubDir(record.statementFolder),
+    proofFolder: packageSubDir(record.proofFolder)
+  };
+}
+
+function augmentFinalProofLakefile(packages) {
+  if (packages.length === 0) {
+    return;
+  }
+
+  const lakefile = join(isolatedPackageRoot, "lakefile.lean");
+  if (!existsSync(lakefile)) {
+    errors.push("cannot add final proof dependencies: proof lakefile not found");
+    return;
+  }
+
+  const source = readFileSync(lakefile, "utf8");
+  const existing = existingRequireNames(source);
+  const additions = [];
+
+  for (const pkg of packages) {
+    if (existing.has(pkg.name)) {
+      continue;
+    }
+    const require = requireBlock(pkg);
+    if (!require) {
+      continue;
+    }
+    additions.push(require);
+    existing.add(pkg.name);
+  }
+
+  if (additions.length === 0) {
+    return;
+  }
+
+  writeFileSync(lakefile, insertRequireBlocks(source, additions), "utf8");
+  warnings.push(`added final proof dependencies: ${additions.map((item) => item.name).join(", ")}`);
+}
+
+function buildImportedProofDependencies(requiredProofPackages) {
+  if (requiredProofPackages.length === 0 || errors.length > 0) {
+    return;
+  }
+  runLake(["build", ...requiredProofPackages.map((pkg) => pkg.name)], "lake build imported proof dependencies");
+}
+
+function requireBlock(pkg) {
+  const submission = pkg.submission;
+  const ref = submission.sourceCommit || submission.sourceBranch;
+  if (!submission.repoUrl || !ref) {
+    errors.push(`cannot add final proof dependency ${pkg.name}: submissions.jsonl row is missing Repo or Commit`);
+    return null;
+  }
+  const subDir = pkg.folder ? ` / ${JSON.stringify(pkg.folder)}` : "";
+  return {
+    name: pkg.name,
+    text: `require ${pkg.name} from git\n  ${JSON.stringify(submission.repoUrl)} @ ${JSON.stringify(ref)}${subDir}`
+  };
+}
+
+function existingRequireNames(source) {
+  const names = new Set();
+  const requirePattern = /^\s*require\s+([A-Za-z_][A-Za-z0-9_'.]*)\b/gm;
+  for (const match of source.matchAll(requirePattern)) {
+    names.add(match[1]);
+  }
+  return names;
+}
+
+function insertRequireBlocks(source, additions) {
+  const text = additions.map((item) => item.text).join("\n\n");
+  const insertAt = source.search(/^\s*(?:lean_lib|@[^\n]*\n\s*lean_lib)\b/m);
+  if (insertAt === -1) {
+    return `${trimTrailingNewline(source)}\n\n${text}\n`;
+  }
+
+  const before = trimTrailingNewline(source.slice(0, insertAt));
+  const after = source.slice(insertAt).replace(/^\n+/, "");
+  return `${before}\n\n${text}\n\n${after}`;
+}
+
+function trimTrailingNewline(value) {
+  return String(value ?? "").replace(/\n+$/, "");
+}
+
+function loadSubmissionRecords(packageRoot) {
+  const path = findSubmissionsJsonl(packageRoot);
+  if (!path || !existsSync(path)) {
+    return [];
+  }
+
+  return readFileSync(path, "utf8")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line, index) => parseSubmissionRecord(line, path, index + 1))
+    .filter(Boolean);
+}
+
+function parseSubmissionRecord(line, path, lineNumber) {
+  let row;
+  try {
+    row = JSON.parse(line);
+  } catch (error) {
+    errors.push(`${path}:${lineNumber} is not valid JSON: ${error.message}`);
+    return null;
+  }
+
+  const validation = validateSubmissionRow(row);
+  if (!validation.valid) {
+    errors.push(
+      `${path}:${lineNumber} does not match submissions.jsonl schema: ${validation.errors.map((error) => `${error.instancePath || "/"} ${error.message}`).join("; ")}`
+    );
+  }
+
+  return normalizeSubmissionRow(row);
+}
+
+function findSubmissionsJsonl(packageRoot) {
+  let dir = packageRoot;
+  while (true) {
+    const candidate = join(dir, "submissions.jsonl");
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+
+    const parent = dirname(dir);
+    if (parent === dir) {
+      return null;
+    }
+    dir = parent;
+  }
+}
+
+function packageSubDir(path) {
+  const normalized = String(path ?? "").trim().replace(/^\.?\//, "").replace(/\/$/g, "");
+  return normalized === "." ? "" : normalized;
+}
+
+function composedNameForProof(proofName) {
+  return isLeanName(proofName) ? `${proofName}._lml_composed` : null;
 }
 
 function builtModuleNames() {
-  const lakeModules = lakeEmittedModuleNames();
-  if (lakeModules.length > 0) {
-    return lakeModules;
-  }
-
-  const names = new Set();
+  const names = new Set(lakeEmittedModuleNames());
   for (const { root, dependency } of buildLibraryRoots()) {
     for (const file of walkFiles(root, { ignoreDirs: new Set() })) {
       if (!file.endsWith(".olean")) {
@@ -343,13 +707,34 @@ function buildLibraryRoots() {
   const packagesRoot = join(isolatedPackageRoot, ".lake/packages");
   if (existsSync(packagesRoot)) {
     for (const packageRoot of walkDirs(packagesRoot)) {
-      const buildRoot = join(packageRoot, ".lake/build/lib/lean");
-      if (existsSync(buildRoot)) {
-        roots.push({ root: buildRoot, dependency: true });
-      }
+      roots.push(...dependencyBuildRoots(packageRoot));
     }
   }
 
+  return roots;
+}
+
+function dependencyBuildRoots(packageRoot) {
+  const roots = [];
+
+  function visit(dir, depth) {
+    const buildRoot = join(dir, ".lake/build/lib/lean");
+    if (existsSync(buildRoot)) {
+      roots.push({ root: buildRoot, dependency: true });
+      return;
+    }
+    if (depth >= 3) {
+      return;
+    }
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (!entry.isDirectory() || [".git", ".lake", "node_modules"].includes(entry.name)) {
+        continue;
+      }
+      visit(join(dir, entry.name), depth + 1);
+    }
+  }
+
+  visit(packageRoot, 0);
   return roots;
 }
 
@@ -464,8 +849,12 @@ open Lean Meta Elab Command
 
 namespace LmlFinalProofBuildComposer
 
-def allowedBaseAxioms : Array Name := ${leanNameArray(allowedMathlibAxioms)}
-def allowedConjectureAxioms : Array Name := ${leanNameArray(allowedConjectures)}
+structure AllowedAxiom where
+  actual : Name
+  expected : Name
+
+def allowedBaseAxioms : Array AllowedAxiom := ${leanAllowedAxiomArray(allowedMathlibAxioms)}
+def allowedConjectureAxioms : Array AllowedAxiom := ${leanAllowedAxiomArray(allowedConjectures)}
 
 structure ProofEntry where
   statement : Name
@@ -484,26 +873,28 @@ def sameAxiomType (candidate allowed : ConstantInfo) : CoreM Bool := do
   Meta.MetaM.run' do
     Meta.isExprDefEq candidateType allowedType
 
-def isAllowedBaseAxiomByNameAndType (name : Name) : CoreM Bool := do
+def isAllowedAxiomName (allowed : Array AllowedAxiom) (name : Name) : Bool :=
+  allowed.any (fun item => item.actual == name)
+
+def isAllowedAxiomByNameAndType (allowed : Array AllowedAxiom) (name : Name) : CoreM Bool := do
   let info <- getConstInfo name
   match info with
   | .axiomInfo _ =>
-      for allowedName in allowedBaseAxioms do
-        if name == allowedName then
-          let allowedInfo <- getConstInfo allowedName
+      for allowedAxiom in allowed do
+        if name == allowedAxiom.actual then
+          let allowedInfo <- getConstInfo allowedAxiom.expected
           if (← sameAxiomType info allowedInfo) then
             return true
       return false
   | _ => return false
 
+def isAllowedBaseAxiomByNameAndType (name : Name) : CoreM Bool :=
+  isAllowedAxiomByNameAndType allowedBaseAxioms name
+
 def isAllowedConjectureAxiom (name : Name) : CoreM Bool := do
-  if !(allowedConjectureAxioms.contains name) then
+  if !(isAllowedAxiomName allowedConjectureAxioms name) then
     return false
-  let info <- getConstInfo name
-  match info with
-  | .axiomInfo _ =>
-      return true
-  | _ => return false
+  isAllowedAxiomByNameAndType allowedConjectureAxioms name
 
 def findProofEntry? (statement : Name) : Option ProofEntry :=
   proofEntries.find? (fun entry => entry.statement == statement)
@@ -523,12 +914,12 @@ def remapProofTerm (sigma : Array (Name × Name)) (expr : Expr) : Expr :=
 
 partial def visitEntry (entry : ProofEntry) (visiting visited : Array Name) (order : Array ProofEntry) :
     CoreM (Array Name × Array ProofEntry) := do
-  if visited.contains entry.statement then
+  if visited.contains entry.composed then
     return (visited, order)
-  if visiting.contains entry.statement then
+  if visiting.contains entry.composed then
     IO.eprintln s!"STATEMENT_CYCLE\\t{entry.statement}"
     throwError "statement dependency graph contains a cycle"
-  let visiting := visiting.push entry.statement
+  let visiting := visiting.push entry.composed
   let mut currentVisited := visited
   let mut currentOrder := order
   for dep in entry.deps do
@@ -538,7 +929,7 @@ partial def visitEntry (entry : ProofEntry) (visiting visited : Array Name) (ord
         currentVisited := nextVisited
         currentOrder := nextOrder
     | none => pure ()
-  currentVisited := currentVisited.push entry.statement
+  currentVisited := currentVisited.push entry.composed
   currentOrder := currentOrder.push entry
   return (currentVisited, currentOrder)
 
@@ -581,7 +972,7 @@ def declaredRemap (entry : ProofEntry) (composed : Array (Name × Name)) : Array
 def isAllowedDeclaredAxiom (entry : ProofEntry) (axiomName : Name) : CoreM Bool := do
   if (← isAllowedBaseAxiomByNameAndType axiomName) then
     return true
-  if allowedConjectureAxioms.contains axiomName then
+  if (← isAllowedConjectureAxiom axiomName) then
     return entry.deps.contains axiomName
   if (findProofEntry? axiomName).isSome then
     return entry.deps.contains axiomName
@@ -644,8 +1035,12 @@ open Lean Meta
 
 namespace LmlFinalProofBuildVerifier
 
-def allowedBaseAxioms : Array Name := ${leanNameArray(allowedMathlibAxioms)}
-def allowedConjectureAxioms : Array Name := ${leanNameArray(allowedConjectures)}
+structure AllowedAxiom where
+  actual : Name
+  expected : Name
+
+def allowedBaseAxioms : Array AllowedAxiom := ${leanAllowedAxiomArray(allowedMathlibAxioms)}
+def allowedConjectureAxioms : Array AllowedAxiom := ${leanAllowedAxiomArray(allowedConjectures)}
 def composedTargets : Array Name := ${leanNameArray(compositionTargets.map((entry) => entry.composed))}
 
 def sameAxiomType (candidate allowed : ConstantInfo) : CoreM Bool := do
@@ -657,25 +1052,28 @@ def sameAxiomType (candidate allowed : ConstantInfo) : CoreM Bool := do
   Meta.MetaM.run' do
     Meta.isExprDefEq candidateType allowedType
 
-def isAllowedBaseAxiomByNameAndType (name : Name) : CoreM Bool := do
+def isAllowedAxiomName (allowed : Array AllowedAxiom) (name : Name) : Bool :=
+  allowed.any (fun item => item.actual == name)
+
+def isAllowedAxiomByNameAndType (allowed : Array AllowedAxiom) (name : Name) : CoreM Bool := do
   let info <- getConstInfo name
   match info with
   | .axiomInfo _ =>
-      for allowedName in allowedBaseAxioms do
-        if name == allowedName then
-          let allowedInfo <- getConstInfo allowedName
+      for allowedAxiom in allowed do
+        if name == allowedAxiom.actual then
+          let allowedInfo <- getConstInfo allowedAxiom.expected
           if (← sameAxiomType info allowedInfo) then
             return true
       return false
   | _ => return false
 
+def isAllowedBaseAxiomByNameAndType (name : Name) : CoreM Bool :=
+  isAllowedAxiomByNameAndType allowedBaseAxioms name
+
 def isAllowedConjectureAxiom (name : Name) : CoreM Bool := do
-  if !(allowedConjectureAxioms.contains name) then
+  if !(isAllowedAxiomName allowedConjectureAxioms name) then
     return false
-  let info <- getConstInfo name
-  match info with
-  | .axiomInfo _ => return true
-  | _ => return false
+  isAllowedAxiomByNameAndType allowedConjectureAxioms name
 
 def checkAxiom (owner : Name) (axiomName : Name) : CoreM Bool := do
   if (← isAllowedConjectureAxiom axiomName) then
@@ -712,6 +1110,10 @@ function leanNameArray(names) {
   return `#[${names.filter(isLeanName).map((name) => `\`${name}`).join(", ")}]`;
 }
 
+function leanAllowedAxiomArray(names) {
+  return `#[${names.filter(isLeanName).map((name) => `{ actual := \`${name}, expected := \`${name} }`).join(", ")}]`;
+}
+
 function leanProofEntryArray(entries) {
   return `#[${entries.map((entry) => `{
   statement := \`${entry.statement},
@@ -727,8 +1129,4 @@ function isLeanName(name) {
 
 function relativePath(root, path) {
   return relative(root, path).split(sep).join("/");
-}
-
-function outputReportsSorry(output) {
-  return /\bdeclaration uses ['"`]sorry['"`]/i.test(output) || /\bsorryAx\b/.test(output);
 }

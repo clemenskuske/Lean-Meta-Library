@@ -1,45 +1,31 @@
 // Adds statement-package dependencies needed by proof manifest before building proofs.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { extname, join, resolve } from "node:path";
+import { dirname, extname, join, resolve } from "node:path";
 import { normalizeSubmissionRow, validateSubmissionRow } from "../../submission-schema.mjs";
 import { proofPackageRoot } from "../common.mjs";
 import { slugToPascal } from "../general/manifest-context.mjs";
+import { lakeDependencies, loadLakeConfig } from "../lake-config.mjs";
 
 export function augmentProofLakefile({ packageRoot, manifest, errors, warnings }) {
-  const pRoot = proofPackageRoot(manifest);
-  if (!pRoot) {
-    return;
-  }
-  const lakefilePath = join(pRoot, "lakefile.lean");
-
-  const required = referencedStatementPackages(manifest);
-  if (required.length === 0) {
+  const context = proofStatementDependencyContext({ packageRoot, manifest, errors, action: "augment" });
+  if (!context) {
     return;
   }
 
-  const absoluteLakefile = resolve(packageRoot, lakefilePath);
-  if (!existsSync(absoluteLakefile)) {
-    return;
-  }
-  if (extname(absoluteLakefile) !== ".lean") {
-    errors.push(`cannot augment non-Lean proof lakefile: ${lakefilePath}`);
-    return;
-  }
-
-  const submissions = loadSubmissionRows({ packageRoot, errors });
-  const byPackage = new Map(submissions.map((submission) => [submission.statementPackage, submission]));
-  const source = readFileSync(absoluteLakefile, "utf8");
-  const existing = existingRequireNames(source);
+  const { required, byPackage, source, absoluteLakefile, dependencyByName } = context;
+  const existing = new Set(dependencyByName.keys());
   const additions = [];
 
   for (const packageName of required) {
-    if (existing.has(packageName)) {
-      continue;
-    }
-
     const submission = byPackage.get(packageName);
     if (!submission) {
       errors.push(`cannot add proof lakefile dependency ${packageName}: no matching submissions.jsonl row`);
+      continue;
+    }
+
+    const dependency = dependencyByName.get(packageName);
+    if (dependency) {
+      validateProofStatementDependency({ dependency, submission, errors });
       continue;
     }
 
@@ -53,6 +39,58 @@ export function augmentProofLakefile({ packageRoot, manifest, errors, warnings }
 
   writeFileSync(absoluteLakefile, insertRequireBlocks(source, additions), "utf8");
   warnings.push(`added proof lakefile statement dependencies: ${additions.map((item) => item.name).join(", ")}`);
+}
+
+export function validateProofLakefileStatementDependencies({ packageRoot, manifest, errors }) {
+  const context = proofStatementDependencyContext({ packageRoot, manifest, errors, action: "validate" });
+  if (!context) {
+    return;
+  }
+
+  const { required, byPackage, dependencyByName } = context;
+  for (const packageName of required) {
+    const submission = byPackage.get(packageName);
+    if (!submission) {
+      errors.push(`proof lakefile statement dependency ${packageName} has no matching submissions.jsonl row`);
+      continue;
+    }
+
+    const dependency = dependencyByName.get(packageName);
+    if (dependency) {
+      validateProofStatementDependency({ dependency, submission, errors });
+    }
+  }
+}
+
+function proofStatementDependencyContext({ packageRoot, manifest, errors, action }) {
+  const pRoot = proofPackageRoot(manifest);
+  if (!pRoot) {
+    return null;
+  }
+  const lakefilePath = join(pRoot, "lakefile.lean");
+
+  const required = referencedStatementPackages(manifest);
+  if (required.length === 0) {
+    return null;
+  }
+
+  const absoluteLakefile = resolve(packageRoot, lakefilePath);
+  if (!existsSync(absoluteLakefile)) {
+    return null;
+  }
+  if (extname(absoluteLakefile) !== ".lean") {
+    errors.push(`cannot ${action} non-Lean proof lakefile: ${lakefilePath}`);
+    return null;
+  }
+
+  const proofRoot = resolve(packageRoot, pRoot);
+  const proofLakeConfig = loadLakeConfig(proofRoot, "proof lakefile", errors);
+  const dependencyByName = new Map(lakeDependencies(proofLakeConfig).map((dependency) => [dependency.name, dependency]));
+  const submissions = loadSubmissionRows({ packageRoot, errors });
+  const byPackage = new Map(submissions.map((submission) => [submission.statementPackage, submission]));
+  const source = readFileSync(absoluteLakefile, "utf8");
+
+  return { required, byPackage, source, absoluteLakefile, dependencyByName };
 }
 
 function referencedStatementPackages(manifest) {
@@ -86,15 +124,6 @@ function statementPackageForAxiom(axiom, namespaceRoot) {
   return `${submissionNamespace}.Statements`;
 }
 
-function existingRequireNames(source) {
-  const names = new Set();
-  const requirePattern = /^\s*require\s+([A-Za-z_][A-Za-z0-9_'.]*)\b/gm;
-  for (const match of source.matchAll(requirePattern)) {
-    names.add(match[1]);
-  }
-  return names;
-}
-
 function requireBlock(packageName, submission) {
   const ref = submission.sourceCommit || submission.sourceBranch;
   const subDir = submission.statementFolder ? ` / ${JSON.stringify(submission.statementFolder)}` : "";
@@ -102,6 +131,38 @@ function requireBlock(packageName, submission) {
     name: packageName,
     text: `require ${packageName} from git\n  ${JSON.stringify(submission.repoUrl)} @ ${JSON.stringify(ref)}${subDir}`
   };
+}
+
+function validateProofStatementDependency({ dependency, submission, errors }) {
+  if (!dependencyMatchesSubmission(dependency, submission)) {
+    errors.push(`proof lakefile dependency is not allowed by submissions.jsonl: ${formatDependency(dependency)}`);
+  }
+}
+
+function dependencyMatchesSubmission(dependency, submission) {
+  const expectedRef = submission.sourceCommit || submission.sourceBranch;
+  return (
+    dependency.kind === "git" &&
+    normalizeGitUrl(dependency.url) === normalizeGitUrl(submission.repoUrl) &&
+    dependency.ref === expectedRef &&
+    (!dependency.subDir || normalizePath(dependency.subDir) === normalizePath(submission.statementFolder))
+  );
+}
+
+function normalizeGitUrl(url) {
+  return String(url ?? "")
+    .trim()
+    .replace(/\.git$/i, "")
+    .replace(/\/$/g, "");
+}
+
+function formatDependency(dependency) {
+  if (dependency.kind === "local") {
+    return `${dependency.name} from ${dependency.path}`;
+  }
+  const subDir = dependency.subDir ? ` / "${dependency.subDir}"` : "";
+  const ref = dependency.ref ? ` @ "${dependency.ref}"` : "";
+  return `${dependency.name} from ${dependency.url}${ref}${subDir}`;
 }
 
 function insertRequireBlocks(source, additions) {

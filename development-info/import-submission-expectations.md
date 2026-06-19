@@ -142,7 +142,8 @@ dependency when it can find a matching `submissions.jsonl` row.
 
 The final proof-build check copies the manifest-root package tree into an
 isolated directory, runs `lake update`, `lake clean`, a best-effort cache fetch,
-and `lake build`, then rejects build output reporting `sorry` or `sorryAx`.
+and `lake build`. Build output from declarations outside the submitted proof
+targets is not treated as part of the proof trust boundary.
 
 It then composes each submitted proof target onto the statement axiom it
 discharges. Composed proof outputs may bottom out only in allowed base axioms

@@ -56,7 +56,6 @@ if (checks.length > 0) {
 report("proof types match statements", errors, warnings);
 
 function collectChecks() {
-  const seen = new Set();
   const entries = [];
 
   for (const proof of proofs) {
@@ -71,11 +70,6 @@ function collectChecks() {
       errors.push(`proof manifest entry for ${axiom} is missing a valid proof name: ${proofName ?? "(missing)"}`);
       continue;
     }
-    if (seen.has(axiom)) {
-      errors.push(`multiple proof manifest entries target statement ${axiom}`);
-      continue;
-    }
-    seen.add(axiom);
     entries.push({ axiom, proof: proofName });
   }
 
