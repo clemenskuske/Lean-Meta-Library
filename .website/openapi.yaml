@@ -146,6 +146,19 @@ components:
           - pattern: "\\|\\|"
           - pattern: "[<>]"
 
+    DisplayText:
+      type: string
+      description: >
+        Inline display text accepted for TeX and Lean snippets. Allows printable
+        Unicode and mathematical notation while rejecting control characters and
+        command-substitution tokens.
+      pattern: "^[^\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F\\x7F]*$"
+      not:
+        anyOf:
+          - pattern: "`"
+          - pattern: "\\$\\("
+          - pattern: "\\$\\{"
+
     RepoRelativePath:
       allOf:
         - $ref: "#/components/schemas/SafeText"
@@ -210,7 +223,7 @@ components:
           description: "Optional human-readable title for display."
         InlineTexReference:
           allOf:
-            - $ref: "#/components/schemas/SafeText"
+            - $ref: "#/components/schemas/DisplayText"
           type: string
           description: "Optional inline TeX snippet for the statement, for display."
         SemanticDependencies:
@@ -249,7 +262,7 @@ components:
           description: "Optional human-readable title for display."
         InlineTexReference:
           allOf:
-            - $ref: "#/components/schemas/SafeText"
+            - $ref: "#/components/schemas/DisplayText"
           type: string
           description: "Optional inline TeX snippet for the proof, for display."
         ProofObligations:
@@ -425,12 +438,12 @@ components:
           description: "Optional human-readable title for display."
         InlineTexReference:
           allOf:
-            - $ref: "#/components/schemas/SafeText"
+            - $ref: "#/components/schemas/DisplayText"
           type: string
           description: "Optional inline TeX snippet for the statement, for display."
         InlineLeanStatement:
           allOf:
-            - $ref: "#/components/schemas/SafeText"
+            - $ref: "#/components/schemas/DisplayText"
           type: string
           description: "Optional inline Lean statement, for display."
         SemanticDependencies:
@@ -464,12 +477,12 @@ components:
           description: "Optional human-readable title for display."
         InlineTexReference:
           allOf:
-            - $ref: "#/components/schemas/SafeText"
+            - $ref: "#/components/schemas/DisplayText"
           type: string
           description: "Optional inline TeX snippet for the proof, for display."
         InlineLeanStatement:
           allOf:
-            - $ref: "#/components/schemas/SafeText"
+            - $ref: "#/components/schemas/DisplayText"
           type: string
           description: "Optional inline Lean statement, for display."
         AxiomReference:

@@ -244,7 +244,9 @@ jobs:
           MANIFEST_PATH: ${{ steps.issue.outputs.manifest-path }}
         run: |
           mkdir -p checked-manifest
-          cp "submission/$MANIFEST_PATH" checked-manifest/manifest.yaml
+          node .github/actions/create-submission/create-output-config.mjs \
+            --manifest="submission/$MANIFEST_PATH" \
+            --output=checked-manifest/manifest.yaml
 
       - name: Upload checked manifest
         uses: actions/upload-artifact@v4

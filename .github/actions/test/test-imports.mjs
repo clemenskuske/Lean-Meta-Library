@@ -5,6 +5,7 @@ import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } 
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import YAML from "yaml";
 import { createOutputConfig } from "../create-submission/create-output-config.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -142,6 +143,15 @@ const acceptedFixtures = [
 
 let failed = false;
 
+console.log("RUN output config enrichment");
+try {
+  testOutputConfigEnrichment();
+  console.log("PASS output config enrichment");
+} catch (error) {
+  failed = true;
+  console.error(`FAIL output config enrichment: ${error.message}`);
+}
+
 for (const fixture of fixtures) {
   console.log(`RUN ${fixture.name}: expecting rejection from ${fixture.checker}`);
   const result = runFixture(fixture);
@@ -176,7 +186,66 @@ if (failed) {
   process.exit(1);
 }
 
-console.log(`All ${fixtures.length} negative import fixtures failed as expected, and ${acceptedFixtures.length} acceptance fixtures passed.`);
+console.log(`All ${fixtures.length} negative import fixtures failed as expected, ${acceptedFixtures.length} acceptance fixtures passed, and output config enrichment passed.`);
+
+function testOutputConfigEnrichment() {
+  const sourceManifest = join(repoRoot, "test-imports", "shared-statement-declarations-package", "manifest.yaml");
+  const outputPath = createOutputConfig(sourceManifest, "enrichment-test");
+
+  try {
+    const output = YAML.parse(readFileSync(outputPath, "utf8"));
+    const statements = output?.StatementSubmissions?.statements ?? [];
+    const first = statements.find((entry) => entry.Name === "SharedStatementDeclarations.Statements.Pair.first");
+    const second = statements.find((entry) => entry.Name === "SharedStatementDeclarations.Statements.Pair.second");
+
+    assert(first?.InlineTexReference?.includes("definition and an axiom"), "expected TeX reference to be read from the statement .tex file");
+    assert(first?.InlineLeanStatement?.includes("def first"), "expected definition Lean declaration to be inlined");
+    assert(!first?.InlineLeanStatement?.includes("axiom second"), "definition Lean inline should stop before the next declaration");
+    assert(second?.InlineLeanStatement?.includes("axiom second"), "expected axiom Lean declaration to be inlined");
+  } finally {
+    rmSync(outputPath, { force: true });
+  }
+
+  testUnicodeDisplayTextManifestCheck();
+}
+
+function assert(condition, message) {
+  if (!condition) {
+    throw new Error(message);
+  }
+}
+
+function testUnicodeDisplayTextManifestCheck() {
+  const tmpRoot = mkdtempSync(join(tmpdir(), "lml-display-text-"));
+  const manifestPath = join(tmpRoot, "manifest.yaml");
+  writeFileSync(manifestPath, [
+    'manifestVersion: "1"',
+    "AbstractPath: abstract.tex",
+    "LicenseFile: LICENSE",
+    "SubmissionName: Unicode Display Fixture",
+    "SubmissionSlug: unicode-display",
+    "BibEntries: []",
+    "StatementSubmissions:",
+    "  rootFolder: statements",
+    "  statements:",
+    "    - Name: UnicodeDisplay.Statements.Main.foo",
+    "      Type: Axiom",
+    '      InlineTexReference: "\\\\(x < y\\\\)"',
+    "      InlineLeanStatement: \"axiom foo : p ↔ q\"",
+    ""
+  ].join("\n"));
+
+  try {
+    const result = spawnSync(process.execPath, [join(here, "general/manifest-check.mjs"), `--manifest=${manifestPath}`], {
+      cwd: repoRoot,
+      encoding: "utf8",
+      maxBuffer: 1024 * 1024
+    });
+    assert(result.status === 0, `expected Unicode display manifest to pass manifest-check\n${result.stdout}${result.stderr}`.trim());
+  } finally {
+    rmSync(tmpRoot, { recursive: true, force: true });
+  }
+}
 
 function runFixture({ name, checker, expected, stripMathlibDependencyForCheck }) {
   const checkerPath = join(here, checker);

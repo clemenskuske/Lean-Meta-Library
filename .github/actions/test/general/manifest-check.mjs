@@ -118,16 +118,29 @@ function runRepositoryChecks() {
   }
 
   const manifestStrings = collectStrings(rawManifest);
+  const strictStrings = manifestStrings.filter((item) => !isDisplayTextPath(item.path)).map((item) => item.value);
+  const displayStrings = manifestStrings.filter((item) => isDisplayTextPath(item.path)).map((item) => item.value);
   const allowedText = /^[\t\r\n\x20-\x7E]*$/;
-  for (const value of manifestStrings) {
+  const allowedDisplayText = /^[^\x00-\x08\x0B\x0C\x0E-\x1F\x7F]*$/;
+  for (const value of strictStrings) {
     if (!allowedText.test(value)) {
       errors.push(`manifest contains a non-whitelisted character sequence: ${value}`);
     }
   }
+  for (const value of displayStrings) {
+    if (!allowedDisplayText.test(value)) {
+      errors.push(`manifest contains a non-whitelisted display character sequence: ${value}`);
+    }
+  }
 
   for (const suspicious of ["`", "$(", "${", ";", "&&", "||", "<", ">"]) {
-    if (manifestStrings.some((value) => value.includes(suspicious))) {
+    if (strictStrings.some((value) => value.includes(suspicious))) {
       errors.push(`manifest contains suspicious token: ${suspicious}`);
+    }
+  }
+  for (const suspicious of ["`", "$(", "${"]) {
+    if (displayStrings.some((value) => value.includes(suspicious))) {
+      errors.push(`manifest contains suspicious display token: ${suspicious}`);
     }
   }
 }
@@ -151,15 +164,20 @@ function pathDirectory(path) {
   return path ? dirname(path) : "";
 }
 
-function collectStrings(value) {
+function collectStrings(value, path = []) {
   if (typeof value === "string") {
-    return [value];
+    return [{ value, path }];
   }
   if (Array.isArray(value)) {
-    return value.flatMap(collectStrings);
+    return value.flatMap((item, index) => collectStrings(item, [...path, String(index)]));
   }
   if (value && typeof value === "object") {
-    return Object.values(value).flatMap(collectStrings);
+    return Object.entries(value).flatMap(([key, item]) => collectStrings(item, [...path, key]));
   }
   return [];
+}
+
+function isDisplayTextPath(path) {
+  const key = path.at(-1);
+  return key === "InlineTexReference" || key === "InlineLeanStatement";
 }
