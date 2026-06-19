@@ -468,6 +468,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add submissions.jsonl .website/submissions-data.js
           git commit -m "Import submission manifest"
+          git pull --rebase origin "$GITHUB_REF_NAME"
           git push origin HEAD:"$GITHUB_REF_NAME"
 
       - name: "Comment progress: submissions log committed"
