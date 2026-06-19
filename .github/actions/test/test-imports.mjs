@@ -85,6 +85,12 @@ const fixtures = [
     stripMathlibDependencyForCheck: true
   },
   {
+    name: "undeclared-proof-obligation-package",
+    checker: "proofs/no-forbidden-axioms.mjs",
+    expected: /UNDECLARED_AXIOM/,
+    stripMathlibDependencyForCheck: true
+  },
+  {
     name: "extra-statement-declaration-package",
     checker: "statements/introduced-declarations.mjs",
     expected: /introduces extra declaration/,

@@ -1,0 +1,18 @@
+manifestVersion: "1"
+AbstractPath: abstract.tex
+SubmissionName: Undeclared Proof Obligation Fixture
+SubmissionSlug: undeclared-proof-obligation
+BibEntries: []
+StatementSubmissions:
+  rootFolder: statements
+  statements:
+    - Name: UndeclaredProofObligation.Statements.Target.source
+      Type: Axiom
+    - Name: UndeclaredProofObligation.Statements.Target.target
+      Type: Axiom
+ProofSubmissions:
+  rootFolder: "."
+  proofs:
+    - Name: UndeclaredProofObligation.Proofs.Target.target
+      AxiomReference: UndeclaredProofObligation.Statements.Target.target
+      ProofObligations: []

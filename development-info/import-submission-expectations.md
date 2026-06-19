@@ -127,7 +127,9 @@ For submitted proof targets, compiled axiom dependencies are controlled:
 
 - The proof target must not depend on `sorryAx`.
 - The proof target must not depend on local proof-namespace axioms.
-- The proof target may bottom out only in allowed base axioms from
+- Any non-base axiom dependency must be explicitly listed in that proof entry's
+  `ProofObligations`.
+- Otherwise, the proof target may bottom out only in allowed base axioms from
   `lml-env.json`.
 
 The `AxiomReference` may belong to this submission or to another submission;

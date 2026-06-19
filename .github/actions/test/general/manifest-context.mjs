@@ -162,7 +162,8 @@ function normalizeProofEntry(entry) {
   return {
     ...entry,
     proof: entry.Name ?? "",
-    axiom: entry.AxiomReference ?? ""
+    axiom: entry.AxiomReference ?? "",
+    deps: Array.isArray(entry.ProofObligations) ? entry.ProofObligations : []
   };
 }
 

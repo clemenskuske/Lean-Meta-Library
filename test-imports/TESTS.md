@@ -64,6 +64,7 @@ locally without downloading Mathlib.
 |----------------|---------|---------------|
 | `mismatched-proof-type-package` | `proofs/type-matches-statements.mjs` | The proof theorem has the expected name but a Lean type that differs from the statement; the type-matching checker must reject the mismatch. |
 | `sorry-proof-package` | `proofs/no-forbidden-axioms.mjs` | The submitted proof uses `sorry`; the axiom checker must reject the resulting `sorryAx` dependency. |
+| `undeclared-proof-obligation-package` | `proofs/no-forbidden-axioms.mjs` | The submitted proof uses an axiom that is not listed in `ProofObligations`; the axiom checker must reject the undeclared dependency. |
 
 ## Final proof build
 

@@ -180,7 +180,10 @@ proof targets must be clean:
 - the proof package must build so each `Name` declaration resolves;
 - submitted proof targets must not depend on `sorryAx`;
 - submitted proof targets must not depend on local proof-namespace axioms;
-- actual axiom dependencies may bottom out only in allowed base axioms.
+- non-base axiom dependencies must be listed in that proof entry's
+  `ProofObligations`;
+- otherwise, actual axiom dependencies may bottom out only in allowed base
+  axioms.
 
 ## Final Proof Build
 

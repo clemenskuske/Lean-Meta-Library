@@ -116,10 +116,12 @@ imported submission content.
 
 For dependency work, the registry is the authorization source for imported
 submissions. `SemanticDependencies` on statement entries list
-fully-qualified declaration names that a statement depends on. Actual proof
-dependencies come from Lean axiom collection and must be covered by declared
-dependencies, aside from allowed base axioms. Undeclared axiom dependencies
-should survive to the axiom gate rather than being silently rewritten.
+fully-qualified declaration names that a statement depends on.
+`ProofObligations` on proof entries list the non-base axioms a proof target may
+use. Actual proof dependencies come from Lean axiom collection and must be
+covered by declared obligations, aside from allowed base axioms. Undeclared
+axiom dependencies should survive to the axiom gate rather than being silently
+rewritten.
 
 Do not change `submissions.jsonl` by hand. It is synced registry state, and
 import automation or `lml update` may recreate or overwrite it from the

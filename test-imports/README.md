@@ -113,6 +113,9 @@ downloading Mathlib. When running a checker by hand you may need to do the same.
 - **`sorry-proof-package`** — the submitted proof uses `sorry`, so
   `proofs/no-forbidden-axioms.mjs` must reject the resulting `sorryAx`
   dependency.
+- **`undeclared-proof-obligation-package`** — the submitted proof depends on a
+  statement axiom that is not listed in the proof entry's `ProofObligations`, so
+  `proofs/no-forbidden-axioms.mjs` must reject the undeclared axiom dependency.
 
 ### Final proof build
 
@@ -127,10 +130,9 @@ downloading Mathlib. When running a checker by hand you may need to do the same.
 
 Coverage still to add: submissions with only a statement package or only a proof
 package; statement-theorem rejection; proof-level external
-`SemanticDependencies`; declared-dependency coverage for the actual Lean axiom
-dependencies; statement-level dependency-DAG acyclicity; axiom-gate matching by
-name, type, and source module; and final proof-build dependency and conjecture
-manifest comparison.
+`SemanticDependencies`; statement-level dependency-DAG acyclicity; axiom-gate
+matching by name, type, and source module; and final proof-build dependency and
+conjecture manifest comparison.
 
 Helper modules in `.github/actions/test/` — such as `common.mjs`,
 `general/manifest-context.mjs`, `lake-config.mjs`, `lean-imports.mjs`, and

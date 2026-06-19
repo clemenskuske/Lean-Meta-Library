@@ -64,6 +64,12 @@ function referencedStatementPackages(manifest) {
     if (statementPackage) {
       packages.add(statementPackage);
     }
+    for (const dep of Array.isArray(proof?.deps) ? proof.deps : []) {
+      const dependencyPackage = statementPackageForAxiom(dep, namespaceRoot);
+      if (dependencyPackage) {
+        packages.add(dependencyPackage);
+      }
+    }
   }
 
   return [...packages].sort();
