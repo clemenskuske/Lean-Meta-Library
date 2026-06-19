@@ -19,7 +19,7 @@
   ],
   "scripts": {
     "smoke": "node ./.cli-tooling/src/cli.js --help",
-    "test:imports": "node .github/actions/test/test-imports.mjs"
+    "test:imports": "node .github/actions/test/test-imports.mjs && node .github/actions/test/submission-schema-regression.mjs"
   },
   "engines": {
     "node": ">=20"

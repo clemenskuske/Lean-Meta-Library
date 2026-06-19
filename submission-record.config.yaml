@@ -242,6 +242,15 @@ $defs:
       Unicode and mathematical notation while rejecting control characters and
       command-substitution tokens.
 
+  leanSourceText:
+    allOf:
+      - $ref: "#/$defs/displayText"
+    type: string
+    description: >
+      Inline Lean source accepted for display. Allows Lean Unicode symbols such
+      as ∀, →, ↔, and ¬ while rejecting control characters and command
+      substitution tokens.
+
   repoRelativePath:
     allOf:
       - $ref: "#/$defs/safeText"
@@ -307,7 +316,7 @@ $defs:
           display.
       InlineLeanStatement:
         allOf:
-          - $ref: "#/$defs/displayText"
+          - $ref: "#/$defs/leanSourceText"
         type: string
         description: >
           Optional inline Lean statement for the statement, for
@@ -353,7 +362,7 @@ $defs:
           display.
       InlineLeanStatement:
         allOf:
-          - $ref: "#/$defs/displayText"
+          - $ref: "#/$defs/leanSourceText"
         type: string
         description: >
           Optional inline Lean statement for the proof, for

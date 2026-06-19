@@ -77,28 +77,34 @@ export function normalizeSubmissionRow(row) {
   const data = row?.SubmissionData ?? {};
   const statements = row?.StatementSubmissions ?? {};
   const proofs = row?.ProofSubmissions ?? {};
+  const manifestPath = stringValue(data.ManifestPath ?? row?.["Manifest File"]);
+  const statementFolder = statements.rootFolder !== undefined && statements.rootFolder !== null
+    ? manifestRelativeFolder(statements.rootFolder, manifestPath)
+    : normalizePath(
+        row?.["Statement Folder"] ??
+          row?.["Declaration Folder"] ??
+          row?.["Lake Statement Package"] ??
+          row?.LakeStatementPackage ??
+          dirnamePath(row?.statementLakefilePath)
+      );
+  const proofFolder = proofs.rootFolder !== undefined && proofs.rootFolder !== null
+    ? manifestRelativeFolder(proofs.rootFolder, manifestPath)
+    : normalizePath(
+        row?.["Proof Folder"] ??
+          row?.["Lake Proof Package"] ??
+          row?.LakeProofPackage ??
+          dirnamePath(row?.proofLakefilePath)
+      );
+
   return {
     submissionSlug: stringValue(data.SubmissionSlug ?? row?.SubmissionSlug ?? row?.submissionSlug ?? row?.namespaceSlug),
     submissionName: stringValue(data.SubmissionName ?? row?.SubmissionName ?? row?.submissionName ?? row?.paperTitle ?? row?.title),
     repoUrl: stringValue(data.Repo ?? row?.["Repo Url"] ?? row?.["Git Repo"] ?? row?.githubRepo),
     sourceBranch: stringValue(row?.["Source Branch"] ?? row?.sourceBranch),
     sourceCommit: stringValue(data.Commit ?? row?.["Source Commit"] ?? row?.Commit ?? row?.sourceCommit),
-    manifestPath: stringValue(data.ManifestPath ?? row?.["Manifest File"]),
-    statementFolder: normalizePath(
-      statements.rootFolder ??
-        row?.["Statement Folder"] ??
-        row?.["Declaration Folder"] ??
-        row?.["Lake Statement Package"] ??
-        row?.LakeStatementPackage ??
-        dirnamePath(row?.statementLakefilePath)
-    ),
-    proofFolder: normalizePath(
-      proofs.rootFolder ??
-        row?.["Proof Folder"] ??
-        row?.["Lake Proof Package"] ??
-        row?.LakeProofPackage ??
-        dirnamePath(row?.proofLakefilePath)
-    ),
+    manifestPath,
+    statementFolder,
+    proofFolder,
     issueNumber: data.submissionIssueNumber ?? row?.["Issue Number"] ?? null,
     issueUrl: stringValue(data.submissionIssueUrl ?? row?.["Issue Url"]),
     userLogin: stringValue(data.submittedBy ?? row?.["User Login"] ?? row?.submittedBy),
@@ -118,6 +124,21 @@ function dirnamePath(path) {
   const normalized = normalizePath(path);
   const index = normalized.lastIndexOf("/");
   return index === -1 ? "" : normalized.slice(0, index);
+}
+
+function manifestRelativeFolder(folder, manifestPath) {
+  const normalized = normalizePath(folder);
+  const manifestDir = dirnamePath(manifestPath);
+  if (!normalized) {
+    return "";
+  }
+  if (normalized === ".") {
+    return manifestDir;
+  }
+  if (!manifestDir || normalized === manifestDir || normalized.startsWith(`${manifestDir}/`)) {
+    return normalized;
+  }
+  return `${manifestDir}/${normalized}`;
 }
 
 function normalizePath(path) {
