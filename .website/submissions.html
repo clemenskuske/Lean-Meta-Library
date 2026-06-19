@@ -382,13 +382,12 @@
         position: absolute;
         z-index: 1;
         display: grid;
-        align-content: center;
-        gap: 4px;
-        width: 220px;
-        height: 64px;
+        place-items: center;
+        width: 72px;
+        height: 34px;
         border: 1px solid var(--line);
-        border-radius: 8px;
-        padding: 8px 10px;
+        border-radius: 7px;
+        padding: 0 8px;
         background: var(--panel);
         color: var(--text);
         box-shadow: 0 6px 18px rgba(32, 33, 36, 0.06);
@@ -396,35 +395,39 @@
       }
 
       .graph-node:hover {
-        border-color: var(--accent);
-        background: var(--accent-soft);
+        filter: saturate(1.1) brightness(0.98);
         text-decoration: none;
       }
 
       .graph-node.current {
-        border-color: var(--accent);
-        box-shadow: 0 0 0 3px rgba(15, 107, 99, 0.12);
+        box-shadow: 0 0 0 3px rgba(32, 33, 36, 0.12);
       }
 
       .graph-node.external {
         border-style: dashed;
       }
 
-      .graph-node-name {
-        color: inherit;
-        font-size: 0.78rem;
-        font-weight: 800;
-        line-height: 1.18;
-        overflow: hidden;
-        overflow-wrap: anywhere;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
+      .graph-node.definition {
+        border-color: var(--accent);
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+
+      .graph-node.proof {
+        border-color: var(--proof);
+        background: #eeebfb;
+        color: var(--proof);
+      }
+
+      .graph-node.axiom {
+        border-color: var(--warn);
+        background: #fff3df;
+        color: var(--warn);
       }
 
       .graph-node-meta {
-        color: var(--muted);
-        font-size: 0.68rem;
+        color: inherit;
+        font-size: 0.62rem;
         font-weight: 800;
         line-height: 1.1;
         text-transform: uppercase;
@@ -1088,10 +1091,10 @@
       }
 
       function dependencyGraphLayout(nodes) {
-        const nodeWidth = 220;
-        const nodeHeight = 64;
-        const xGap = 76;
-        const yGap = 26;
+        const nodeWidth = 72;
+        const nodeHeight = 34;
+        const xGap = 22;
+        const yGap = 56;
         const margin = 18;
         const byDepth = new Map();
         for (const node of nodes) {
@@ -1101,18 +1104,18 @@
 
         const depths = [...byDepth.keys()].sort((left, right) => left - right);
         const maxRows = Math.max(1, ...[...byDepth.values()].map((items) => items.length));
-        const width = margin * 2 + depths.length * nodeWidth + Math.max(0, depths.length - 1) * xGap;
-        const height = margin * 2 + maxRows * nodeHeight + Math.max(0, maxRows - 1) * yGap;
+        const width = margin * 2 + maxRows * nodeWidth + Math.max(0, maxRows - 1) * xGap;
+        const height = margin * 2 + depths.length * nodeHeight + Math.max(0, depths.length - 1) * yGap;
         const positions = new Map();
 
-        depths.forEach((depth, column) => {
+        depths.forEach((depth, row) => {
           const items = byDepth.get(depth);
-          const columnHeight = items.length * nodeHeight + Math.max(0, items.length - 1) * yGap;
-          const topOffset = margin + Math.max(0, (height - margin * 2 - columnHeight) / 2);
-          items.forEach((item, row) => {
+          const rowWidth = items.length * nodeWidth + Math.max(0, items.length - 1) * xGap;
+          const leftOffset = margin + Math.max(0, (width - margin * 2 - rowWidth) / 2);
+          items.forEach((item, column) => {
             positions.set(item.name, {
-              x: margin + column * (nodeWidth + xGap),
-              y: topOffset + row * (nodeHeight + yGap),
+              x: leftOffset + column * (nodeWidth + xGap),
+              y: margin + row * (nodeHeight + yGap),
               width: nodeWidth,
               height: nodeHeight
             });
@@ -1126,12 +1129,12 @@
         const from = positions.get(edge.from);
         const to = positions.get(edge.to);
         if (!from || !to) return "";
-        const startX = from.x + from.width;
-        const startY = from.y + from.height / 2;
-        const endX = to.x;
-        const endY = to.y + to.height / 2;
-        const control = Math.max(34, Math.abs(endX - startX) / 2);
-        return `M ${startX} ${startY} C ${startX + control} ${startY}, ${endX - control} ${endY}, ${endX} ${endY}`;
+        const startX = from.x + from.width / 2;
+        const startY = from.y + from.height;
+        const endX = to.x + to.width / 2;
+        const endY = to.y;
+        const control = Math.max(28, Math.abs(endY - startY) / 2);
+        return `M ${startX} ${startY} C ${startX} ${startY + control}, ${endX} ${endY - control}, ${endX} ${endY}`;
       }
 
       function dependencyGraphNodeHtml(item, position) {
@@ -1145,12 +1148,11 @@
         ].filter(Boolean).join(" ");
         const style = `left: ${position.x}px; top: ${position.y}px;`;
         const body = `
-          <span class="graph-node-name">${escapeHtml(label)}</span>
           <span class="graph-node-meta">${escapeHtml(item.current ? "selected" : item.kind)}</span>
         `;
         return href
-          ? `<a class="${escapeAttr(classes)}" style="${escapeAttr(style)}" href="${href}">${body}</a>`
-          : `<div class="${escapeAttr(classes)}" style="${escapeAttr(style)}">${body}</div>`;
+          ? `<a class="${escapeAttr(classes)}" style="${escapeAttr(style)}" href="${href}" title="${escapeAttr(label)}" aria-label="${escapeAttr(label)}">${body}</a>`
+          : `<div class="${escapeAttr(classes)}" style="${escapeAttr(style)}" title="${escapeAttr(label)}" aria-label="${escapeAttr(label)}">${body}</div>`;
       }
 
       function navLink(href, label, badge, active) {
