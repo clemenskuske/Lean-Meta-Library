@@ -145,7 +145,8 @@ downloading Mathlib. When running a checker by hand you may need to do the same.
   forbidden proof-side axiom, so `final-proof-build.mjs` must reject the
   composed build.
 - **`unused-sorry-proof-package`** — an accepted proof fixture whose copied
-  output manifest must be updated with generated `AxiomDependencies`.
+  output manifest must be updated with generated `AxiomDependencies` before the
+  final proof build runs.
 
 ## Notes for future fixtures
 

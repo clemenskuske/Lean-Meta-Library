@@ -217,8 +217,14 @@ jobs:
           STEP_NUMBER: 4
           TOTAL_STEPS: 10
           STEP_NAME: First-run submission checks passed
-          NEXT_STEP: Run the final proof build
+          NEXT_STEP: Generate proof axiom dependencies
         run: node .github/actions/import-progress-comment.mjs
+
+      - name: Generate proof axiom dependencies
+        env:
+          MANIFEST_PATH: ${{ steps.issue.outputs.manifest-path }}
+        run: |
+          node "$GITHUB_WORKSPACE/.github/actions/test/proofs/axiom-dependencies.mjs" "$GITHUB_WORKSPACE/submission/$MANIFEST_PATH"
 
       - name: Run final proof build
         env:

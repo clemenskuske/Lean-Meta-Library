@@ -14,7 +14,6 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, delimiter, dirname, join, relative, sep } from "node:path";
-import YAML from "yaml";
 import lmlEnv from "../../../lml-env.json" with { type: "json" };
 import { normalizeSubmissionRow, validateSubmissionRow } from "../submission-schema.mjs";
 import { loadContext, slugToPascal } from "./general/manifest-context.mjs";
@@ -225,7 +224,7 @@ function checkCompiledAxioms(compositionPlan) {
     return;
   }
 
-  writeAxiomDependenciesToManifest(parseAxiomDependencyOutput(verifyResult.stdout));
+  compareAxiomDependencies(parseAxiomDependencyOutput(verifyResult.stdout));
 }
 
 function proofCompositionPlan() {
@@ -1177,30 +1176,31 @@ function parseAxiomDependencyOutput(output) {
   );
 }
 
-function writeAxiomDependenciesToManifest(dependenciesByProof) {
-  if (dependenciesByProof.size === 0) {
-    return;
-  }
+function compareAxiomDependencies(actualDependenciesByProof) {
+  const allowedMathlibAxiomSet = new Set(allowedMathlibAxioms);
 
-  const manifest = YAML.parse(readFileSync(context.manifestPath, "utf8")) ?? {};
-  const proofs = manifest?.ProofSubmissions?.proofs;
-  if (!Array.isArray(proofs)) {
-    return;
-  }
-
-  let changed = false;
-  for (const proof of proofs) {
-    const proofName = proof?.Name;
-    if (!dependenciesByProof.has(proofName)) {
+  for (const proof of context.manifest.proofs ?? []) {
+    const proofName = proof?.proof;
+    if (!isLeanName(proofName)) {
       continue;
     }
-    proof.AxiomDependencies = dependenciesByProof.get(proofName);
-    changed = true;
-  }
 
-  if (changed) {
-    writeFileSync(context.manifestPath, YAML.stringify(manifest, { lineWidth: 0 }), "utf8");
+    const expected = normalizeDependencyList(proof?.AxiomDependencies, allowedMathlibAxiomSet);
+    const actual = normalizeDependencyList(actualDependenciesByProof.get(proofName), allowedMathlibAxiomSet);
+    if (!sameStringList(expected, actual)) {
+      warnings.push(
+        `AxiomDependencies differ for ${proofName}: manifest has [${expected.join(", ")}], final composed proof has [${actual.join(", ")}]`
+      );
+    }
   }
+}
+
+function normalizeDependencyList(values, excluded) {
+  return [...new Set((Array.isArray(values) ? values : []).filter(isLeanName).filter((name) => !excluded.has(name)))].sort();
+}
+
+function sameStringList(left, right) {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 function relativePath(root, path) {

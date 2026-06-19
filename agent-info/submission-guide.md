@@ -195,9 +195,11 @@ targets is not treated as part of the proof trust boundary.
 It then composes each submitted proof target onto the statement axiom it
 discharges. Composed outputs may rely only on allowed base axioms listed in
 `lml-env.json`'s `checks.allowedMathlibAxioms`, matched by Lean name and type.
-After this check passes, tooling records the axiom names collected from each
-final composed proof target in the proof entry's generated
-`AxiomDependencies` field.
+Before this final build, tooling records expected non-Mathlib final axiom names
+in the proof entry's generated `AxiomDependencies` field by expanding declared
+`ProofObligations` through the local manifest and `submissions.jsonl`. The final
+build warns if the generated list differs from the axioms collected from the
+composed proof target.
 
 When `lean4checker` is available, the final checker also rechecks the composed
 `.olean` output.

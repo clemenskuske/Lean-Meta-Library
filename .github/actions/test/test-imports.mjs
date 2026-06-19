@@ -170,6 +170,7 @@ const acceptedFixtures = [
   {
     name: "unused-sorry-proof-package",
     checker: "final-proof-build.mjs",
+    precheckers: ["proofs/axiom-dependencies.mjs"],
     expectAxiomDependencies: true
   }
 ];
@@ -336,12 +337,29 @@ function runFixture({ name, checker, expected, stripMathlibDependencyForCheck })
   return { ok: true, output };
 }
 
-function runAcceptedFixture({ name, checker, stripMathlibDependencyForCheck, expectAxiomDependencies }) {
+function runAcceptedFixture({ name, checker, precheckers = [], stripMathlibDependencyForCheck, expectAxiomDependencies }) {
   const checkerPath = join(here, checker);
   const fixture = materializeFixture({ name, stripMathlibDependencyForCheck });
   let child;
 
   try {
+    for (const prechecker of precheckers) {
+      const precheck = spawnSync(process.execPath, [join(here, prechecker), `--manifest=${fixture.manifestPath}`], {
+        cwd: repoRoot,
+        encoding: "utf8",
+        maxBuffer: 1024 * 1024 * 20,
+        timeout: fixtureTimeoutMs
+      });
+      if (precheck.error || precheck.signal || precheck.status !== 0) {
+        const output = `${precheck.stdout ?? ""}${precheck.stderr ?? ""}`;
+        return {
+          ok: false,
+          output,
+          reason: `${prechecker} failed while preparing accepted fixture ${name}`
+        };
+      }
+    }
+
     child = spawnSync(process.execPath, [checkerPath, `--manifest=${fixture.manifestPath}`], {
       cwd: repoRoot,
       encoding: "utf8",

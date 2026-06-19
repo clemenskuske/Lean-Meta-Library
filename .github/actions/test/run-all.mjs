@@ -36,6 +36,9 @@ const leanChecks = [
   "proofs/type-matches-statements.mjs",
   "statements/introduced-declarations.mjs"
 ];
+const metadataChecks = [
+  "proofs/axiom-dependencies.mjs"
+];
 
 const submissionKey = `${resolveSubmissionKey(manifestPath)}.${sanitizeForFilename(checkRunId)}`;
 const outputConfigPath = createOutputConfig(manifestPath, submissionKey);
@@ -46,6 +49,7 @@ let failed = false;
 for (const group of [
   { name: "prepare build/cache", checks: prepareChecks, parallel: false },
   { name: "static checks", checks: staticChecks, parallel: true },
+  { name: "generated metadata", checks: metadataChecks, parallel: false },
   { name: "Lean checks", checks: leanChecks, parallel: false }
 ]) {
   if (group.checks.length === 0) {
