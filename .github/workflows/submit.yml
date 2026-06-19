@@ -43,6 +43,7 @@ jobs:
         id: submit
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LIBRARY_GITHUB_TOKEN: ${{ secrets.LIBRARY_GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_SERVER_URL: ${{ github.server_url }}
           MANIFEST_PATH: ${{ inputs.manifest_path }}
@@ -56,18 +57,32 @@ jobs:
           const { dirname, resolve } = require("node:path");
 
           const token = process.env.GITHUB_TOKEN;
-          const repository = process.env.GITHUB_REPOSITORY;
+          const libraryToken = process.env.LIBRARY_GITHUB_TOKEN || null;
+          const sourceRepository = process.env.GITHUB_REPOSITORY;
           const serverUrl = process.env.GITHUB_SERVER_URL;
           const lmlEnv = readJsonIfExists("lml-env.json") ?? {};
           const defaultManifestPath = lmlEnv.submission?.defaultManifestPath ?? "manifest.yaml";
+          const libraryRepository = lmlEnv.submission?.libraryRepository ?? null;
           const manifestPath = process.env.MANIFEST_PATH || defaultManifestPath;
           const sourceBranch = process.env.SOURCE_BRANCH;
           const sourceCommit = process.env.SOURCE_COMMIT;
           const submitterLogin = process.env.SUBMITTER_LOGIN;
           const submitterId = process.env.SUBMITTER_ID;
-          const repoUrl = `${serverUrl}/${repository}`;
+
+          // The repo where issues will be created (library if configured, otherwise self)
+          const targetRepository = libraryRepository ?? sourceRepository;
+          const targetToken = libraryRepository ? libraryToken : token;
+
+          if (libraryRepository && !libraryToken) {
+            throw new Error(
+              `LIBRARY_GITHUB_TOKEN secret is required when submission.libraryRepository is set in lml-env.json (target: ${libraryRepository})`
+            );
+          }
+
+          // Repo URL always points to the submission repo so the importer can check out the code
+          const repoUrl = `${serverUrl}/${sourceRepository}`;
           const label = "submission";
-          const [owner, repo] = repository.split("/");
+          const [owner, repo] = targetRepository.split("/");
           const apiBase = "https://api.github.com";
           const issueNumberField = "submissionIssueNumber";
           const issueUrlField = "submissionIssueUrl";
@@ -271,7 +286,7 @@ jobs:
               method,
               headers: {
                 Accept: "application/vnd.github+json",
-                Authorization: `Bearer ${token}`,
+                Authorization: `Bearer ${targetToken}`,
                 "Content-Type": "application/json",
                 "X-GitHub-Api-Version": "2022-11-28"
               },
