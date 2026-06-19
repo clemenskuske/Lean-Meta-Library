@@ -16,28 +16,27 @@ lml --help
 
 A submission is a Lean Meta Library entry — not a GitHub repository. It consists of:
 
-- **Statements** — public `Definition` or `Axiom` declarations in statement Lean files, with matching LaTeX descriptions.
+- **Statements** — public `Definition` or `Axiom` declarations, the main results of a submission.
 - **Proofs** — Lean proof declarations that discharge the statement axioms.
-- **Manifest** — a `manifest.yaml` tying everything together: title, abstract, bibliography, and the locations of the statement and proof packages.
+- **Manifest** — a `manifest.yaml` tying everything together: title, abstract, bibliography, and the locations of statements and proofs.
 
 A source repository hosts the submission files. The CLI and the import workflow read the manifest, check the package, and record the result in the shared registry (`submissions.jsonl`).
+
+Once a submission is imported, its public statement declarations can be referenced as semantic dependencies in your own submission's manifest. The local registry (`submissions.jsonl`) is the source of truth for what has been imported; run `lml update` to keep it current.
 
 
 ## Why You Can Trust Imported Statements
 
-Lean Meta Library statements are Lean `axiom` declarations. In ordinary Lean, importing an axiom extends your trusted base — you assert it true without a proof. Here that concern is handled before the statement ever enters the registry:
+Lean Meta Library statements are `axiom` declarations. Importing one extends your trusted base — the set of things your proofs rely on as given. That is fine as long as you know what you are importing, and nothing unknown has to run on your machine to use them.
 
-1. A proof is submitted alongside the statement and built in an isolated environment under a fixed Lean and Mathlib version.
-2. The compiled types of the proof declaration and the statement axiom are compared by the Lean kernel using `isDefEq`.
-3. The proof's axiom dependencies are collected and checked against an allowlist of trusted base axioms — no undeclared Lean Meta Library axioms may slip through.
-4. The composed proof is re-verified by `lean4checker`.
+Each submission is one of two kinds:
 
-When you import a Lean Meta Library statement, you are not taking anything on faith. You are using a fact that the Lean kernel has already confirmed under the same trusted base your own code runs on.
+- **Proven fact** — a proof exists and the registry has verified it against the statement. When you import one, you are using a result the Lean kernel has already confirmed.
+- **Conjecture** — the statement is assumed true but not yet proven. The manifest says so explicitly. Importing one knowingly extends your trusted base with an unproven assumption.
 
 
-## Using Imported Submissions
+## How to Create a Submission
 
-Once a submission is imported, its public statement declarations can be referenced as semantic dependencies in your own submission's manifest. The local registry (`submissions.jsonl`) is the source of truth for what has been imported; run `lml update` to keep it current.
-## Getting Started With the CLI
+A submission requires two things: a Lean package containing the statement and proof files, and a `manifest.yaml` declaring the title, abstract, bibliography, and file locations.
 
-Run `lml agent-introduction` after installation to get the full agent startup guide — it covers the submission model, CLI commands, and how to prepare a submission from an existing Lean project.
+The CLI is designed to help agents work through this process. Run `lml agent-introduction` after installation to get the full agent startup guide — it covers the submission model and the CLI commands for creating, rewriting, and pushing a submission.
