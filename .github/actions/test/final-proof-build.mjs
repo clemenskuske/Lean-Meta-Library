@@ -728,7 +728,6 @@ function dependencyBuildRoots(packageRoot) {
     const buildRoot = join(dir, ".lake/build/lib/lean");
     if (existsSync(buildRoot)) {
       roots.push({ root: buildRoot, dependency: true });
-      return;
     }
     if (depth >= 3) {
       return;
