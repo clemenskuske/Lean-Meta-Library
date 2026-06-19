@@ -320,13 +320,22 @@
         min-width: 0;
       }
 
-      a.fact:hover {
+      button.fact {
+        width: 100%;
+        text-align: left;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      a.fact:hover,
+      button.fact:hover {
         border-color: var(--accent);
         background: var(--accent-soft);
         text-decoration: none;
       }
 
-      a.fact:focus-visible {
+      a.fact:focus-visible,
+      button.fact:focus-visible {
         outline: 3px solid rgba(15, 107, 99, 0.18);
         outline-offset: 2px;
       }
@@ -510,11 +519,6 @@
         </div>
 
         <section class="nav-section">
-          <h2 class="section-title">Views</h2>
-          <div id="view-list" class="stack"></div>
-        </section>
-
-        <section class="nav-section">
           <h2 class="section-title">Submission Entries</h2>
           <div id="submission-list" class="stack"></div>
         </section>
@@ -537,9 +541,8 @@
       </main>
     </div>
 
-    <script src="./submissions-data.js"></script>
     <script>
-      const dataPaths = ["./submissions.jsonl", "../submissions.jsonl", "/submissions.jsonl"];
+      const submissionsJsonlUrl = "https://raw.githubusercontent.com/clemenskuske/Lean-Meta-Library/main/submissions.jsonl";
       const state = {
         rows: [],
         submissions: [],
@@ -552,7 +555,6 @@
 
       const els = {
         title: document.querySelector("#site-title"),
-        viewList: document.querySelector("#view-list"),
         submissionList: document.querySelector("#submission-list"),
         outline: document.querySelector("#dependency-outline"),
         nodeSearch: document.querySelector("#node-search"),
@@ -563,6 +565,14 @@
       els.nodeSearch.addEventListener("input", () => {
         state.query = els.nodeSearch.value.trim().toLowerCase();
         renderSidebar();
+      });
+
+      els.content.addEventListener("click", (event) => {
+        const trigger = event.target.closest("[data-scroll-target]");
+        if (!trigger) return;
+        const target = document.querySelector(trigger.dataset.scrollTarget);
+        if (!target) return;
+        target.scrollIntoView({ block: "start", behavior: "smooth" });
       });
 
       window.addEventListener("hashchange", route);
@@ -583,39 +593,15 @@
       }
 
       async function fetchRows() {
-        const embedded = embeddedRows();
-        if (window.location.protocol === "file:" && embedded) {
-          return embedded;
-        }
-
-        const errors = [];
-        for (const path of dataPaths) {
-          try {
-            const response = await fetch(`${path}?v=${Date.now()}`, { cache: "no-store" });
-            if (!response.ok) {
-              errors.push(`${path}: ${response.status}`);
-              continue;
-            }
-            return { path, rows: parseJsonl(await response.text()) };
-          } catch (error) {
-            errors.push(`${path}: ${error.message}`);
+        try {
+          const response = await fetch(`${submissionsJsonlUrl}?v=${Date.now()}`, { cache: "no-store" });
+          if (!response.ok) {
+            throw new Error(`${response.status} ${response.statusText}`);
           }
+          return { path: submissionsJsonlUrl, rows: parseJsonl(await response.text()) };
+        } catch (error) {
+          throw new Error(`Could not load ${submissionsJsonlUrl}: ${error.message}`);
         }
-
-        if (embedded) {
-          return embedded;
-        }
-        throw new Error(`Could not load submissions.jsonl. Tried ${errors.join(", ")}.`);
-      }
-
-      function embeddedRows() {
-        if (typeof window.LML_SUBMISSIONS_JSONL === "string") {
-          return {
-            path: window.LML_SUBMISSIONS_DATA_SOURCE || "./submissions-data.js",
-            rows: parseJsonl(window.LML_SUBMISSIONS_JSONL)
-          };
-        }
-        return null;
       }
 
       function parseJsonl(text) {
@@ -698,12 +684,6 @@
         els.title.textContent = state.submissions.length
           ? `${state.submissions.length} submissions`
           : "No submissions yet";
-        els.viewList.innerHTML = [
-          navLink("#overview", "Overview", `${state.nodes.length} nodes`, state.active === "overview"),
-          navLink("#submissions", "Submissions", String(state.submissions.length), state.active === "submissions"),
-          navLink("#statements", "Statements", String(statementNodes().length), state.active === "statements"),
-          navLink("#proofs", "Proofs", String(proofNodes().length), state.active === "proofs")
-        ].join("");
         els.submissionList.innerHTML = state.submissions.length
           ? [
               ...state.submissions.map((submission) => navLink(submissionHref(submission), submission.title, `${submission.nodes.length} nodes`, state.active === submissionRoute(submission)))
@@ -906,10 +886,10 @@
             </div>
             <div class="panel-body">
               <div class="grid">
-                ${fact("Statements", submission.statements.length)}
-                ${fact("Proofs", submission.proofs.length)}
-                ${factHtml("Statement root", sourceFolderLink(submission, submission.statementRoot || ".", submission.statementRoot || "Not recorded"))}
-                ${factHtml("Proof root", sourceFolderLink(submission, submission.proofRoot || ".", submission.proofRoot || "Not recorded"))}
+                ${factScroll("Statements", submission.statements.length, "#statement-targets")}
+                ${factScroll("Proofs", submission.proofs.length, "#proof-targets")}
+                ${factSource("Statement root", submission.statementRoot || "Not recorded", sourceFolderUrl(submission, submission.statementRoot || "."))}
+                ${factSource("Proof root", submission.proofRoot || "Not recorded", sourceFolderUrl(submission, submission.proofRoot || "."))}
               </div>
               ${infoTable([
                 ["Name", internalLink(submissionHref(submission), submission.title)],
@@ -931,7 +911,7 @@
             </div>
           </section>
 
-          <section class="panel">
+          <section class="panel" id="statement-targets">
             <div class="panel-head">
               <h3>Statement Targets</h3>
               <span class="badge">${submission.statements.length}</span>
@@ -941,7 +921,7 @@
             </div>
           </section>
 
-          <section class="panel">
+          <section class="panel" id="proof-targets">
             <div class="panel-head">
               <h3>Proof Targets</h3>
               <span class="badge">${submission.proofs.length}</span>
@@ -1232,6 +1212,16 @@
 
       function factLink(label, value, href) {
         return `<a class="fact" href="${escapeAttr(href)}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(value))}</strong></a>`;
+      }
+
+      function factScroll(label, value, target) {
+        return `<button class="fact" type="button" data-scroll-target="${escapeAttr(target)}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(value))}</strong></button>`;
+      }
+
+      function factSource(label, value, href) {
+        return href
+          ? `<a class="fact" href="${escapeAttr(href)}" target="_blank" rel="noopener"><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(value))}</strong></a>`
+          : fact(label, value);
       }
 
       function factHtml(label, html) {
