@@ -1,0 +1,19 @@
+manifestVersion: "1"
+leanVersion: "v4.30.0"
+mathlibVersion: "c5ea00351c28e24afc9f0f84379aa41082b1188f"
+AbstractPath: abstract.tex
+LicenseFile: LICENSE
+SubmissionName: Statement Dependency Cycle Fixture
+SubmissionSlug: statement-dependency-cycle
+BibEntries: []
+StatementSubmissions:
+  rootFolder: statements
+  statements:
+    - Name: StatementDependencyCycle.Statements.Left.left
+      Type: Axiom
+      SemanticDependencies:
+        - StatementDependencyCycle.Statements.Right.right
+    - Name: StatementDependencyCycle.Statements.Right.right
+      Type: Axiom
+      SemanticDependencies:
+        - StatementDependencyCycle.Statements.Left.left

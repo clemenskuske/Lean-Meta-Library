@@ -47,6 +47,11 @@ const fixtures = [
     expected: /manifest schema .*must NOT have additional properties/
   },
   {
+    name: "statement-dependency-cycle-package",
+    checker: "general/manifest-check.mjs",
+    expected: /statement SemanticDependencies contain a cycle/
+  },
+  {
     name: "mathlib-version-failure-package",
     checker: "general/base-import-versions.mjs",
     expected: /proof package lean-toolchain must be/

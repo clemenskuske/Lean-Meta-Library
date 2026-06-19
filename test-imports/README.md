@@ -66,6 +66,9 @@ downloading Mathlib. When running a checker by hand you may need to do the same.
 - **`manifest-check-failure-package`** — the manifest violates the schema in
   `manifest.config.yaml` (an unexpected extra property `legacyCompatibilityField`),
   so `general/manifest-check.mjs` must reject it.
+- **`statement-dependency-cycle-package`** — two current-submission statement
+  entries list each other in `SemanticDependencies`, so `general/manifest-check.mjs`
+  must reject the manifest-level cycle.
 
 ### Submission policy
 
@@ -145,9 +148,8 @@ downloading Mathlib. When running a checker by hand you may need to do the same.
 ## Notes for future fixtures
 
 Coverage still to add: statement-theorem rejection; proof-level external
-`SemanticDependencies`; statement-level dependency-DAG acyclicity; axiom-gate
-matching by name, type, and source module; and final proof-build dependency and
-conjecture manifest comparison.
+`SemanticDependencies`; axiom-gate matching by name, type, and source module;
+and final proof-build dependency and conjecture manifest comparison.
 
 Helper modules in `.github/actions/test/` — such as `common.mjs`,
 `general/manifest-context.mjs`, `lake-config.mjs`, `lean-imports.mjs`, and

@@ -96,6 +96,7 @@ function runRepositoryChecks() {
       }
     }
   }
+  checkStatementDependencyCycles(statements, statementByName);
 
   for (const proof of manifest.proofs ?? []) {
     const label = proof.proof ?? proof.axiom ?? "(unnamed proof)";
@@ -142,6 +143,49 @@ function runRepositoryChecks() {
     if (displayStrings.some((value) => value.includes(suspicious))) {
       errors.push(`manifest contains suspicious display token: ${suspicious}`);
     }
+  }
+}
+
+function checkStatementDependencyCycles(statements, statementByName) {
+  const graph = new Map();
+  for (const entry of statements) {
+    const statementName = entry.Statement?.Name ?? entry.Name ?? null;
+    if (!statementName) {
+      continue;
+    }
+    const localDeps = (entry.DeclarationReferences ?? [])
+      .map((reference) => reference?.Name)
+      .filter((name) => statementByName.has(name));
+    graph.set(statementName, localDeps);
+  }
+
+  const visiting = new Set();
+  const visited = new Set();
+  const stack = [];
+
+  for (const statementName of graph.keys()) {
+    visit(statementName);
+  }
+
+  function visit(name) {
+    if (visited.has(name)) {
+      return;
+    }
+    if (visiting.has(name)) {
+      const start = stack.indexOf(name);
+      const cycle = [...stack.slice(start), name];
+      errors.push(`statement SemanticDependencies contain a cycle: ${cycle.join(" -> ")}`);
+      return;
+    }
+
+    visiting.add(name);
+    stack.push(name);
+    for (const dep of graph.get(name) ?? []) {
+      visit(dep);
+    }
+    stack.pop();
+    visiting.delete(name);
+    visited.add(name);
   }
 }
 

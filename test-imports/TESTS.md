@@ -31,6 +31,7 @@ locally without downloading Mathlib.
 | `missing-proof-file-package` | `proofs/type-matches-statements.mjs` | The manifest names a `proof` declaration whose source file is absent from the proof package; the package fails to build and the proof declaration cannot be resolved by name. |
 | `manifest-disk-state-failure-package` | `statements/no-extra-files.mjs` | A statement Lean file exists on disk but is not listed in the manifest; the check must report the undeclared file. |
 | `manifest-check-failure-package` | `general/manifest-check.mjs` | The manifest violates the schema (unexpected extra property `legacyCompatibilityField`); the schema validator must reject it. |
+| `statement-dependency-cycle-package` | `general/manifest-check.mjs` | Two current-submission statement entries list each other in `SemanticDependencies`; the manifest checker must reject the cycle. |
 
 ## Submission policy
 
