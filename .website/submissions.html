@@ -273,6 +273,43 @@
         gap: 10px;
       }
 
+      .record-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .record-row {
+        display: grid;
+        gap: 8px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px;
+        background: var(--soft);
+      }
+
+      .record-title {
+        font-weight: 800;
+        overflow-wrap: anywhere;
+      }
+
+      .record-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        color: var(--muted);
+        font-size: 0.86rem;
+      }
+
+      .inline-node {
+        overflow-wrap: anywhere;
+      }
+
+      .abstract-text {
+        color: var(--text);
+        overflow-wrap: anywhere;
+      }
+
       .fact {
         border: 1px solid var(--line);
         border-radius: 6px;
@@ -383,7 +420,12 @@
         </div>
 
         <section class="nav-section">
-          <h2 class="section-title">Submissions</h2>
+          <h2 class="section-title">Views</h2>
+          <div id="view-list" class="stack"></div>
+        </section>
+
+        <section class="nav-section">
+          <h2 class="section-title">Submission Entries</h2>
           <div id="submission-list" class="stack"></div>
         </section>
 
@@ -413,12 +455,14 @@
         submissions: [],
         nodes: [],
         nodeByName: new Map(),
+        abstracts: new Map(),
         active: "overview",
         query: ""
       };
 
       const els = {
         title: document.querySelector("#site-title"),
+        viewList: document.querySelector("#view-list"),
         submissionList: document.querySelector("#submission-list"),
         outline: document.querySelector("#dependency-outline"),
         nodeSearch: document.querySelector("#node-search"),
@@ -564,9 +608,14 @@
         els.title.textContent = state.submissions.length
           ? `${state.submissions.length} submissions`
           : "No submissions yet";
+        els.viewList.innerHTML = [
+          navLink("#overview", "Overview", `${state.nodes.length} nodes`, state.active === "overview"),
+          navLink("#submissions", "Submissions", String(state.submissions.length), state.active === "submissions"),
+          navLink("#statements", "Statements", String(statementNodes().length), state.active === "statements"),
+          navLink("#proofs", "Proofs", String(proofNodes().length), state.active === "proofs")
+        ].join("");
         els.submissionList.innerHTML = state.submissions.length
           ? [
-              navLink("#overview", "Overview", `${state.nodes.length} nodes`, state.active === "overview"),
               ...state.submissions.map((submission) => navLink(submissionHref(submission), submission.title, `${submission.nodes.length} nodes`, state.active === submissionRoute(submission)))
             ].join("")
           : `<div class="empty">Once submissions.jsonl has rows, they will appear here.</div>`;
@@ -628,6 +677,18 @@
           renderOverview();
           return;
         }
+        if (state.active === "submissions") {
+          renderSubmissionList();
+          return;
+        }
+        if (state.active === "statements") {
+          renderNodeListView("Statements", statementNodes());
+          return;
+        }
+        if (state.active === "proofs") {
+          renderNodeListView("Proofs", proofNodes());
+          return;
+        }
         const submission = state.submissions.find((item) => submissionRoute(item) === state.active);
         if (submission) {
           renderSubmission(submission);
@@ -659,20 +720,84 @@
             </div>
             <div class="panel-body">
               <div class="grid">
-                ${fact("Submissions", state.submissions.length)}
-                ${fact("Statements", state.nodes.filter((node) => node.kind !== "proof").length)}
-                ${fact("Proofs", state.nodes.filter((node) => node.kind === "proof").length)}
+                ${factHtml("Submissions", internalLink("#submissions", state.submissions.length))}
+                ${factHtml("Statements", internalLink("#statements", statementNodes().length))}
+                ${factHtml("Proofs", internalLink("#proofs", proofNodes().length))}
                 ${fact("Dependencies", dependencyCount())}
               </div>
             </div>
           </section>
           <section class="panel">
             <div class="panel-head">
+              <h3>Views</h3>
+            </div>
+            <div class="panel-body">
+              <div class="record-list">
+                ${viewRow("Submissions", "Imported submission records with source, license, and rendered abstracts.", "#submissions", state.submissions.length)}
+                ${viewRow("Statements", "Public definitions and axioms exposed by imported submissions.", "#statements", statementNodes().length)}
+                ${viewRow("Proofs", "Proof declarations and the statement axioms they discharge.", "#proofs", proofNodes().length)}
+              </div>
+            </div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h3>Recent Submissions</h3>
+              <span class="badge">${state.submissions.length}</span>
+            </div>
+            <div class="panel-body">
+              <div class="record-list">
+                ${state.submissions.length ? state.submissions.map(submissionSummary).join("") : `<div class="empty">No imported submissions yet.</div>`}
+              </div>
+            </div>
+          </section>
+        `;
+      }
+
+      function renderSubmissionList() {
+        els.content.innerHTML = `
+          <div class="topline">
+            <div>
+              <h2>Submissions</h2>
+              <div class="meta-line">
+                <span>${state.submissions.length} imported entries</span>
+              </div>
+            </div>
+            <a class="pill mobile-home" href="index.html">Home</a>
+          </div>
+          <section class="panel">
+            <div class="panel-head">
               <h3>Submission List</h3>
               <span class="badge">${state.submissions.length}</span>
             </div>
             <div class="panel-body">
-              ${state.submissions.length ? state.submissions.map((submission) => navLink(submissionHref(submission), submission.title, `${submission.nodes.length} nodes`, false)).join("") : `<div class="empty">No imported submissions yet.</div>`}
+              <div class="record-list">
+                ${state.submissions.length ? state.submissions.map(submissionSummary).join("") : `<div class="empty">No imported submissions yet.</div>`}
+              </div>
+            </div>
+          </section>
+        `;
+      }
+
+      function renderNodeListView(title, nodes) {
+        els.content.innerHTML = `
+          <div class="topline">
+            <div>
+              <h2>${escapeHtml(title)}</h2>
+              <div class="meta-line">
+                <span>${nodes.length} recorded ${title.toLowerCase()}</span>
+              </div>
+            </div>
+            <a class="pill mobile-home" href="index.html">Home</a>
+          </div>
+          <section class="panel">
+            <div class="panel-head">
+              <h3>${escapeHtml(title)} List</h3>
+              <span class="badge">${nodes.length}</span>
+            </div>
+            <div class="panel-body">
+              <div class="record-list">
+                ${nodes.length ? nodes.map(nodeSummary).join("") : `<div class="empty">No ${escapeHtml(title.toLowerCase())} recorded.</div>`}
+              </div>
             </div>
           </section>
         `;
@@ -690,7 +815,8 @@
               </div>
             </div>
             <div class="links-row">
-              ${submission.repo ? `<a class="pill" href="${escapeAttr(submission.repo)}" target="_blank" rel="noopener">Repository</a>` : ""}
+              ${sourceFolderUrl(submission, ".") ? `<a class="pill" href="${escapeAttr(sourceFolderUrl(submission, "."))}" target="_blank" rel="noopener">Source Folder</a>` : ""}
+              ${commitUrl(submission) ? `<a class="pill" href="${escapeAttr(commitUrl(submission))}" target="_blank" rel="noopener">Commit</a>` : ""}
               ${submission.issueUrl ? `<a class="pill" href="${escapeAttr(submission.issueUrl)}" target="_blank" rel="noopener">Issue</a>` : ""}
             </div>
           </div>
@@ -704,15 +830,26 @@
               <div class="grid">
                 ${fact("Statements", submission.statements.length)}
                 ${fact("Proofs", submission.proofs.length)}
-                ${fact("Statement root", submission.statementRoot || "Not recorded")}
-                ${fact("Proof root", submission.proofRoot || "Not recorded")}
+                ${factHtml("Statement root", sourceFolderLink(submission, submission.statementRoot || ".", submission.statementRoot || "Not recorded"))}
+                ${factHtml("Proof root", sourceFolderLink(submission, submission.proofRoot || ".", submission.proofRoot || "Not recorded"))}
               </div>
               ${infoTable([
-                ["Manifest", code(submission.manifest || "Not recorded")],
-                ["Abstract", code(submission.data.AbstractPath || "Not recorded")],
-                ["License", code(submission.data.LicenseFile || "Not recorded")],
-                ["Commit", code(shortCommit(submission.commit) || "Not recorded")]
+                ["Name", internalLink(submissionHref(submission), submission.title)],
+                ["Repository folder", sourceFolderLink(submission, ".", sourceLabel(submission))],
+                ["Manifest", sourceFileLink(submission, submission.manifest, submission.manifest || "Not recorded", { rootRelative: true })],
+                ["License", sourceFileLink(submission, submission.data.LicenseFile, submission.data.LicenseFile || "Not recorded")],
+                ["Commit", commitUrl(submission) ? externalLink(commitUrl(submission), shortCommit(submission.commit) || submission.commit) : code("Not recorded")]
               ])}
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <h3>Abstract</h3>
+              ${sourceFileUrl(submission, submission.data.AbstractPath) ? `<a class="pill" href="${escapeAttr(sourceFileUrl(submission, submission.data.AbstractPath))}" target="_blank" rel="noopener">Source</a>` : ""}
+            </div>
+            <div class="panel-body">
+              ${renderAbstract(submission)}
             </div>
           </section>
 
@@ -764,7 +901,8 @@
               ${infoTable([
                 ["Name", code(node.name || "Not recorded")],
                 ["Type", code(node.raw.Type || node.kind)],
-                ["Axiom reference", code(node.axiomReference || "None")]
+                ["Submission", internalLink(submissionHref(node.submission), node.submission.title)],
+                ["Axiom reference", node.axiomReference ? dependencyLink(node.axiomReference) : code("None")]
               ])}
             </div>
           </section>
@@ -831,8 +969,51 @@
           : `<div class="node-link"><span class="node-name">${escapeHtml(name)}</span><span class="badge">external</span></div>`;
       }
 
+      function viewRow(title, description, href, count) {
+        return `
+          <div class="record-row">
+            <a class="record-title" href="${escapeAttr(href)}">${escapeHtml(title)}</a>
+            <div class="record-meta">
+              <span>${escapeHtml(String(count))} entries</span>
+            </div>
+            <p>${escapeHtml(description)}</p>
+          </div>
+        `;
+      }
+
+      function submissionSummary(submission) {
+        return `
+          <div class="record-row">
+            <a class="record-title" href="${submissionHref(submission)}">${escapeHtml(submission.title)}</a>
+            <div class="record-meta">
+              ${sourceFolderUrl(submission, ".") ? externalLink(sourceFolderUrl(submission, "."), sourceLabel(submission)) : `<span>${escapeHtml(sourceLabel(submission))}</span>`}
+              ${sourceFileUrl(submission, submission.data.LicenseFile) ? externalLink(sourceFileUrl(submission, submission.data.LicenseFile), "License") : ""}
+            </div>
+            ${renderAbstract(submission)}
+          </div>
+        `;
+      }
+
+      function nodeSummary(node) {
+        return `
+          <div class="record-row">
+            <a class="record-title" href="${nodeHref(node)}">${escapeHtml(node.name || node.title)}</a>
+            <div class="record-meta">
+              <span class="badge ${escapeAttr(node.kind)}">${escapeHtml(node.kind)}</span>
+              ${internalLink(submissionHref(node.submission), node.submission.title)}
+              ${node.axiomReference ? `<span>proves ${inlineDependencyLink(node.axiomReference)}</span>` : ""}
+            </div>
+            ${node.dependencies.length ? `<div class="record-meta"><span>Dependencies</span>${node.dependencies.map(inlineDependencyLink).join("")}</div>` : ""}
+          </div>
+        `;
+      }
+
       function fact(label, value) {
         return `<div class="fact"><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(value))}</strong></div>`;
+      }
+
+      function factHtml(label, html) {
+        return `<div class="fact"><span>${escapeHtml(label)}</span><strong>${html}</strong></div>`;
       }
 
       function infoTable(rows) {
@@ -845,6 +1026,14 @@
 
       function dependencyCount() {
         return state.nodes.reduce((sum, node) => sum + node.dependencies.length, 0);
+      }
+
+      function statementNodes() {
+        return state.nodes.filter((node) => node.kind !== "proof");
+      }
+
+      function proofNodes() {
+        return state.nodes.filter((node) => node.kind === "proof");
       }
 
       function submissionRoute(submission) {
@@ -878,6 +1067,177 @@
 
       function code(value) {
         return `<code>${escapeHtml(value)}</code>`;
+      }
+
+      function internalLink(href, label) {
+        return `<a href="${escapeAttr(href)}">${escapeHtml(String(label))}</a>`;
+      }
+
+      function externalLink(href, label) {
+        return `<a href="${escapeAttr(href)}" target="_blank" rel="noopener">${escapeHtml(String(label))}</a>`;
+      }
+
+      function inlineDependencyLink(name) {
+        const node = state.nodeByName.get(name);
+        return node
+          ? `<a class="inline-node" href="${nodeHref(node)}">${escapeHtml(node.name || node.title)}</a>`
+          : `<span class="inline-node">${escapeHtml(name)}</span>`;
+      }
+
+      function sourceFolderLink(submission, path, label) {
+        const url = sourceFolderUrl(submission, path);
+        return url ? externalLink(url, label) : code(label);
+      }
+
+      function sourceFileLink(submission, path, label, options = {}) {
+        const url = sourceFileUrl(submission, path, options);
+        return url ? externalLink(url, label) : code(label);
+      }
+
+      function sourceLabel(submission) {
+        const repo = cleanRepoUrl(submission.repo) || "Repository";
+        const folder = submissionBasePath(submission) || ".";
+        const commit = shortCommit(submission.commit);
+        return `${repo.replace(/^https?:\/\//, "")}${commit ? ` @ ${commit}` : ""} / ${folder}`;
+      }
+
+      function sourceFolderUrl(submission, path) {
+        return sourceUrl(submission, path, "tree");
+      }
+
+      function sourceFileUrl(submission, path, options = {}) {
+        return sourceUrl(submission, path, "blob", options);
+      }
+
+      function sourceRawUrl(submission, path) {
+        const repo = githubRepoParts(submission.repo);
+        const resolved = submissionSourcePath(submission, path);
+        if (!repo || !submission.commit || !resolved) return "";
+        return `https://raw.githubusercontent.com/${repo.owner}/${repo.name}/${encodeURIComponent(submission.commit)}/${encodePath(resolved)}`;
+      }
+
+      function sourceUrl(submission, path, kind, options = {}) {
+        const repo = cleanRepoUrl(submission.repo);
+        if (!repo || !submission.commit) return "";
+        const resolved = options.rootRelative ? normalizeRepoPath(path) : submissionSourcePath(submission, path);
+        const commit = encodeURIComponent(submission.commit);
+        if (!resolved || resolved === ".") return `${repo}/${kind}/${commit}`;
+        return `${repo}/${kind}/${commit}/${encodePath(resolved)}`;
+      }
+
+      function commitUrl(submission) {
+        const repo = cleanRepoUrl(submission.repo);
+        return repo && submission.commit ? `${repo}/commit/${encodeURIComponent(submission.commit)}` : "";
+      }
+
+      function submissionSourcePath(submission, path) {
+        return joinRepoPath(submissionBasePath(submission), path);
+      }
+
+      function submissionBasePath(submission) {
+        return dirnameRepoPath(submission.manifest);
+      }
+
+      function cleanRepoUrl(value) {
+        const repo = String(value || "").trim().replace(/\/+$/, "").replace(/\.git$/, "");
+        return repo || "";
+      }
+
+      function githubRepoParts(value) {
+        try {
+          const url = new URL(cleanRepoUrl(value));
+          if (url.hostname !== "github.com") return null;
+          const [owner, name] = url.pathname.replace(/^\/+/, "").split("/");
+          if (!owner || !name) return null;
+          return { owner, name: name.replace(/\.git$/, "") };
+        } catch {
+          return null;
+        }
+      }
+
+      function dirnameRepoPath(path) {
+        const normalized = normalizeRepoPath(path);
+        if (!normalized || normalized === "." || !normalized.includes("/")) return "";
+        return normalized.split("/").slice(0, -1).join("/");
+      }
+
+      function joinRepoPath(...parts) {
+        return normalizeRepoPath(parts.filter(Boolean).join("/"));
+      }
+
+      function normalizeRepoPath(path) {
+        const pieces = String(path || "")
+          .split("/")
+          .filter((piece) => piece && piece !== ".");
+        const safe = [];
+        for (const piece of pieces) {
+          if (piece === "..") continue;
+          safe.push(piece);
+        }
+        return safe.join("/");
+      }
+
+      function encodePath(path) {
+        return normalizeRepoPath(path).split("/").map(encodeURIComponent).join("/");
+      }
+
+      function renderAbstract(submission) {
+        const path = submission.data.AbstractPath || "";
+        const source = sourceFileUrl(submission, path);
+        if (!path) {
+          return `<div class="empty">No abstract path recorded.</div>`;
+        }
+
+        ensureAbstract(submission);
+        const record = state.abstracts.get(submission.id);
+        if (!record || record.status === "loading") {
+          return `<div class="empty">Loading abstract from ${source ? externalLink(source, path) : code(path)}...</div>`;
+        }
+        if (record.status === "error") {
+          return `<div class="empty">Could not load abstract. ${source ? externalLink(source, "Open source") : ""}</div>`;
+        }
+        return `<p class="abstract-text">${escapeHtml(parseTexAbstract(record.text))}</p>`;
+      }
+
+      function ensureAbstract(submission) {
+        if (state.abstracts.has(submission.id)) return;
+        const rawUrl = sourceRawUrl(submission, submission.data.AbstractPath || "");
+        if (!rawUrl) {
+          state.abstracts.set(submission.id, { status: "error", text: "", error: "No raw URL" });
+          return;
+        }
+        state.abstracts.set(submission.id, { status: "loading", text: "", error: "" });
+        fetch(rawUrl, { cache: "force-cache" })
+          .then((response) => {
+            if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+            return response.text();
+          })
+          .then((text) => {
+            state.abstracts.set(submission.id, { status: "ready", text, error: "" });
+            renderContent();
+          })
+          .catch((error) => {
+            state.abstracts.set(submission.id, { status: "error", text: "", error: error.message });
+            renderContent();
+          });
+      }
+
+      function parseTexAbstract(text) {
+        return String(text || "")
+          .replace(/(^|[^\\])%.*$/gm, "$1")
+          .replace(/\\begin\{abstract\}|\\end\{abstract\}/g, "")
+          .replace(/\\(?:emph|textit|textbf|textrm|texttt)\{([^{}]*)\}/g, "$1")
+          .replace(/\\(?:cite|ref|eqref|label)\{[^{}]*\}/g, "")
+          .replace(/\$\$([\s\S]*?)\$\$/g, " $1 ")
+          .replace(/\$([^$]*)\$/g, " $1 ")
+          .replace(/\\\(([\s\S]*?)\\\)/g, " $1 ")
+          .replace(/\\\[([\s\S]*?)\\\]/g, " $1 ")
+          .replace(/\\([%&_$#{}])/g, "$1")
+          .replace(/~+/g, " ")
+          .replace(/\\[a-zA-Z]+\*?(?:\[[^\]]*\])?(?:\{([^{}]*)\})?/g, "$1")
+          .replace(/[{}]/g, "")
+          .replace(/\s+/g, " ")
+          .trim() || "No abstract text could be parsed.";
       }
 
       function unique(items) {
