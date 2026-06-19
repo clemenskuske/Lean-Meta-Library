@@ -311,11 +311,24 @@
       }
 
       .fact {
+        display: block;
         border: 1px solid var(--line);
         border-radius: 6px;
         padding: 10px;
         background: var(--soft);
+        color: inherit;
         min-width: 0;
+      }
+
+      a.fact:hover {
+        border-color: var(--accent);
+        background: var(--accent-soft);
+        text-decoration: none;
+      }
+
+      a.fact:focus-visible {
+        outline: 3px solid rgba(15, 107, 99, 0.18);
+        outline-offset: 2px;
       }
 
       .fact span {
@@ -720,9 +733,9 @@
             </div>
             <div class="panel-body">
               <div class="grid">
-                ${factHtml("Submissions", internalLink("#submissions", state.submissions.length))}
-                ${factHtml("Statements", internalLink("#statements", statementNodes().length))}
-                ${factHtml("Proofs", internalLink("#proofs", proofNodes().length))}
+                ${factLink("Submissions", state.submissions.length, "#submissions")}
+                ${factLink("Statements", statementNodes().length, "#statements")}
+                ${factLink("Proofs", proofNodes().length, "#proofs")}
                 ${fact("Dependencies", dependencyCount())}
               </div>
             </div>
@@ -987,6 +1000,10 @@
 
       function fact(label, value) {
         return `<div class="fact"><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(value))}</strong></div>`;
+      }
+
+      function factLink(label, value, href) {
+        return `<a class="fact" href="${escapeAttr(href)}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(String(value))}</strong></a>`;
       }
 
       function factHtml(label, html) {
