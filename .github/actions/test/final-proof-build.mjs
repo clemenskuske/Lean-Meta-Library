@@ -175,7 +175,7 @@ function checkCompiledAxioms(compositionPlan) {
   );
 
   const mergedLeanPath = join(tmpRoot, "merged-lean");
-  mergeCurrentSubmissionBuilds(mergedLeanPath);
+  mergeCurrentSubmissionBuilds(mergedLeanPath, compositionPlan.requiredProofPackages);
   const composedOlean = join(mergedLeanPath, `${composedModuleName}.olean`);
   mkdirSync(dirname(composedOlean), { recursive: true });
   const leanPath = finalProofLeanPath(mergedLeanPath);
@@ -765,10 +765,16 @@ function finalProofLeanPath(mergedLeanPath) {
   return unique([mergedLeanPath, ...externalEntries]).join(delimiter);
 }
 
-function mergeCurrentSubmissionBuilds(targetRoot) {
+function mergeCurrentSubmissionBuilds(targetRoot, requiredProofPackages = []) {
   mkdirSync(targetRoot, { recursive: true });
   if (isolatedStatementRoot) {
     linkTree(join(isolatedStatementRoot, ".lake", "build", "lib", "lean"), targetRoot);
+  }
+  for (const pkg of requiredProofPackages) {
+    const pkgDir = join(isolatedPackageRoot, ".lake", "packages", pkg.name);
+    for (const { root } of dependencyBuildRoots(pkgDir)) {
+      linkTree(root, targetRoot);
+    }
   }
   linkTree(join(isolatedPackageRoot, ".lake", "build", "lib", "lean"), targetRoot);
 }
