@@ -6,8 +6,10 @@ Lean Meta Library is a curated registry of Lean 4 formalizations. Each entry —
 
 **CLI for submitting and using submissions:**
 ```sh
-gh api "repos/clemenskuske/Lean-Meta-Library/contents/lean-meta-library-cli.tgz?ref=main" \
-  --jq .content | base64 --decode > lean-meta-library-cli.tgz
+gh api \
+  -H "Accept: application/vnd.github.raw" \
+  "repos/clemenskuske/Lean-Meta-Library/contents/lean-meta-library-cli.tgz?ref=main" \
+  > lean-meta-library-cli.tgz
 npm install -g ./lean-meta-library-cli.tgz
 lml --help
 ```

@@ -27,7 +27,7 @@ const usage = `Lean Meta Library CLI
 
 Usage:
   lml <command> [options]
-  lean-manifest-library <command> [options]
+  lean-meta-library <command> [options]
 
 Commands:
   agent-introduction    Print the Lean Meta Library startup guide for agents.

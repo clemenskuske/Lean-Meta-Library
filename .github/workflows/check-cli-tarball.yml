@@ -51,6 +51,11 @@ jobs:
           npm pack --pack-destination .tarball-check
           cp .tarball-check/*.tgz lean-meta-library-cli.tgz
 
+      - name: Smoke test rebuilt tarball
+        run: |
+          npm install -g ./lean-meta-library-cli.tgz
+          lml --help
+
       - name: Commit updated tarball
         run: |
           if git diff --quiet -- lean-meta-library-cli.tgz; then
