@@ -139,17 +139,13 @@ jobs:
 
       - name: Checkout submitted repository
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO_URL: ${{ steps.issue.outputs.repo-url }}
           SOURCE_BRANCH: ${{ steps.issue.outputs.source-branch }}
           SOURCE_COMMIT: ${{ steps.issue.outputs.source-commit }}
         run: |
-          AUTH_HEADER="$(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w0)"
-          git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $AUTH_HEADER" \
-            clone --single-branch --branch "$SOURCE_BRANCH" "$REPO_URL" submission
+          git clone --single-branch --branch "$SOURCE_BRANCH" "$REPO_URL" submission
           cd submission
-          git -c http.https://github.com/.extraheader="AUTHORIZATION: basic $AUTH_HEADER" \
-            fetch --depth=1 origin "$SOURCE_COMMIT"
+          git fetch --depth=1 origin "$SOURCE_COMMIT"
           git checkout --detach "$SOURCE_COMMIT"
           test "$(git rev-parse HEAD)" = "$SOURCE_COMMIT"
 

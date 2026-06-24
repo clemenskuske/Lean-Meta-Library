@@ -31,7 +31,7 @@ Before writing the submission package, gather these decisions from the user:
   relevant manifest and statement-selection questions where possible; if not,
   ask the user whether they can provide one.
 - The submission title, submission slug, and short abstract.
-- Which Lean project folder, archive, or remote source is the starting point.
+- Which Lean project folder, archive, or public remote source is the starting point.
 - Which declarations should be public statement entries.
 - For each public entry, whether it is a `Definition` or an `Axiom`.
 - For each axiom that is being discharged, the global name of the proof
@@ -71,6 +71,8 @@ Create `manifest.yaml` with the user. It is the source of truth for the CLI
 checks. Use `manifest.config.yaml` as the schema source of truth.
 Workflow-created fields (`Repo`, `submittedBy`, `Commit`, `submissionIssueNumber`,
 `submissionIssueUrl`) should normally be omitted until tooling writes them.
+The source GitHub repository must be public when `lml submit` is run; private
+repository import support is currently disabled.
 
 The author-supplied required top-level fields are:
 

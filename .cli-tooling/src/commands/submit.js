@@ -38,6 +38,7 @@ export async function submit({ args, cwd }) {
   ensureRemoteHasCurrentCommit({ repoRoot, branch, commit });
   ensureGitHubCli();
   ensureAuthenticated();
+  ensureSourceRepositoryPublic(sourceRepo);
 
   const submitter = githubUser();
   const issue = createOrUpdateSubmissionIssue({
@@ -160,6 +161,15 @@ function ensureRemoteHasCurrentCommit({ repoRoot, branch, commit }) {
   if (remoteCommit !== commit) {
     throw new Error(
       `origin/${branch} is at ${remoteCommit}, but local HEAD is ${commit}. Push the current commit before submitting.`
+    );
+  }
+}
+
+function ensureSourceRepositoryPublic(sourceRepo) {
+  const repository = ghJson(["repo", "view", sourceRepo, "--json", "isPrivate,visibility"]);
+  if (repository.isPrivate || repository.visibility !== "PUBLIC") {
+    throw new Error(
+      `Source repository ${sourceRepo} must be public before submitting. Private-repository import support is currently disabled.`
     );
   }
 }

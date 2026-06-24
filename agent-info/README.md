@@ -27,15 +27,15 @@ Two schema files are placed in the current folder by `lml init` and `lml update`
 Lean Meta Library records Lean formalization submissions in a form that can be
 checked, imported, and reused by later submissions.
 
-A submission is the Lean Meta Library entry, not the source repository. A source
-repository may host a submission. A submission may contain up to two Lake
+A submission is the Lean Meta Library entry, not the source repository. A public
+source repository may host a submission. A submission may contain up to two Lake
 packages:
 
 - a statement package for public `Definition` and `Axiom` entries;
 - a proof package for proofs that discharge statement axioms.
 
 Each package is a Lake package. Use repository terminology only for the source
-checkout or GitHub repository that hosts the submission.
+checkout or public GitHub repository that hosts the submission.
 
 The core idea is to separate three things:
 

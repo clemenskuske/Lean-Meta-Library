@@ -103,13 +103,9 @@ and `Commit` back to the manifest and commits that update to the source branch.
 `.github/workflows/import-submission.yml` runs when an issue labeled
 `submission` is opened, labeled, edited, or reopened. It reads the repository
 URL, source branch, source commit, manifest path, and submitted-by login from
-the issue body, checks out that exact commit, runs the first-run checks, then
-adds or updates the matching row in `submissions.jsonl`. After a successful
-import it comments on and closes the issue. Progress comments are posted after
-each completed milestone so submitters can see which step worked and what runs
-next.
-
-Warning: the import workflow currently passes `GITHUB_TOKEN` as a Git HTTP extra
-header to support private-repository checkout. This is a temporary measure and
-should be removed when private-repository checkout support is no longer needed.
-
+the issue body, checks out that exact commit from a public GitHub repository,
+runs the first-run checks, then adds or updates the matching row in
+`submissions.jsonl`. After a successful import it comments on and closes the
+issue. Progress comments are posted after each completed milestone so submitters
+can see which step worked and what runs next. Failed or cancelled import runs
+post an issue comment with the failed job and step.

@@ -11,6 +11,8 @@ schema disagree, follow the schema.
 
 - The manifest file is selected by the import command or workflow. If no path is
   provided, the default is `manifest.yaml`.
+- The submitted source repository must be public. Private-repository checkout is
+  currently unsupported by the import workflow.
 - The manifest must use the exact field names and shapes from
   `manifest.config.yaml`.
 - Author-supplied required top-level fields are `AbstractPath`, `SubmissionName`,

@@ -22,7 +22,7 @@ A submission is a Lean Meta Library entry. It consists of:
 - **Proofs** — Lean proof declarations that discharge the statement axioms.
 - **Manifest** — a `manifest.yaml` tying everything together: title, abstract, bibliography, and the locations of statements and proofs.
 
-A source repository hosts the submission files. The CLI and the import workflow read the manifest, check the correctness of the proofs and the safety and usability of the statements, and record the result in the shared registry (`submissions.jsonl`).
+A public source repository hosts the submission files. The CLI and the import workflow read the manifest, check the correctness of the proofs and the safety and usability of the statements, and record the result in the shared registry (`submissions.jsonl`).
 
 Once a submission is imported, its public statement declarations can be referenced as semantic dependencies in your own submission's manifest. Run `lml update` to download the latest submissions.
 

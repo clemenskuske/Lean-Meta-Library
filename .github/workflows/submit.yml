@@ -110,6 +110,7 @@ jobs:
             const title = submissionName || submissionSlug || manifestPath;
             issueAbstract = readAbstract(manifestPath, abstractPath);
 
+            await ensureSourceRepositoryPublic();
             await ensureLabel();
 
             let issue;
@@ -284,12 +285,30 @@ jobs:
             });
           }
 
+          async function ensureSourceRepositoryPublic() {
+            const [sourceOwner, sourceRepoName] = sourceRepository.split("/");
+            const repository = await githubWithToken(
+              token,
+              "GET",
+              `/repos/${sourceOwner}/${sourceRepoName}`
+            );
+            if (repository.private || repository.visibility !== "public") {
+              throw new Error(
+                `Source repository ${sourceRepository} must be public before submitting. Private-repository import support is currently disabled.`
+              );
+            }
+          }
+
           async function github(method, path, body, options = {}) {
+            return githubWithToken(targetToken, method, path, body, options);
+          }
+
+          async function githubWithToken(authToken, method, path, body, options = {}) {
             const response = await fetch(`${apiBase}${path}`, {
               method,
               headers: {
                 Accept: "application/vnd.github+json",
-                Authorization: `Bearer ${targetToken}`,
+                Authorization: `Bearer ${authToken}`,
                 "Content-Type": "application/json",
                 "X-GitHub-Api-Version": "2022-11-28"
               },
