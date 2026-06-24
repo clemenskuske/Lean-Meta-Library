@@ -28,9 +28,12 @@ const errors = [];
 const warnings = [];
 const submissionRecords = loadSubmissionRecords(context.packageRoot);
 const tmpRoot = mkdtempSync(join(tmpdir(), "lml-final-proof-build-"));
-const isolatedPackageRoot = join(tmpRoot, "package");
+const isolatedSubmissionRoot = join(tmpRoot, "submission");
+const isolatedPackageRoot = context.manifest.proofRoot
+  ? join(isolatedSubmissionRoot, context.manifest.proofRoot)
+  : isolatedSubmissionRoot;
 const isolatedStatementRoot = context.manifest.statementRoot
-  ? join(isolatedPackageRoot, context.manifest.statementRoot)
+  ? join(isolatedSubmissionRoot, context.manifest.statementRoot)
   : null;
 const keepTemp = process.env.LML_KEEP_FINAL_PROOF_BUILD_TMP === "1";
 const configuredAllowedMathlibAxioms = (lmlEnv.checks?.allowedMathlibAxioms ?? []).map(String);
@@ -38,7 +41,7 @@ const allowedMathlibAxioms = configuredAllowedMathlibAxioms.filter(isLeanName);
 const invalidAllowedMathlibAxioms = configuredAllowedMathlibAxioms.filter((name) => !isLeanName(name));
 
 try {
-  copyPackage(context.packageRoot, isolatedPackageRoot);
+  copyPackage(context.packageRoot, isolatedSubmissionRoot);
 
   if (spawnSync("lake", ["--version"], { encoding: "utf8" }).error) {
     errors.push("lake executable not found on PATH");
