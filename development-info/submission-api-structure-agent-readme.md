@@ -64,6 +64,16 @@ Future fixture work should add or strengthen coverage for:
 - statement-level dependency DAG acyclicity;
 - axiom-gate matching by name, type, and source module.
 
+## Submission Issue Labeling
+
+Submission import is gated by the GitHub issue label `submission`.
+
+The submit workflow labels issues it creates or updates. For issues opened
+directly by public submitters, `.github/workflows/submission-intake.yml`
+validates the Lean Meta Library submission marker and required source fields,
+then adds the `submission` label with the repository workflow token. The import
+workflow should continue to trigger only for issues carrying that label.
+
 ## Target Work
 
 ### Declared And Actual Dependencies
