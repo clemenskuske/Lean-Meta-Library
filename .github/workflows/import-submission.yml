@@ -534,3 +534,38 @@ jobs:
           }
           NODE
           node .github/actions/import-progress-comment.mjs
+
+  notify-failure:
+    name: Comment on failed import
+    needs:
+      - check
+      - import
+    if: >-
+      ${{
+        always() &&
+        contains(github.event.issue.labels.*.name, 'submission') &&
+        (
+          needs.check.result == 'failure' ||
+          needs.check.result == 'cancelled' ||
+          needs.import.result == 'failure' ||
+          needs.import.result == 'cancelled'
+        )
+      }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+
+    steps:
+      - name: Checkout Lean Meta Library
+        uses: actions/checkout@v5
+
+      - name: Comment on failed import
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: node .github/actions/import-failure-comment.mjs
