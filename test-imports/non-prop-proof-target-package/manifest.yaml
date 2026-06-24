@@ -1,0 +1,17 @@
+manifestVersion: "1"
+leanVersion: "v4.30.0"
+mathlibVersion: "c5ea00351c28e24afc9f0f84379aa41082b1188f"
+AbstractPath: abstract.tex
+SubmissionName: Non-Prop Proof Target Fixture
+SubmissionSlug: non-prop-proof-target
+BibEntries: []
+StatementSubmissions:
+  rootFolder: statements
+  statements:
+    - Name: NonPropProofTarget.Statements.Main.twinWidth
+      Type: Axiom
+ProofSubmissions:
+  rootFolder: "."
+  proofs:
+    - Name: NonPropProofTarget.Proofs.Main.twinWidth
+      AxiomReference: NonPropProofTarget.Statements.Main.twinWidth

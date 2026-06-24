@@ -125,6 +125,9 @@ downloading Mathlib. When running a checker by hand you may need to do the same.
 - **`mismatched-proof-type-package`** — the proof theorem has the expected name
   but a Lean type that differs from the statement, so
   `proofs/type-matches-statements.mjs` must reject the mismatch.
+- **`non-prop-proof-target-package`** — the proof declaration has the same
+  non-proposition type as the referenced statement axiom, so
+  `proofs/type-matches-statements.mjs` must reject the proof target.
 - **`sorry-proof-package`** — the submitted proof uses `sorry`, so
   `proofs/no-forbidden-axioms.mjs` must reject the resulting `sorryAx`
   dependency.

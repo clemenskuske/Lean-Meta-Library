@@ -84,6 +84,12 @@ const fixtures = [
     stripMathlibDependencyForCheck: true
   },
   {
+    name: "non-prop-proof-target-package",
+    checker: "proofs/type-matches-statements.mjs",
+    expected: /proof target is not a proposition/,
+    stripMathlibDependencyForCheck: true
+  },
+  {
     name: "sorry-proof-package",
     checker: "proofs/no-forbidden-axioms.mjs",
     expected: /FORBIDDEN_AXIOM|compiled proof theorem depends on forbidden axioms/,

@@ -68,6 +68,7 @@ locally without downloading Mathlib.
 | Fixture Package | Checker | What It Tests |
 |----------------|---------|---------------|
 | `mismatched-proof-type-package` | `proofs/type-matches-statements.mjs` | The proof theorem has the expected name but a Lean type that differs from the statement; the type-matching checker must reject the mismatch. |
+| `non-prop-proof-target-package` | `proofs/type-matches-statements.mjs` | The proof declaration has the same non-proposition type as the referenced statement axiom; the type-matching checker must reject the proof target. |
 | `sorry-proof-package` | `proofs/no-forbidden-axioms.mjs` | The submitted proof uses `sorry`; the axiom checker must reject the resulting `sorryAx` dependency. |
 | `undeclared-proof-obligation-package` | `proofs/no-forbidden-axioms.mjs` | The submitted proof uses an axiom that is not listed in `ProofObligations`; the axiom checker must reject the undeclared dependency. |
 | `proof-obligation-wrong-commit-package` | `proofs/imports.mjs` | A proof lists an external submitted statement in `ProofObligations`, but its Lake dependency is pinned to a different commit than `submissions.jsonl`; the proof import checker must reject it. |
