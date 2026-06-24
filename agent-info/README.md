@@ -85,7 +85,8 @@ The commands have these roles:
 - `test --manifest=path/to/manifest.yaml`: run the local submission checks from
   the manifest file.
 - `submit --manifest=path/to/manifest.yaml`: run checks, then dispatch the
-  GitHub submit workflow.
+  GitHub submit workflow. Public submitters may create submission issues; the
+  central repository labels well-formed submission issues automatically.
 - `submission-status <issue-id-or-url>`: report submission issue, workflow,
   import, source commit, and statement-file status. Pass the GitHub issue number
   or the full issue URL.

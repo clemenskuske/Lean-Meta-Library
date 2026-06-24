@@ -100,6 +100,12 @@ and `Commit` back to the manifest and commits that update to the source branch.
 
 ## Import Workflow
 
+`.github/workflows/submission-intake.yml` runs when an issue is opened, edited,
+or reopened. If the issue body contains the Lean Meta Library submission marker
+and the required source fields are well formed, it adds the `submission` label
+using the repository workflow token. This lets public submitters create
+submission issues without needing label permissions.
+
 `.github/workflows/import-submission.yml` runs when an issue labeled
 `submission` is opened, labeled, edited, or reopened. It reads the repository
 URL, source branch, source commit, manifest path, and submitted-by login from
