@@ -31,6 +31,7 @@
   "submissionLimits": {
     "maxPackageBytes": 5242880,
     "maxFolderBytes": 524288,
+    "maxProofFolderBytes": 5242880,
     "maxFileBytes": 262144
   },
   "checks": {
