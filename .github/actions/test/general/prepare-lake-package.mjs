@@ -2,13 +2,12 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
-import { maxBuildOutputBytes, walkFiles } from "../common.mjs";
+import { lakeCommandTimeoutMs, maxBuildOutputBytes, walkFiles } from "../common.mjs";
 import { loadLakeConfig } from "../lake-config.mjs";
 
 const markerVersion = 1;
 const lockTimeoutMs = 5 * 60 * 1000;
 const staleLockMs = 10 * 60 * 1000;
-const lakeCommandTimeoutMs = Number(process.env.LML_LAKE_COMMAND_TIMEOUT_MS ?? 20 * 60 * 1000);
 
 export function ensureLakeAvailable(errors) {
   const result = spawnSync("lake", ["--version"], {

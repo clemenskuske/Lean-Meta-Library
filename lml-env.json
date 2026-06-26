@@ -36,6 +36,7 @@
   },
   "checks": {
     "maxBuildOutputBytes": 20971520,
+    "lakeCommandTimeoutMs": 2700000,
     "allowedMathlibAxioms": ["propext", "Quot.sound", "Classical.choice"]
   },
   "verifiedAt": "2026-06-01"
