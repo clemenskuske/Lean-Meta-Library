@@ -97,6 +97,62 @@ jobs:
         run: |
           node "$GITHUB_WORKSPACE/.github/actions/normalize-submission-manifest.mjs" "$GITHUB_WORKSPACE/submission/$MANIFEST_PATH"
 
+      - name: Detect existing submission update
+        id: update
+        env:
+          MANIFEST_PATH: ${{ steps.issue.outputs.manifest-path }}
+          REPO_URL: ${{ steps.issue.outputs.repo-url }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync, existsSync, readFileSync } from "node:fs";
+
+          const issueNumber = positiveIntegerOrNull(process.env.ISSUE_NUMBER);
+          const repoUrl = normalize(process.env.REPO_URL);
+          const manifestPath = String(process.env.MANIFEST_PATH ?? "").trim();
+          const rows = readRows("submissions.jsonl");
+          const isUpdate = rows.some((row) => isSameSubmission(row));
+          const output = process.env.GITHUB_OUTPUT;
+          if (!output) {
+            throw new Error("GITHUB_OUTPUT is not set");
+          }
+          appendFileSync(output, `is-update=${isUpdate ? "true" : "false"}\n`);
+
+          function readRows(path) {
+            if (!existsSync(path)) {
+              return [];
+            }
+            return readFileSync(path, "utf8")
+              .split(/\r?\n/)
+              .map((line) => line.trim())
+              .filter(Boolean)
+              .map((line) => JSON.parse(line));
+          }
+
+          function isSameSubmission(row) {
+            const data = row.SubmissionData ?? {};
+            const rowIssueNumber = positiveIntegerOrNull(data.submissionIssueNumber ?? row.submissionIssueNumber);
+            if (issueNumber && rowIssueNumber && issueNumber === rowIssueNumber) {
+              return true;
+            }
+            return Boolean(
+              repoUrl &&
+              manifestPath &&
+              normalize(data.Repo ?? row["Repo Url"] ?? row["Git Repo"]) === repoUrl &&
+              String(data.ManifestPath ?? row["Manifest File"] ?? "").trim() === manifestPath
+            );
+          }
+
+          function positiveIntegerOrNull(value) {
+            const parsed = Number.parseInt(String(value ?? ""), 10);
+            return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+          }
+
+          function normalize(value) {
+            return String(value ?? "").trim().replace(/\.git$/i, "").replace(/\/$/g, "");
+          }
+          NODE
+
       - name: "Comment progress: repository checked out"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -139,6 +195,17 @@ jobs:
           LML_CHECK_RUN_ID: import-${{ github.run_id }}-${{ github.run_attempt }}
         run: |
           node "$GITHUB_WORKSPACE/.github/actions/test/run-all.mjs" --skip-build-cache "$GITHUB_WORKSPACE/submission/$MANIFEST_PATH"
+
+      - name: Run submission update policy
+        if: steps.update.outputs.is-update == 'true'
+        env:
+          MANIFEST_PATH: ${{ steps.issue.outputs.manifest-path }}
+        run: |
+          node "$GITHUB_WORKSPACE/.github/actions/create-submission/create-output-config.mjs" \
+            --manifest="$GITHUB_WORKSPACE/submission/$MANIFEST_PATH" \
+            --output="$GITHUB_WORKSPACE/submission/update-policy-manifest.yaml"
+          node "$GITHUB_WORKSPACE/.github/actions/test/general/submission-update-policy.mjs" \
+            "$GITHUB_WORKSPACE/submission/update-policy-manifest.yaml"
 
       - name: "Comment progress: submission checks passed"
         env:

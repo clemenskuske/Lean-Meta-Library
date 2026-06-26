@@ -66,6 +66,7 @@ locally without downloading Mathlib.
 | `shared-statement-declarations-package` | `statements/introduced-declarations.mjs` | One statement file introduces multiple manifest-listed declarations; the declarations checker must accept it. |
 | `unused-sorry-proof-package` | `final-proof-build.mjs` | A non-manifest proof module is proved with `sorry`, but the submitted proof target does not depend on it; the final build checker must accept it. |
 | `update-compatible-package` | `general/submission-update-policy.mjs` | An existing submission is updated while preserving every stored public statement name and Lean statement; the update policy checker must accept it. |
+| `duplicate-slug-update-package` | `general/slug-unique.mjs` | A manifest reuses an existing `SubmissionSlug` with the same `submissionIssueNumber`; the slug uniqueness checker must accept it as an update to the same submission. |
 
 ## Proof checks
 

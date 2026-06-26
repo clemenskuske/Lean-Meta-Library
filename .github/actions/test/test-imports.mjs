@@ -197,6 +197,10 @@ const acceptedFixtures = [
   {
     name: "update-compatible-package",
     checker: "general/submission-update-policy.mjs"
+  },
+  {
+    name: "duplicate-slug-update-package",
+    checker: "general/slug-unique.mjs"
   }
 ];
 

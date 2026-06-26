@@ -132,6 +132,9 @@ downloading Mathlib. When running a checker by hand you may need to do the same.
 - **`update-compatible-package`** — an existing submission is updated while
   preserving every stored public statement name and Lean statement, so
   `general/submission-update-policy.mjs` must accept it.
+- **`duplicate-slug-update-package`** — a manifest reuses an existing
+  `SubmissionSlug` with the same `submissionIssueNumber`, so
+  `general/slug-unique.mjs` must accept it as an update to the same submission.
 
 ### Proof checks
 
