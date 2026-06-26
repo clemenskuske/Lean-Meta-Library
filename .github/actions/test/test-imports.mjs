@@ -157,6 +157,21 @@ const fixtures = [
     name: "duplicate-slug-package",
     checker: "general/slug-unique.mjs",
     expected: /SubmissionSlug "duplicate-slug" is already taken/
+  },
+  {
+    name: "update-unknown-slug-package",
+    checker: "general/submission-update-policy.mjs",
+    expected: /SubmissionSlug "update-unknown-slug" is not present in submissions\.jsonl/
+  },
+  {
+    name: "update-missing-statement-package",
+    checker: "general/submission-update-policy.mjs",
+    expected: /existing statement is missing from update: UpdateMissingStatement\.Statements\.Main\.removed/
+  },
+  {
+    name: "update-lean-statement-changed-package",
+    checker: "general/submission-update-policy.mjs",
+    expected: /InlineLeanStatement changed for existing statement: UpdateLeanStatementChanged\.Statements\.Main\.same_name/
   }
 ];
 
@@ -178,6 +193,10 @@ const acceptedFixtures = [
     checker: "final-proof-build.mjs",
     precheckers: ["proofs/axiom-dependencies.mjs"],
     expectAxiomDependencies: true
+  },
+  {
+    name: "update-compatible-package",
+    checker: "general/submission-update-policy.mjs"
   }
 ];
 
@@ -190,6 +209,15 @@ try {
 } catch (error) {
   failed = true;
   console.error(`FAIL output config enrichment: ${error.message}`);
+}
+
+console.log("RUN submission update policy no-slug no-op");
+try {
+  testSubmissionUpdatePolicyNoSlug();
+  console.log("PASS submission update policy no-slug no-op");
+} catch (error) {
+  failed = true;
+  console.error(`FAIL submission update policy no-slug no-op: ${error.message}`);
 }
 
 for (const fixture of fixtures) {
@@ -226,7 +254,7 @@ if (failed) {
   process.exit(1);
 }
 
-console.log(`All ${fixtures.length} negative import fixtures failed as expected, ${acceptedFixtures.length} acceptance fixtures passed, and output config enrichment passed.`);
+console.log(`All ${fixtures.length} negative import fixtures failed as expected, ${acceptedFixtures.length} acceptance fixtures passed, output config enrichment passed, and submission update policy no-slug no-op passed.`);
 
 function testOutputConfigEnrichment() {
   const sourceManifest = join(repoRoot, "test-imports", "shared-statement-declarations-package", "manifest.yaml");
@@ -284,6 +312,32 @@ function testUnicodeDisplayTextManifestCheck() {
       maxBuffer: 1024 * 1024
     });
     assert(result.status === 0, `expected Unicode display manifest to pass manifest-check\n${result.stdout}${result.stderr}`.trim());
+  } finally {
+    rmSync(tmpRoot, { recursive: true, force: true });
+  }
+}
+
+function testSubmissionUpdatePolicyNoSlug() {
+  const tmpRoot = mkdtempSync(join(tmpdir(), "lml-update-policy-no-slug-"));
+  const manifestPath = join(tmpRoot, "manifest.yaml");
+  writeFileSync(manifestPath, [
+    'manifestVersion: "1"',
+    'leanVersion: "v4.30.0"',
+    'mathlibVersion: "c5ea00351c28e24afc9f0f84379aa41082b1188f"',
+    "AbstractPath: abstract.tex",
+    "LicenseFile: LICENSE",
+    "SubmissionName: Update Policy No Slug Fixture",
+    "BibEntries: []",
+    ""
+  ].join("\n"));
+
+  try {
+    const result = spawnSync(process.execPath, [join(here, "general/submission-update-policy.mjs"), `--manifest=${manifestPath}`], {
+      cwd: repoRoot,
+      encoding: "utf8",
+      maxBuffer: 1024 * 1024
+    });
+    assert(result.status === 0, `expected submission-update-policy to no-op without SubmissionSlug\n${result.stdout}${result.stderr}`.trim());
   } finally {
     rmSync(tmpRoot, { recursive: true, force: true });
   }
