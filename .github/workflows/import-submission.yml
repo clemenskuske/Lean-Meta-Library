@@ -196,16 +196,17 @@ jobs:
         run: |
           node "$GITHUB_WORKSPACE/.github/actions/test/run-all.mjs" --skip-build-cache "$GITHUB_WORKSPACE/submission/$MANIFEST_PATH"
 
-      - name: Run submission update policy
-        if: steps.update.outputs.is-update == 'true'
-        env:
-          MANIFEST_PATH: ${{ steps.issue.outputs.manifest-path }}
-        run: |
-          node "$GITHUB_WORKSPACE/.github/actions/create-submission/create-output-config.mjs" \
-            --manifest="$GITHUB_WORKSPACE/submission/$MANIFEST_PATH" \
-            --output="$GITHUB_WORKSPACE/submission/update-policy-manifest.yaml"
-          node "$GITHUB_WORKSPACE/.github/actions/test/general/submission-update-policy.mjs" \
-            "$GITHUB_WORKSPACE/submission/update-policy-manifest.yaml"
+      # Temporarily disabled while existing submissions are migrated to the update policy.
+      # - name: Run submission update policy
+      #   if: steps.update.outputs.is-update == 'true'
+      #   env:
+      #     MANIFEST_PATH: ${{ steps.issue.outputs.manifest-path }}
+      #   run: |
+      #     node "$GITHUB_WORKSPACE/.github/actions/create-submission/create-output-config.mjs" \
+      #       --manifest="$GITHUB_WORKSPACE/submission/$MANIFEST_PATH" \
+      #       --output="$GITHUB_WORKSPACE/submission/update-policy-manifest.yaml"
+      #     node "$GITHUB_WORKSPACE/.github/actions/test/general/submission-update-policy.mjs" \
+      #       "$GITHUB_WORKSPACE/submission/update-policy-manifest.yaml"
 
       - name: "Comment progress: submission checks passed"
         env:
