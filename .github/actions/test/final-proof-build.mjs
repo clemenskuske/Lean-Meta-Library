@@ -61,6 +61,7 @@ try {
         fetchBuildCache();
         runLake(["build"], "lake build");
         buildImportedProofDependencies(compositionPlan.requiredProofPackages);
+        buildFinalProofCheckerDependencies();
         if (errors.length === 0) {
           checkCompiledAxioms(compositionPlan);
         }
@@ -533,6 +534,19 @@ function buildImportedProofDependencies(requiredProofPackages) {
     return;
   }
   runLake(["build", ...requiredProofPackages.map((pkg) => pkg.name)], "lake build imported proof dependencies");
+}
+
+function buildFinalProofCheckerDependencies() {
+  if (errors.length > 0) {
+    return;
+  }
+  const targets = ["Cli"].filter((name) =>
+    existsSync(join(isolatedPackageRoot, ".lake", "packages", name))
+  );
+  if (targets.length === 0) {
+    return;
+  }
+  runLake(["build", ...targets], `lake build final proof checker dependencies (${targets.join(", ")})`);
 }
 
 function requireBlock(pkg) {
