@@ -168,7 +168,7 @@ function checkCompiledAxioms(compositionPlan) {
     return;
   }
 
-  const modules = builtModuleNames();
+  const modules = builtModuleNames().filter(moduleSafeForProofComposition);
   const composedModuleName = "LmlComposed";
   const composedSource = join(isolatedPackageRoot, `${composedModuleName}.lean`);
   writeFileSync(
@@ -664,6 +664,31 @@ function builtModuleNames() {
     }
   }
   return [...names].sort();
+}
+
+function moduleSafeForProofComposition(moduleName) {
+  return !moduleDeclaresTopLevelMain(moduleName);
+}
+
+function moduleDeclaresTopLevelMain(moduleName) {
+  for (const source of moduleSourceFiles(moduleName)) {
+    if (/^(?:unsafe\s+)?(?:partial\s+)?def\s+main\b/m.test(readFileSync(source, "utf8"))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function moduleSourceFiles(moduleName) {
+  const modulePath = moduleName.split(".").join("/");
+  return submissionLeanSources().filter((file) => {
+    const sourcePath = relativePath(isolatedSubmissionRoot, file).replace(/\.lean$/i, "");
+    return sourcePath === modulePath || sourcePath.endsWith(`/${modulePath}`);
+  });
+}
+
+function submissionLeanSources() {
+  return walkFiles(isolatedSubmissionRoot).filter((file) => file.endsWith(".lean"));
 }
 
 function lakeEmittedModuleNames() {
