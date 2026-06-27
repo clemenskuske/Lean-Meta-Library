@@ -39,6 +39,7 @@ const keepTemp = process.env.LML_KEEP_FINAL_PROOF_BUILD_TMP === "1";
 const configuredAllowedMathlibAxioms = (lmlEnv.checks?.allowedMathlibAxioms ?? []).map(String);
 const allowedMathlibAxioms = configuredAllowedMathlibAxioms.filter(isLeanName);
 const invalidAllowedMathlibAxioms = configuredAllowedMathlibAxioms.filter((name) => !isLeanName(name));
+let cachedSubmissionLeanSources = null;
 
 try {
   copyPackage(context.packageRoot, isolatedSubmissionRoot);
@@ -667,7 +668,11 @@ function builtModuleNames() {
 }
 
 function moduleSafeForProofComposition(moduleName) {
-  return !moduleDeclaresTopLevelMain(moduleName);
+  return !knownExecutableModuleNames().has(moduleName) && !moduleDeclaresTopLevelMain(moduleName);
+}
+
+function knownExecutableModuleNames() {
+  return new Set(["MainGraph", "runLinter"]);
 }
 
 function moduleDeclaresTopLevelMain(moduleName) {
@@ -688,7 +693,10 @@ function moduleSourceFiles(moduleName) {
 }
 
 function submissionLeanSources() {
-  return walkFiles(isolatedSubmissionRoot).filter((file) => file.endsWith(".lean"));
+  cachedSubmissionLeanSources ??= walkFiles(isolatedSubmissionRoot, {
+    ignoreDirs: new Set([".git", "build", "node_modules"])
+  }).filter((file) => file.endsWith(".lean"));
+  return cachedSubmissionLeanSources;
 }
 
 function lakeEmittedModuleNames() {
