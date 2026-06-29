@@ -441,6 +441,22 @@
         border-top-style: dashed;
       }
 
+      .graph-legend-dot {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+
+      .graph-legend-dot.proven {
+        color: #1f7a4d;
+      }
+
+      .graph-legend-dot.assumption {
+        color: #b42318;
+      }
+
       .graph-node {
         position: absolute;
         z-index: 1;
@@ -484,6 +500,16 @@
       }
 
       .graph-node.axiom {
+        color: #b42318;
+        background: #b42318;
+      }
+
+      .graph-node.axiom.proven {
+        color: #1f7a4d;
+        background: #1f7a4d;
+      }
+
+      .graph-node.assumption {
         color: #b42318;
         background: #b42318;
       }
@@ -1138,6 +1164,8 @@
             <div class="graph-legend" aria-hidden="true">
               <span class="graph-legend-item"><span class="graph-legend-line"></span>depends on</span>
               <span class="graph-legend-item"><span class="graph-legend-line proves"></span>proves axiom</span>
+              <span class="graph-legend-item"><span class="graph-legend-dot proven"></span>proven axiom</span>
+              <span class="graph-legend-item"><span class="graph-legend-dot assumption"></span>assumption</span>
             </div>
           </div>
         `;
@@ -1151,6 +1179,9 @@
         function remember(name, depth, options = {}) {
           const existing = nodes.get(name);
           const resolved = state.nodeByName.get(name);
+          const proofCount = proofsForAxiom(name).length;
+          const proven = Boolean(options.proven || (resolved?.kind === "axiom" && proofCount));
+          const assumption = Boolean(options.assumption || !resolved || (resolved?.kind === "axiom" && !proven));
           if (!existing) {
             nodes.set(name, {
               name,
@@ -1158,12 +1189,16 @@
               node: resolved,
               kind: resolved?.kind || "external",
               current: name === root.name,
-              provenTarget: Boolean(options.provenTarget)
+              provenTarget: Boolean(options.provenTarget || proven),
+              proven,
+              assumption
             });
             return;
           }
-          existing.provenTarget = existing.provenTarget || Boolean(options.provenTarget);
-          existing.depth = existing.provenTarget ? Math.min(existing.depth, depth) : Math.max(existing.depth, depth);
+          existing.provenTarget = existing.provenTarget || Boolean(options.provenTarget || proven);
+          existing.proven = existing.proven || proven;
+          existing.assumption = existing.assumption && assumption;
+          existing.depth = Math.min(existing.depth, depth);
         }
 
         function addEdge(from, to, kind = "depends") {
@@ -1173,7 +1208,7 @@
           edges.push({ from, to, kind });
         }
 
-        function visit(name, depth, path) {
+        function expandDeclaration(name, depth, path) {
           remember(name, depth);
           const resolved = state.nodeByName.get(name);
           if (!resolved || path.has(name)) return;
@@ -1184,23 +1219,44 @@
             remember(dependency, depth + 1);
             addEdge(name, dependency);
             if (!nextPath.has(dependency)) {
-              visit(dependency, depth + 1, nextPath);
+              expandDeclaration(dependency, depth + 1, nextPath);
+            }
+          }
+
+          if (resolved.kind === "proof") return;
+          for (const proof of proofsForAxiom(name)) {
+            expandProof(proof, depth + 1, nextPath);
+          }
+        }
+
+        function expandProof(proof, depth, path) {
+          remember(proof.name, depth);
+          if (path.has(proof.name)) return;
+
+          const nextPath = new Set(path);
+          nextPath.add(proof.name);
+          if (proof.axiomReference) {
+            remember(proof.axiomReference, Math.max(0, depth - 1), { proven: true, provenTarget: true });
+            addEdge(proof.name, proof.axiomReference, "proves");
+          }
+
+          for (const dependency of proof.dependencies) {
+            remember(dependency, depth + 1);
+            addEdge(proof.name, dependency);
+            if (!nextPath.has(dependency)) {
+              expandDeclaration(dependency, depth + 1, nextPath);
             }
           }
         }
 
-        visit(root.name, 0, new Set());
         if (root.kind === "proof" && root.axiomReference) {
-          remember(root.axiomReference, -1, { provenTarget: true });
-          addEdge(root.name, root.axiomReference, "proves");
+          expandDeclaration(root.axiomReference, 0, new Set());
+        } else if (root.kind === "proof") {
+          expandProof(root, 0, new Set());
+        } else {
+          expandDeclaration(root.name, 0, new Set());
         }
-        if (root.kind !== "proof") {
-          for (const proof of proofsForAxiom(root.name)) {
-            visit(proof.name, 1, new Set());
-            remember(root.name, 0, { provenTarget: true });
-            addEdge(proof.name, root.name, "proves");
-          }
-        }
+
         return {
           nodes: [...nodes.values()].sort((left, right) => left.depth - right.depth || left.name.localeCompare(right.name)),
           edges
@@ -1265,6 +1321,8 @@
           item.kind,
           item.current ? "current" : "",
           item.provenTarget ? "proven-target" : "",
+          item.proven ? "proven" : "",
+          item.assumption ? "assumption" : "",
           item.node ? "" : "external"
         ].filter(Boolean).join(" ");
         const style = `left: ${position.x}px; top: ${position.y}px;`;
