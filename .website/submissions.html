@@ -1196,7 +1196,7 @@
         }
         if (root.kind !== "proof") {
           for (const proof of proofsForAxiom(root.name)) {
-            visit(proof.name, -1, new Set());
+            visit(proof.name, 1, new Set());
             remember(root.name, 0, { provenTarget: true });
             addEdge(proof.name, root.name, "proves");
           }
