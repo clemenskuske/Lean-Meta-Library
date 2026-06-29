@@ -969,7 +969,7 @@
 
       function renderNode(node) {
         const dependents = state.nodes.filter((candidate) => candidate.dependencies.includes(node.name));
-        const provingProofs = state.nodes.filter((candidate) => candidate.axiomReference === node.name);
+        const provingProofs = proofsForAxiom(node.name);
         const dependencyTitle = node.kind === "proof" ? "Axiom Dependencies" : "Dependencies";
         const dependencyEmpty = node.kind === "proof" ? "No axiom dependencies recorded." : "No dependencies recorded.";
         const provesSection = node.axiomReference ? `
@@ -1000,8 +1000,9 @@
               <h2>${escapeHtml(nodeDisplayName(node))}</h2>
               <div class="meta-line">
                 <span>${escapeHtml(node.submission.title)}</span>
-                <span>${escapeHtml(node.kind)}</span>
+                <span>${escapeHtml(nodeKindLabel(node))}</span>
                 ${node.axiomReference ? `<span>proves ${escapeHtml(node.axiomReference)}</span>` : ""}
+                ${node.kind === "axiom" && provingProofs.length ? `<span>proved by ${provingProofs.length} proof${provingProofs.length === 1 ? "" : "s"}</span>` : ""}
               </div>
             </div>
             <div class="links-row">
@@ -1012,7 +1013,7 @@
           <section class="panel">
             <div class="panel-head">
               <h3>Declaration</h3>
-              <span class="badge ${escapeAttr(node.kind)}">${escapeHtml(node.kind)}</span>
+              <span class="badge ${escapeAttr(node.kind)}">${escapeHtml(nodeKindLabel(node))}</span>
             </div>
             <div class="panel-body">
               ${infoTable([
@@ -1020,7 +1021,8 @@
                 ["Name", code(node.name || "Not recorded")],
                 ["Type", code(node.raw.Type || node.kind)],
                 ["Submission", internalLink(submissionHref(node.submission), node.submission.title)],
-                ["Axiom reference", node.axiomReference ? dependencyLink(node.axiomReference) : code("None")]
+                ...(node.kind === "proof" ? [["Axiom reference", node.axiomReference ? dependencyLink(node.axiomReference) : code("None")]] : []),
+                ...(node.kind !== "proof" ? [["Presented proofs", provingProofs.length ? provingProofs.map(nodeLink).join("") : code("None")]] : [])
               ])}
             </div>
           </section>
@@ -1164,6 +1166,13 @@
           remember(root.axiomReference, -1, { provenTarget: true });
           addEdge(root.name, root.axiomReference, "proves");
         }
+        if (root.kind !== "proof") {
+          for (const proof of proofsForAxiom(root.name)) {
+            visit(proof.name, -1, new Set());
+            remember(root.name, 0, { provenTarget: true });
+            addEdge(proof.name, root.name, "proves");
+          }
+        }
         return {
           nodes: [...nodes.values()].sort((left, right) => left.depth - right.depth || left.name.localeCompare(right.name)),
           edges
@@ -1254,7 +1263,7 @@
         return `
           <a class="node-link${state.active === node.name ? " active" : ""}" href="${nodeHref(node)}">
             <span class="node-name">${escapeHtml(nodeDisplayName(node))}</span>
-            <span class="badge ${escapeAttr(node.kind)}">${escapeHtml(node.kind)}</span>
+            <span class="badge ${escapeAttr(node.kind)}">${escapeHtml(nodeKindLabel(node))}</span>
           </a>
         `;
       }
@@ -1284,7 +1293,7 @@
           <div class="record-row">
             <a class="record-title" href="${nodeHref(node)}">${escapeHtml(nodeDisplayName(node))}</a>
             <div class="record-meta">
-              <span class="badge ${escapeAttr(node.kind)}">${escapeHtml(node.kind)}</span>
+              <span class="badge ${escapeAttr(node.kind)}">${escapeHtml(nodeKindLabel(node))}</span>
               ${internalLink(submissionHref(node.submission), node.submission.title)}
               ${node.axiomReference ? `<span>proves ${inlineDependencyLink(node.axiomReference)}</span>` : ""}
             </div>
@@ -1325,6 +1334,18 @@
 
       function dependencyCount() {
         return state.nodes.reduce((sum, node) => sum + node.dependencies.length, 0);
+      }
+
+      function proofsForAxiom(name) {
+        if (!name) return [];
+        return state.nodes.filter((node) => node.kind === "proof" && node.axiomReference === name);
+      }
+
+      function nodeKindLabel(node) {
+        if (node?.kind === "axiom" && proofsForAxiom(node.name).length) {
+          return "proven axiom";
+        }
+        return node?.kind || "node";
       }
 
       function statementNodes() {
