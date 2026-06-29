@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 // Runs negative import fixtures and verifies each one fails for its intended reason.
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import YAML from "yaml";
 import { createOutputConfig } from "../create-submission/create-output-config.mjs";
+import { mathlibImportModules } from "./general/prepare-lake-package.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "../../..");
@@ -224,6 +225,15 @@ try {
   console.error(`FAIL submission update policy no-slug no-op: ${error.message}`);
 }
 
+console.log("RUN Mathlib cache module discovery");
+try {
+  testMathlibCacheModuleDiscovery();
+  console.log("PASS Mathlib cache module discovery");
+} catch (error) {
+  failed = true;
+  console.error(`FAIL Mathlib cache module discovery: ${error.message}`);
+}
+
 for (const fixture of fixtures) {
   console.log(`RUN ${fixture.name}: expecting rejection from ${fixture.checker}`);
   const result = runFixture(fixture);
@@ -342,6 +352,42 @@ function testSubmissionUpdatePolicyNoSlug() {
       maxBuffer: 1024 * 1024
     });
     assert(result.status === 0, `expected submission-update-policy to no-op without SubmissionSlug\n${result.stdout}${result.stderr}`.trim());
+  } finally {
+    rmSync(tmpRoot, { recursive: true, force: true });
+  }
+}
+
+function testMathlibCacheModuleDiscovery() {
+  const tmpRoot = mkdtempSync(join(tmpdir(), "lml-mathlib-cache-modules-"));
+  const packageRoot = join(tmpRoot, "statements");
+  const sourceRoot = join(tmpRoot, "source", "Fixture", "Statements", "Source");
+  const packageModuleRoot = join(packageRoot, "Fixture", "Statements");
+
+  try {
+    mkdirSync(sourceRoot, { recursive: true });
+    mkdirSync(packageModuleRoot, { recursive: true });
+    writeFileSync(join(sourceRoot, "Heavy.lean"), [
+      "import Mathlib.Data.Finset.Basic",
+      "import Mathlib.Combinatorics.SimpleGraph.Basic",
+      ""
+    ].join("\n"));
+    writeFileSync(join(packageModuleRoot, "Main.lean"), [
+      "import Fixture.Statements.Source.Heavy",
+      "import Mathlib.Data.Nat.Basic",
+      ""
+    ].join("\n"));
+
+    const modules = mathlibImportModules(packageRoot, {
+      leanLibs: [
+        { name: "Fixture.Statements.Source", srcDir: "../source" },
+        { name: "Fixture.Statements" }
+      ],
+      requires: []
+    });
+
+    assert(modules.includes("Mathlib.Combinatorics.SimpleGraph.Basic"), "expected Mathlib import under lean_lib srcDir to be discovered");
+    assert(modules.includes("Mathlib.Data.Finset.Basic"), "expected all Mathlib imports under lean_lib srcDir to be discovered");
+    assert(modules.includes("Mathlib.Data.Nat.Basic"), "expected Mathlib import in package root to still be discovered");
   } finally {
     rmSync(tmpRoot, { recursive: true, force: true });
   }
