@@ -310,6 +310,34 @@
         overflow-wrap: anywhere;
       }
 
+      .tex-rendered {
+        display: grid;
+        gap: 10px;
+        color: var(--text);
+        overflow-wrap: anywhere;
+      }
+
+      .tex-rendered h4 {
+        margin: 0;
+        font-size: 0.95rem;
+      }
+
+      .tex-rendered p {
+        margin: 0;
+      }
+
+      .tex-math {
+        font-family: ui-serif, Georgia, "Times New Roman", serif;
+        font-style: italic;
+      }
+
+      .tex-display-math {
+        display: block;
+        margin: 6px 0;
+        overflow-x: auto;
+        text-align: center;
+      }
+
       .fact {
         display: block;
         border: 1px solid var(--line);
@@ -1064,7 +1092,7 @@
             <div class="panel-head">
               <h3>TeX</h3>
             </div>
-            <div class="panel-body">${node.tex ? `<pre>${escapeHtml(node.tex)}</pre>` : `<div class="empty">No InlineTexReference recorded.</div>`}</div>
+            <div class="panel-body">${node.tex ? renderTexReference(node.tex) : `<div class="empty">No InlineTexReference recorded.</div>`}</div>
           </section>
 
           <section class="panel">
@@ -1541,9 +1569,187 @@
           });
       }
 
-      function parseTexAbstract(text) {
+      function renderTexReference(text) {
+        const blocks = texBlocks(text);
+        if (blocks.length === 0) {
+          return `<div class="empty">No TeX text could be rendered.</div>`;
+        }
+        return `<div class="tex-rendered">${blocks.join("")}</div>`;
+      }
+
+      function texBlocks(text) {
+        const blocks = [];
+        const source = stripTexComments(text)
+          .replace(/\\begin\{abstract\}|\\end\{abstract\}/g, "")
+          .replace(/\r\n?/g, "\n")
+          .trim();
+        const paragraphPattern = /\\paragraph\{([^{}]*)\}/g;
+        let cursor = 0;
+        let match;
+
+        while ((match = paragraphPattern.exec(source))) {
+          appendTexParagraphs(blocks, source.slice(cursor, match.index));
+          blocks.push(`<h4>${renderTexInline(match[1])}</h4>`);
+          cursor = paragraphPattern.lastIndex;
+        }
+        appendTexParagraphs(blocks, source.slice(cursor));
+        return blocks;
+      }
+
+      function appendTexParagraphs(blocks, text) {
+        for (const paragraph of String(text || "").split(/\n\s*\n/)) {
+          const trimmed = paragraph.replace(/\s*\n\s*/g, " ").replace(/\s+/g, " ").trim();
+          if (trimmed) {
+            blocks.push(`<p>${renderTexInline(trimmed)}</p>`);
+          }
+        }
+      }
+
+      function renderTexInline(text) {
+        return texSegments(text).map((segment) => {
+          if (segment.math) return renderTexMath(segment.value);
+          return renderTexText(segment.value);
+        }).join("");
+      }
+
+      function texSegments(text) {
+        const segments = [];
+        const source = String(text || "");
+        const pattern = /(\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)|\$\$[\s\S]*?\$\$|\$[^$\n]+\$)/g;
+        let cursor = 0;
+        let match;
+        while ((match = pattern.exec(source))) {
+          if (match.index > cursor) {
+            segments.push({ math: false, value: source.slice(cursor, match.index) });
+          }
+          segments.push({ math: true, value: match[0] });
+          cursor = pattern.lastIndex;
+        }
+        if (cursor < source.length) {
+          segments.push({ math: false, value: source.slice(cursor) });
+        }
+        return segments;
+      }
+
+      function renderTexMath(text) {
+        const source = String(text || "");
+        const display = source.startsWith("$$") || source.startsWith("\\[");
+        const value = decodeTexMath(source);
+        const className = display ? "tex-math tex-display-math" : "tex-math";
+        return `<span class="${className}">${escapeHtml(value)}</span>`;
+      }
+
+      function decodeTexMath(text) {
         return String(text || "")
-          .replace(/(^|[^\\])%.*$/gm, "$1")
+          .replace(/^\$\$|\$\$$/g, "")
+          .replace(/^\\\[|\\\]$/g, "")
+          .replace(/^\\\(|\\\)$/g, "")
+          .replace(/^\$|\$$/g, "")
+          .replace(/\\operatorname\{([^{}]*)\}/g, "$1")
+          .replace(/\\([%&_$#{}])/g, "$1")
+          .replace(/\\le\b/g, "<=")
+          .replace(/\\ge\b/g, ">=")
+          .replace(/\\lt\b/g, "<")
+          .replace(/\\gt\b/g, ">")
+          .replace(/\\to\b/g, "->")
+          .replace(/\s+/g, " ")
+          .trim();
+      }
+
+      function renderTexText(text) {
+        let html = "";
+        const source = String(text || "").replace(/~+/g, " ");
+        let index = 0;
+
+        while (index < source.length) {
+          if (source[index] !== "\\") {
+            const next = source.indexOf("\\", index);
+            const end = next === -1 ? source.length : next;
+            html += escapeHtml(source.slice(index, end));
+            index = end;
+            continue;
+          }
+
+          const escaped = texEscapedChar(source, index);
+          if (escaped) {
+            html += escapeHtml(escaped.char);
+            index = escaped.end;
+            continue;
+          }
+
+          const command = source.slice(index + 1).match(/^([a-zA-Z]+)\*?/);
+          if (!command) {
+            html += escapeHtml(source[index]);
+            index += 1;
+            continue;
+          }
+
+          const name = command[1];
+          let cursor = index + 1 + command[0].length;
+          const argument = readTexGroup(source, cursor);
+          if (!argument) {
+            html += escapeHtml(`\\${command[0]}`);
+            index = cursor;
+            continue;
+          }
+
+          if (["emph", "textit"].includes(name)) {
+            html += `<em>${renderTexInline(argument.value)}</em>`;
+          } else if (name === "textbf") {
+            html += `<strong>${renderTexInline(argument.value)}</strong>`;
+          } else if (name === "texttt") {
+            html += code(decodeTexText(argument.value));
+          } else if (name === "textrm") {
+            html += renderTexInline(argument.value);
+          } else if (["cite", "ref", "eqref"].includes(name)) {
+            html += escapeHtml(decodeTexText(argument.value));
+          } else if (name !== "label") {
+            html += renderTexInline(argument.value);
+          }
+          index = argument.end;
+        }
+
+        return html;
+      }
+
+      function texEscapedChar(text, index) {
+        const char = text[index + 1];
+        if (char && /[%&_$#{}]/.test(char)) {
+          return { char, end: index + 2 };
+        }
+        return null;
+      }
+
+      function readTexGroup(text, index) {
+        let cursor = index;
+        while (/\s/.test(text[cursor] || "")) cursor += 1;
+        if (text[cursor] !== "{") return null;
+
+        let depth = 0;
+        for (let i = cursor; i < text.length; i += 1) {
+          if (text[i] === "\\" && i + 1 < text.length) {
+            i += 1;
+            continue;
+          }
+          if (text[i] === "{") depth += 1;
+          if (text[i] === "}") depth -= 1;
+          if (depth === 0) {
+            return { value: text.slice(cursor + 1, i), end: i + 1 };
+          }
+        }
+        return null;
+      }
+
+      function decodeTexText(text) {
+        return String(text || "")
+          .replace(/\\([%&_$#{}])/g, "$1")
+          .replace(/~+/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+      }
+
+      function parseTexAbstract(text) {
+        return stripTexComments(text)
           .replace(/\\begin\{abstract\}|\\end\{abstract\}/g, "")
           .replace(/\\(?:emph|textit|textbf|textrm|texttt)\{([^{}]*)\}/g, "$1")
           .replace(/\\(?:cite|ref|eqref|label)\{[^{}]*\}/g, "")
@@ -1557,6 +1763,10 @@
           .replace(/[{}]/g, "")
           .replace(/\s+/g, " ")
           .trim() || "No abstract text could be parsed.";
+      }
+
+      function stripTexComments(text) {
+        return String(text || "").replace(/(^|[^\\])%.*$/gm, "$1");
       }
 
       function unique(items) {
