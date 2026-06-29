@@ -1315,7 +1315,7 @@
 
       function dependencyGraphNodeHtml(item, position) {
         const label = dependencyGraphNodeLabel(item);
-        const href = item.node ? nodeHref(item.node) : "";
+        const href = item.node ? nodeHref(item.node) : externalDeclarationUrl(item.name);
         const classes = [
           "graph-node",
           item.kind,
@@ -1327,7 +1327,7 @@
         ].filter(Boolean).join(" ");
         const style = `left: ${position.x}px; top: ${position.y}px;`;
         return href
-          ? `<a class="${escapeAttr(classes)}" style="${escapeAttr(style)}" href="${href}" title="${escapeAttr(label)}" aria-label="${escapeAttr(label)}"></a>`
+          ? `<a class="${escapeAttr(classes)}" style="${escapeAttr(style)}" href="${escapeAttr(href)}" ${item.node ? "" : `target="_blank" rel="noopener"`} title="${escapeAttr(label)}" aria-label="${escapeAttr(label)}"></a>`
           : `<div class="${escapeAttr(classes)}" style="${escapeAttr(style)}" title="${escapeAttr(label)}" aria-label="${escapeAttr(label)}"></div>`;
       }
 
@@ -1356,9 +1356,12 @@
 
       function dependencyLink(name) {
         const node = state.nodeByName.get(name);
-        return node
-          ? nodeLink(node)
-          : `<div class="node-link"><span class="node-name">${escapeHtml(name)}</span><span class="badge">external</span></div>`;
+        if (node) return nodeLink(node);
+        const href = externalDeclarationUrl(name);
+        const content = `<span class="node-name">${escapeHtml(name)}</span><span class="badge">external</span>`;
+        return href
+          ? `<a class="node-link" href="${escapeAttr(href)}" target="_blank" rel="noopener">${content}</a>`
+          : `<div class="node-link">${content}</div>`;
       }
 
       function submissionSummary(submission) {
@@ -1484,9 +1487,62 @@
 
       function inlineDependencyLink(name) {
         const node = state.nodeByName.get(name);
-        return node
-          ? `<a class="inline-node" href="${nodeHref(node)}">${escapeHtml(nodeDisplayName(node))}</a>`
+        if (node) {
+          return `<a class="inline-node" href="${nodeHref(node)}">${escapeHtml(nodeDisplayName(node))}</a>`;
+        }
+        const href = externalDeclarationUrl(name);
+        return href
+          ? `<a class="inline-node" href="${escapeAttr(href)}" target="_blank" rel="noopener">${escapeHtml(name)}</a>`
           : `<span class="inline-node">${escapeHtml(name)}</span>`;
+      }
+
+      function externalDeclarationUrl(name) {
+        const owner = inferDeclarationSubmission(name);
+        if (!owner) return "";
+        const sourcePath = declarationSourcePath(name, owner);
+        return sourcePath ? sourceFileUrl(owner, sourcePath) : sourceFolderUrl(owner, ".");
+      }
+
+      function inferDeclarationSubmission(name) {
+        const moduleName = declarationModuleName(name);
+        if (!moduleName) return null;
+
+        let best = null;
+        let bestLength = -1;
+        for (const candidate of state.nodes) {
+          const candidateModule = declarationModuleName(candidate.name);
+          if (!candidateModule) continue;
+          const common = commonNamespaceLength(moduleName, candidateModule);
+          if (common > bestLength) {
+            best = candidate.submission;
+            bestLength = common;
+          }
+        }
+        return bestLength > 0 ? best : null;
+      }
+
+      function declarationSourcePath(name, submission) {
+        const moduleName = declarationModuleName(name);
+        if (!moduleName) return "";
+        const root = moduleName.includes(".Proofs.") ? submission.proofRoot : submission.statementRoot;
+        const modulePath = `${moduleName.split(".").join("/")}.lean`;
+        return [root, modulePath].filter(Boolean).join("/");
+      }
+
+      function declarationModuleName(name) {
+        const parts = String(name || "").split(".").filter(Boolean);
+        if (parts.length < 2) return "";
+        return parts.slice(0, -1).join(".");
+      }
+
+      function commonNamespaceLength(left, right) {
+        const leftParts = String(left || "").split(".");
+        const rightParts = String(right || "").split(".");
+        let index = 0;
+        while (index < leftParts.length && index < rightParts.length && leftParts[index] === rightParts[index]) {
+          index += 1;
+        }
+        return index;
       }
 
       function sourceFolderLink(submission, path, label) {
