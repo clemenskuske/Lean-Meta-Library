@@ -378,6 +378,41 @@
         stroke-width: 1.5;
       }
 
+      .graph-edge.proves {
+        stroke: #1f7a4d;
+        stroke-width: 2;
+        stroke-dasharray: 4 3;
+      }
+
+      .graph-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 8px 10px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 0.78rem;
+        font-weight: 700;
+      }
+
+      .graph-legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .graph-legend-line {
+        display: inline-block;
+        width: 22px;
+        height: 0;
+        border-top: 2px solid #9aa39d;
+      }
+
+      .graph-legend-line.proves {
+        border-top-color: #1f7a4d;
+        border-top-style: dashed;
+      }
+
       .graph-node {
         position: absolute;
         z-index: 1;
@@ -400,6 +435,10 @@
       .graph-node.current {
         outline: 4px double currentColor;
         outline-offset: 3px;
+      }
+
+      .graph-node.proven-target {
+        box-shadow: 0 0 0 4px rgba(31, 122, 77, 0.16), 0 4px 10px rgba(32, 33, 36, 0.08);
       }
 
       .graph-node.external {
@@ -652,6 +691,8 @@
       }
 
       function nodeFromProof(submission, entry) {
+        const axiomDependencies = unique(entry.AxiomDependencies || []);
+        const proofObligations = unique(entry.ProofObligations || []);
         return {
           submission,
           name: entry.Name || "",
@@ -659,8 +700,10 @@
           kind: "proof",
           tex: entry.InlineTexReference || "",
           lean: entry.InlineLeanStatement || "",
-          dependencies: unique([entry.AxiomReference, ...(entry.ProofObligations || [])].filter(Boolean)),
+          dependencies: axiomDependencies.length ? axiomDependencies : proofObligations,
+          axiomDependencies,
           axiomReference: entry.AxiomReference || "",
+          proofObligations,
           raw: entry
         };
       }
@@ -926,6 +969,31 @@
 
       function renderNode(node) {
         const dependents = state.nodes.filter((candidate) => candidate.dependencies.includes(node.name));
+        const provingProofs = state.nodes.filter((candidate) => candidate.axiomReference === node.name);
+        const dependencyTitle = node.kind === "proof" ? "Axiom Dependencies" : "Dependencies";
+        const dependencyEmpty = node.kind === "proof" ? "No axiom dependencies recorded." : "No dependencies recorded.";
+        const provesSection = node.axiomReference ? `
+          <section class="panel">
+            <div class="panel-head">
+              <h3>Proves</h3>
+              <span class="badge">1</span>
+            </div>
+            <div class="panel-body">
+              ${dependencyLink(node.axiomReference)}
+            </div>
+          </section>
+        ` : "";
+        const provedBySection = provingProofs.length ? `
+          <section class="panel">
+            <div class="panel-head">
+              <h3>Proved By</h3>
+              <span class="badge">${provingProofs.length}</span>
+            </div>
+            <div class="panel-body">
+              ${provingProofs.map(nodeLink).join("")}
+            </div>
+          </section>
+        ` : "";
         els.content.innerHTML = `
           <div class="topline">
             <div>
@@ -957,13 +1025,16 @@
             </div>
           </section>
 
+          ${provesSection}
+          ${provedBySection}
+
           <section class="panel">
             <div class="panel-head">
-              <h3>Dependencies</h3>
+              <h3>${dependencyTitle}</h3>
               <span class="badge">${node.dependencies.length}</span>
             </div>
             <div class="panel-body">
-              ${node.dependencies.length ? node.dependencies.map((name) => dependencyLink(name)).join("") : `<div class="empty">No dependencies recorded.</div>`}
+              ${node.dependencies.length ? node.dependencies.map((name) => dependencyLink(name)).join("") : `<div class="empty">${dependencyEmpty}</div>`}
             </div>
           </section>
 
@@ -1007,9 +1078,14 @@
         const graph = dependencyGraphFor(root);
         const layout = dependencyGraphLayout(graph.nodes);
         const edgePaths = graph.edges
-          .map((edge) => dependencyGraphEdgePath(edge, layout.positions))
-          .filter(Boolean)
-          .map((path) => `<path class="graph-edge" d="${escapeAttr(path)}"></path>`)
+          .map((edge) => ({ edge, path: dependencyGraphEdgePath(edge, layout.positions) }))
+          .filter((item) => item.path)
+          .map(({ edge, path }) => {
+            const kind = edge.kind === "proves" ? "proves" : "depends";
+            const marker = edge.kind === "proves" ? "proves-arrow" : "dependency-arrow";
+            const label = edge.kind === "proves" ? "proves axiom" : "depends on";
+            return `<path class="graph-edge ${escapeAttr(kind)}" d="${escapeAttr(path)}" marker-end="url(#${marker})"><title>${escapeHtml(label)}</title></path>`;
+          })
           .join("");
         const graphNodes = graph.nodes.map((item) => dependencyGraphNodeHtml(item, layout.positions.get(item.name))).join("");
 
@@ -1021,10 +1097,17 @@
                   <marker id="dependency-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
                     <path d="M 0 0 L 8 4 L 0 8 z" fill="#9aa39d"></path>
                   </marker>
+                  <marker id="proves-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+                    <path d="M 0 0 L 8 4 L 0 8 z" fill="#1f7a4d"></path>
+                  </marker>
                 </defs>
-                <g marker-end="url(#dependency-arrow)">${edgePaths}</g>
+                ${edgePaths}
               </svg>
               ${graphNodes}
+            </div>
+            <div class="graph-legend" aria-hidden="true">
+              <span class="graph-legend-item"><span class="graph-legend-line"></span>depends on</span>
+              <span class="graph-legend-item"><span class="graph-legend-line proves"></span>proves axiom</span>
             </div>
           </div>
         `;
@@ -1035,7 +1118,7 @@
         const edgeSet = new Set();
         const edges = [];
 
-        function remember(name, depth) {
+        function remember(name, depth, options = {}) {
           const existing = nodes.get(name);
           const resolved = state.nodeByName.get(name);
           if (!existing) {
@@ -1044,11 +1127,20 @@
               depth,
               node: resolved,
               kind: resolved?.kind || "external",
-              current: name === root.name
+              current: name === root.name,
+              provenTarget: Boolean(options.provenTarget)
             });
             return;
           }
-          existing.depth = Math.max(existing.depth, depth);
+          existing.provenTarget = existing.provenTarget || Boolean(options.provenTarget);
+          existing.depth = existing.provenTarget ? Math.min(existing.depth, depth) : Math.max(existing.depth, depth);
+        }
+
+        function addEdge(from, to, kind = "depends") {
+          const edgeKey = `${kind}\n${from}\n${to}`;
+          if (edgeSet.has(edgeKey)) return;
+          edgeSet.add(edgeKey);
+          edges.push({ from, to, kind });
         }
 
         function visit(name, depth, path) {
@@ -1060,11 +1152,7 @@
           nextPath.add(name);
           for (const dependency of resolved.dependencies) {
             remember(dependency, depth + 1);
-            const edgeKey = `${name}\n${dependency}`;
-            if (!edgeSet.has(edgeKey)) {
-              edgeSet.add(edgeKey);
-              edges.push({ from: name, to: dependency });
-            }
+            addEdge(name, dependency);
             if (!nextPath.has(dependency)) {
               visit(dependency, depth + 1, nextPath);
             }
@@ -1072,6 +1160,10 @@
         }
 
         visit(root.name, 0, new Set());
+        if (root.kind === "proof" && root.axiomReference) {
+          remember(root.axiomReference, -1, { provenTarget: true });
+          addEdge(root.name, root.axiomReference, "proves");
+        }
         return {
           nodes: [...nodes.values()].sort((left, right) => left.depth - right.depth || left.name.localeCompare(right.name)),
           edges
@@ -1118,11 +1210,14 @@
         const to = positions.get(edge.to);
         if (!from || !to) return "";
         const startX = from.x + from.width / 2;
-        const startY = from.y + from.height;
+        const upward = to.y < from.y;
+        const startY = upward ? from.y : from.y + from.height;
         const endX = to.x + to.width / 2;
-        const endY = to.y;
+        const endY = upward ? to.y + to.height : to.y;
         const control = Math.max(10, Math.abs(endY - startY) / 2);
-        return `M ${startX} ${startY} C ${startX} ${startY + control}, ${endX} ${endY - control}, ${endX} ${endY}`;
+        const firstControlY = upward ? startY - control : startY + control;
+        const secondControlY = upward ? endY + control : endY - control;
+        return `M ${startX} ${startY} C ${startX} ${firstControlY}, ${endX} ${secondControlY}, ${endX} ${endY}`;
       }
 
       function dependencyGraphNodeHtml(item, position) {
@@ -1132,6 +1227,7 @@
           "graph-node",
           item.kind,
           item.current ? "current" : "",
+          item.provenTarget ? "proven-target" : "",
           item.node ? "" : "external"
         ].filter(Boolean).join(" ");
         const style = `left: ${position.x}px; top: ${position.y}px;`;
