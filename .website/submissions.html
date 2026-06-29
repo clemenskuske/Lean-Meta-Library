@@ -305,6 +305,11 @@
         overflow-wrap: anywhere;
       }
 
+      .inline-node.broken {
+        color: #b42318;
+        font-weight: 700;
+      }
+
       .abstract-text {
         color: var(--text);
         overflow-wrap: anywhere;
@@ -457,6 +462,12 @@
         color: #b42318;
       }
 
+      .graph-legend-dot.error {
+        color: #b42318;
+        outline: 3px double currentColor;
+        outline-offset: 2px;
+      }
+
       .graph-node {
         position: absolute;
         z-index: 1;
@@ -512,6 +523,24 @@
       .graph-node.assumption {
         color: #b42318;
         background: #b42318;
+      }
+
+      .graph-node.broken {
+        color: #b42318;
+        background: #b42318;
+        outline: 4px double currentColor;
+        outline-offset: 3px;
+      }
+
+      .node-link.broken {
+        border: 1px solid rgba(180, 35, 24, 0.35);
+        background: #fff4f2;
+      }
+
+      .badge.error {
+        border-color: rgba(180, 35, 24, 0.45);
+        color: #b42318;
+        background: #fff4f2;
       }
 
       code,
@@ -1166,6 +1195,7 @@
               <span class="graph-legend-item"><span class="graph-legend-line proves"></span>proves axiom</span>
               <span class="graph-legend-item"><span class="graph-legend-dot proven"></span>proven axiom</span>
               <span class="graph-legend-item"><span class="graph-legend-dot assumption"></span>assumption</span>
+              <span class="graph-legend-item"><span class="graph-legend-dot error"></span>stale LML dependency</span>
             </div>
           </div>
         `;
@@ -1182,6 +1212,7 @@
           const proofCount = proofsForAxiom(name).length;
           const proven = Boolean(options.proven || (resolved?.kind === "axiom" && proofCount));
           const assumption = Boolean(options.assumption || !resolved || (resolved?.kind === "axiom" && !proven));
+          const broken = Boolean(options.broken || (!resolved && inferredDeclarationSubmission(name)));
           if (!existing) {
             nodes.set(name, {
               name,
@@ -1191,13 +1222,15 @@
               current: name === root.name,
               provenTarget: Boolean(options.provenTarget || proven),
               proven,
-              assumption
+              assumption,
+              broken
             });
             return;
           }
           existing.provenTarget = existing.provenTarget || Boolean(options.provenTarget || proven);
           existing.proven = existing.proven || proven;
           existing.assumption = existing.assumption && assumption;
+          existing.broken = existing.broken || broken;
           existing.depth = Math.min(existing.depth, depth);
         }
 
@@ -1323,6 +1356,7 @@
           item.provenTarget ? "proven-target" : "",
           item.proven ? "proven" : "",
           item.assumption ? "assumption" : "",
+          item.broken ? "broken" : "",
           item.node ? "" : "external"
         ].filter(Boolean).join(" ");
         const style = `left: ${position.x}px; top: ${position.y}px;`;
@@ -1358,10 +1392,14 @@
         const node = state.nodeByName.get(name);
         if (node) return nodeLink(node);
         const href = externalDeclarationUrl(name);
-        const content = `<span class="node-name">${escapeHtml(name)}</span><span class="badge">external</span>`;
+        const broken = isBrokenLmlDependency(name);
+        const title = broken
+          ? `Stale LML dependency: ${name} is not present in the current registry`
+          : `External dependency: ${name}`;
+        const content = `<span class="node-name">${escapeHtml(name)}</span><span class="badge ${broken ? "error" : ""}">${broken ? "error" : "external"}</span>`;
         return href
-          ? `<a class="node-link" href="${escapeAttr(href)}" target="_blank" rel="noopener">${content}</a>`
-          : `<div class="node-link">${content}</div>`;
+          ? `<a class="node-link${broken ? " broken" : ""}" href="${escapeAttr(href)}" target="_blank" rel="noopener" title="${escapeAttr(title)}">${content}</a>`
+          : `<div class="node-link${broken ? " broken" : ""}" title="${escapeAttr(title)}">${content}</div>`;
       }
 
       function submissionSummary(submission) {
@@ -1491,19 +1529,25 @@
           return `<a class="inline-node" href="${nodeHref(node)}">${escapeHtml(nodeDisplayName(node))}</a>`;
         }
         const href = externalDeclarationUrl(name);
+        const broken = isBrokenLmlDependency(name);
+        const title = broken ? `Stale LML dependency: ${name} is not present in the current registry` : `External dependency: ${name}`;
         return href
-          ? `<a class="inline-node" href="${escapeAttr(href)}" target="_blank" rel="noopener">${escapeHtml(name)}</a>`
-          : `<span class="inline-node">${escapeHtml(name)}</span>`;
+          ? `<a class="inline-node${broken ? " broken" : ""}" href="${escapeAttr(href)}" target="_blank" rel="noopener" title="${escapeAttr(title)}">${escapeHtml(name)}</a>`
+          : `<span class="inline-node${broken ? " broken" : ""}" title="${escapeAttr(title)}">${escapeHtml(name)}</span>`;
       }
 
       function externalDeclarationUrl(name) {
-        const owner = inferDeclarationSubmission(name);
+        const owner = inferredDeclarationSubmission(name);
         if (!owner) return "";
         const sourcePath = declarationSourcePath(name, owner);
         return sourcePath ? sourceFileUrl(owner, sourcePath) : sourceFolderUrl(owner, ".");
       }
 
-      function inferDeclarationSubmission(name) {
+      function isBrokenLmlDependency(name) {
+        return Boolean(!state.nodeByName.has(name) && inferredDeclarationSubmission(name));
+      }
+
+      function inferredDeclarationSubmission(name) {
         const moduleName = declarationModuleName(name);
         if (!moduleName) return null;
 
