@@ -20,7 +20,7 @@ Use `main` for now, and push changes when a task is complete.
 - `.github`: GitHub workflows plus import policy and automation helper scripts
   under `.github/actions`.
 - `.cli-tooling`: npm CLI tooling.
-- `agent-info`: agent startup guide for working with submissions (`README.md`) and creationg submissions
+- `agent-info`: agent startup guide for working with submissions (`README.md`) and creating submissions
   (`submission-guide.md`), synced to users by `lml init`/`lml update`.
 - `development-info`: implementation reference and repository-content policy
   for maintainers (`submission-api-structure-agent-readme.md`,
@@ -109,3 +109,27 @@ runs the first-run checks, then adds or updates the matching row in
 issue. Progress comments are posted after each completed milestone so submitters
 can see which step worked and what runs next. Failed or cancelled import runs
 post an issue comment with the failed job and step.
+
+## Submission Quality Guardrails and Pitfalls
+
+When preparing or reviewing Lean Meta Library submissions, prioritize transparency over brevity.
+Definitions must be fully unpacked. Do not hide mathematical content behind opaque helper predicates,
+bundled abbreviations, or underspecified local definitions. Every submitted definition should spell out
+its substance directly, bottoming out in Mathlib definitions, Lean core definitions, or previously
+accepted/proven LML statements. If a helper definition is introduced, its own entry must be equally
+transparent and its role must be clear from the Lean statement and TeX.
+
+For intendedly self-contained submissions, never leave an axiom or declared assumption without a proof path.
+Every axiom-like dependency must be either:
+- already part of Lean/Mathlib/classical logic,
+- an already accepted proven LML statement, or
+- accompanied by a complete submitted proof in the same dependency chain.
+
+Do not submit an intendedly self-contained result if any part of the proof is merely asserted, skipped,
+hidden behind a contract, or represented by an unproved axiom. If a dependency is intentionally unproved,
+the submission must be marked and described as conditional.
+
+For every entry, check the associated TeX before submission. The TeX must clearly correspond to the Lean entry,
+explain the same mathematical statement, and make the match between the prose mathematics and the Lean
+hypotheses/conclusion transparent. The TeX should not describe a stronger, weaker, or merely related theorem;
+it should track the submitted Lean statement closely enough that a reviewer can compare them line by line.
