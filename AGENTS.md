@@ -139,3 +139,67 @@ For every entry, check the associated TeX before submission. The TeX must clearl
 explain the same mathematical statement, and make the match between the prose mathematics and the Lean
 hypotheses/conclusion transparent. The TeX should not describe a stronger, weaker, or merely related theorem;
 it should track the submitted Lean statement closely enough that a reviewer can compare them line by line.
+
+### Non-Negotiable Submission Integrity Rules
+
+  Do not let checker/update-policy compatibility override the mathematical quality
+  requirements of a submission.
+
+  Each manifest entry must independently satisfy the submission standard. It is not
+  acceptable to leave an opaque or defective existing statement in place and add a
+  new “expanded” or “transparent” theorem beside it. A parallel expanded statement
+  does not repair an opaque submitted definition or theorem.
+
+  Definitions submitted to LML must expose their mathematical content directly in
+  the submitted statement. Avoid aliases such as
+
+  ```lean
+  def GraphParam := SomeNamespace.GraphParam
+  noncomputable def treewidth := SomeNamespace.treewidth```
+
+  unless the referenced object is already an accepted Mathlib/Lean definition or
+  an accepted proven LML entry, and the submitted TeX makes that dependency
+  explicit. If the definition is part of the mathematical contribution, spell it
+  out directly, bottoming out in Mathlib/Lean primitives and previously accepted
+  LML statements.
+
+  If an existing imported submission contains opaque definitions or statements and
+  the LML update policy prevents changing them, stop before committing or
+  submitting. Do not work around the policy by preserving the defective entries and
+  adding new entries. Instead, report the conflict and choose an explicit repair
+  path, such as:
+
+  - create a fresh submission with new transparent names,
+  - ask maintainers for a replacement/deprecation path, or
+  - mark the result as conditional/legacy if it cannot meet the self-contained
+    standard.
+
+  Before committing or submitting any intendedly self-contained proof package,
+  perform this audit:
+
+  1. Read every StatementSubmissions entry in the manifest.
+  2. For each entry, inspect the corresponding Lean declaration.
+  3. Confirm that every submitted definition is transparent and unpacked.
+  4. Confirm that every submitted axiom has a matching proof entry unless it is
+     intentionally conditional.
+
+  5. Confirm that no proof depends on an unproved contract axiom or placeholder.
+  6. Read the TeX for every entry and confirm it line-by-line matches the Lean
+     statement.
+
+  7. If any existing statement fails this audit, do not submit an additive
+     workaround.
+
+  Treat the following as submission-blocking anti-patterns:
+
+  - keeping opaque compatibility definitions only to satisfy update policy,
+  - adding an expanded theorem while the manifest still includes opaque old
+    entries,
+
+  - claiming a submission is self-contained because the main theorem has a proof
+    while auxiliary submitted definitions still hide their content,
+
+  - having TeX not closely match the entry at hand 
+
+  - letting a successful local lml test override the transparency/self-contained
+    requirements.
