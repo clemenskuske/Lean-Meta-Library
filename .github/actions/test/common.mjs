@@ -8,6 +8,9 @@ import lmlEnv from "../../../lml-env.json" with { type: "json" };
 export { parseManifestYaml } from "./general/manifest-context.mjs";
 
 export const maxBuildOutputBytes = Number(lmlEnv.checks?.maxBuildOutputBytes ?? 1024 * 1024 * 20);
+export const lakeCommandTimeoutMs = Number(
+  process.env.LML_LAKE_COMMAND_TIMEOUT_MS ?? lmlEnv.checks?.lakeCommandTimeoutMs ?? 45 * 60 * 1000
+);
 
 export function readIfExists(path) {
   return existsSync(path) ? readFileSync(path, "utf8") : null;

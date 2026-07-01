@@ -11,6 +11,10 @@ schema disagree, follow the schema.
 
 - The manifest file is selected by the import command or workflow. If no path is
   provided, the default is `manifest.yaml`.
+- The import workflow runs for GitHub issues labeled `submission`. Issues
+  opened directly by public submitters can receive that label automatically
+  when they contain the Lean Meta Library submission marker and valid source
+  repository fields.
 - The submitted source repository must be public. Private-repository checkout is
   currently unsupported by the import workflow.
 - The manifest must use the exact field names and shapes from

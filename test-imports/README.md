@@ -42,6 +42,16 @@ downloading Mathlib. When running a checker by hand you may need to do the same.
 - **`duplicate-slug-package`** — the manifest's `SubmissionSlug` matches an
   existing slug in the fixture's local `submissions.jsonl`, so
   `general/slug-unique.mjs` must reject it.
+- **`update-unknown-slug-package`** — the manifest has a `SubmissionSlug` that
+  does not exist in the fixture's local `submissions.jsonl`, so
+  `general/submission-update-policy.mjs` must reject it as a non-update.
+- **`update-missing-statement-package`** — the matching existing submission has
+  a public statement that is absent from the updated manifest, so
+  `general/submission-update-policy.mjs` must reject it.
+- **`update-lean-statement-changed-package`** — the matching existing
+  submission has a stored `InlineLeanStatement` for a public statement, and the
+  updated manifest changes that Lean statement, so
+  `general/submission-update-policy.mjs` must reject it.
 
 ### Build and cache preparation
 
@@ -119,12 +129,21 @@ downloading Mathlib. When running a checker by hand you may need to do the same.
 - **`unused-sorry-proof-package`** — a non-manifest proof module contains a
   theorem proved with `sorry`, but the submitted proof target does not depend on
   it, so `final-proof-build.mjs` must accept it.
+- **`update-compatible-package`** — an existing submission is updated while
+  preserving every stored public statement name and Lean statement, so
+  `general/submission-update-policy.mjs` must accept it.
+- **`duplicate-slug-update-package`** — a manifest reuses an existing
+  `SubmissionSlug` with the same `submissionIssueNumber`, so
+  `general/slug-unique.mjs` must accept it as an update to the same submission.
 
 ### Proof checks
 
 - **`mismatched-proof-type-package`** — the proof theorem has the expected name
   but a Lean type that differs from the statement, so
   `proofs/type-matches-statements.mjs` must reject the mismatch.
+- **`non-prop-proof-target-package`** — the proof declaration has the same
+  non-proposition type as the referenced statement axiom, so
+  `proofs/type-matches-statements.mjs` must reject the proof target.
 - **`sorry-proof-package`** — the submitted proof uses `sorry`, so
   `proofs/no-forbidden-axioms.mjs` must reject the resulting `sorryAx`
   dependency.

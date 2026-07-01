@@ -28,17 +28,21 @@ const errors = [];
 const warnings = [];
 const submissionRecords = loadSubmissionRecords(context.packageRoot);
 const tmpRoot = mkdtempSync(join(tmpdir(), "lml-final-proof-build-"));
-const isolatedPackageRoot = join(tmpRoot, "package");
+const isolatedSubmissionRoot = join(tmpRoot, "submission");
+const isolatedPackageRoot = context.manifest.proofRoot
+  ? join(isolatedSubmissionRoot, context.manifest.proofRoot)
+  : isolatedSubmissionRoot;
 const isolatedStatementRoot = context.manifest.statementRoot
-  ? join(isolatedPackageRoot, context.manifest.statementRoot)
+  ? join(isolatedSubmissionRoot, context.manifest.statementRoot)
   : null;
 const keepTemp = process.env.LML_KEEP_FINAL_PROOF_BUILD_TMP === "1";
 const configuredAllowedMathlibAxioms = (lmlEnv.checks?.allowedMathlibAxioms ?? []).map(String);
 const allowedMathlibAxioms = configuredAllowedMathlibAxioms.filter(isLeanName);
 const invalidAllowedMathlibAxioms = configuredAllowedMathlibAxioms.filter((name) => !isLeanName(name));
+let cachedSubmissionLeanSources = null;
 
 try {
-  copyPackage(context.packageRoot, isolatedPackageRoot);
+  copyPackage(context.packageRoot, isolatedSubmissionRoot);
 
   if (spawnSync("lake", ["--version"], { encoding: "utf8" }).error) {
     errors.push("lake executable not found on PATH");
@@ -58,6 +62,7 @@ try {
         fetchBuildCache();
         runLake(["build"], "lake build");
         buildImportedProofDependencies(compositionPlan.requiredProofPackages);
+        buildFinalProofCheckerDependencies();
         if (errors.length === 0) {
           checkCompiledAxioms(compositionPlan);
         }
@@ -164,7 +169,7 @@ function checkCompiledAxioms(compositionPlan) {
     return;
   }
 
-  const modules = builtModuleNames();
+  const modules = builtModuleNames().filter(moduleSafeForProofComposition);
   const composedModuleName = "LmlComposed";
   const composedSource = join(isolatedPackageRoot, `${composedModuleName}.lean`);
   writeFileSync(
@@ -532,6 +537,19 @@ function buildImportedProofDependencies(requiredProofPackages) {
   runLake(["build", ...requiredProofPackages.map((pkg) => pkg.name)], "lake build imported proof dependencies");
 }
 
+function buildFinalProofCheckerDependencies() {
+  if (errors.length > 0) {
+    return;
+  }
+  const targets = ["Cli"].filter((name) =>
+    existsSync(join(isolatedPackageRoot, ".lake", "packages", name))
+  );
+  if (targets.length === 0) {
+    return;
+  }
+  runLake(["build", ...targets], `lake build final proof checker dependencies (${targets.join(", ")})`);
+}
+
 function requireBlock(pkg) {
   const submission = pkg.submission;
   const ref = submission.sourceCommit || submission.sourceBranch;
@@ -647,6 +665,38 @@ function builtModuleNames() {
     }
   }
   return [...names].sort();
+}
+
+function moduleSafeForProofComposition(moduleName) {
+  return !knownExecutableModuleNames().has(moduleName) && !moduleDeclaresTopLevelMain(moduleName);
+}
+
+function knownExecutableModuleNames() {
+  return new Set(["MainGraph", "runLinter"]);
+}
+
+function moduleDeclaresTopLevelMain(moduleName) {
+  for (const source of moduleSourceFiles(moduleName)) {
+    if (/^(?:unsafe\s+)?(?:partial\s+)?def\s+main\b/m.test(readFileSync(source, "utf8"))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function moduleSourceFiles(moduleName) {
+  const modulePath = moduleName.split(".").join("/");
+  return submissionLeanSources().filter((file) => {
+    const sourcePath = relativePath(isolatedSubmissionRoot, file).replace(/\.lean$/i, "");
+    return sourcePath === modulePath || sourcePath.endsWith(`/${modulePath}`);
+  });
+}
+
+function submissionLeanSources() {
+  cachedSubmissionLeanSources ??= walkFiles(isolatedSubmissionRoot, {
+    ignoreDirs: new Set([".git", "build", "node_modules"])
+  }).filter((file) => file.endsWith(".lean"));
+  return cachedSubmissionLeanSources;
 }
 
 function lakeEmittedModuleNames() {

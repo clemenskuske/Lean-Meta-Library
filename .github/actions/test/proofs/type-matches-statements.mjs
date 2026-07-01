@@ -219,6 +219,8 @@ function proofTypeInspector({ modules, entries }) {
     .map((entry) => `#eval show MetaM Unit from do
   let statementInfo <- getConstInfo \`${entry.axiom}
   let proofInfo <- getConstInfo \`${entry.proof}
+  unless <- isProp statementInfo.type do
+    throwError "proof target is not a proposition for ${entry.axiom}"
   unless <- isDefEq statementInfo.type proofInfo.type do
     throwError "proof theorem type does not match statement type for ${entry.axiom}"`)
     .join("\n\n");

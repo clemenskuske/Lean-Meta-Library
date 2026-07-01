@@ -305,9 +305,42 @@
         overflow-wrap: anywhere;
       }
 
+      .inline-node.broken {
+        color: #b42318;
+        font-weight: 700;
+      }
+
       .abstract-text {
         color: var(--text);
         overflow-wrap: anywhere;
+      }
+
+      .tex-rendered {
+        display: grid;
+        gap: 10px;
+        color: var(--text);
+        overflow-wrap: anywhere;
+      }
+
+      .tex-rendered h4 {
+        margin: 0;
+        font-size: 0.95rem;
+      }
+
+      .tex-rendered p {
+        margin: 0;
+      }
+
+      .tex-math {
+        font-family: ui-serif, Georgia, "Times New Roman", serif;
+        font-style: italic;
+      }
+
+      .tex-display-math {
+        display: block;
+        margin: 6px 0;
+        overflow-x: auto;
+        text-align: center;
       }
 
       .fact {
@@ -378,6 +411,63 @@
         stroke-width: 1.5;
       }
 
+      .graph-edge.proves {
+        stroke: #1f7a4d;
+        stroke-width: 2;
+        stroke-dasharray: 4 3;
+      }
+
+      .graph-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 8px 10px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 0.78rem;
+        font-weight: 700;
+      }
+
+      .graph-legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .graph-legend-line {
+        display: inline-block;
+        width: 22px;
+        height: 0;
+        border-top: 2px solid #9aa39d;
+      }
+
+      .graph-legend-line.proves {
+        border-top-color: #1f7a4d;
+        border-top-style: dashed;
+      }
+
+      .graph-legend-dot {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+
+      .graph-legend-dot.proven {
+        color: #1f7a4d;
+      }
+
+      .graph-legend-dot.assumption {
+        color: #b42318;
+      }
+
+      .graph-legend-dot.error {
+        color: #b42318;
+        outline: 3px double currentColor;
+        outline-offset: 2px;
+      }
+
       .graph-node {
         position: absolute;
         z-index: 1;
@@ -402,6 +492,10 @@
         outline-offset: 3px;
       }
 
+      .graph-node.proven-target {
+        box-shadow: 0 0 0 4px rgba(31, 122, 77, 0.16), 0 4px 10px rgba(32, 33, 36, 0.08);
+      }
+
       .graph-node.external {
         border-style: dashed;
       }
@@ -419,6 +513,34 @@
       .graph-node.axiom {
         color: #b42318;
         background: #b42318;
+      }
+
+      .graph-node.axiom.proven {
+        color: #1f7a4d;
+        background: #1f7a4d;
+      }
+
+      .graph-node.assumption {
+        color: #b42318;
+        background: #b42318;
+      }
+
+      .graph-node.broken {
+        color: #b42318;
+        background: #b42318;
+        outline: 4px double currentColor;
+        outline-offset: 3px;
+      }
+
+      .node-link.broken {
+        border: 1px solid rgba(180, 35, 24, 0.35);
+        background: #fff4f2;
+      }
+
+      .badge.error {
+        border-color: rgba(180, 35, 24, 0.45);
+        color: #b42318;
+        background: #fff4f2;
       }
 
       code,
@@ -652,6 +774,8 @@
       }
 
       function nodeFromProof(submission, entry) {
+        const axiomDependencies = unique(entry.AxiomDependencies || []);
+        const proofObligations = unique(entry.ProofObligations || []);
         return {
           submission,
           name: entry.Name || "",
@@ -659,8 +783,10 @@
           kind: "proof",
           tex: entry.InlineTexReference || "",
           lean: entry.InlineLeanStatement || "",
-          dependencies: unique([entry.AxiomReference, ...(entry.ProofObligations || [])].filter(Boolean)),
+          dependencies: axiomDependencies.length ? axiomDependencies : proofObligations,
+          axiomDependencies,
           axiomReference: entry.AxiomReference || "",
+          proofObligations,
           raw: entry
         };
       }
@@ -926,14 +1052,40 @@
 
       function renderNode(node) {
         const dependents = state.nodes.filter((candidate) => candidate.dependencies.includes(node.name));
+        const provingProofs = proofsForAxiom(node.name);
+        const dependencyTitle = node.kind === "proof" ? "Axiom Dependencies" : "Dependencies";
+        const dependencyEmpty = node.kind === "proof" ? "No axiom dependencies recorded." : "No dependencies recorded.";
+        const provesSection = node.axiomReference ? `
+          <section class="panel">
+            <div class="panel-head">
+              <h3>Proves</h3>
+              <span class="badge">1</span>
+            </div>
+            <div class="panel-body">
+              ${dependencyLink(node.axiomReference)}
+            </div>
+          </section>
+        ` : "";
+        const provedBySection = provingProofs.length ? `
+          <section class="panel">
+            <div class="panel-head">
+              <h3>Proved By</h3>
+              <span class="badge">${provingProofs.length}</span>
+            </div>
+            <div class="panel-body">
+              ${provingProofs.map(nodeLink).join("")}
+            </div>
+          </section>
+        ` : "";
         els.content.innerHTML = `
           <div class="topline">
             <div>
               <h2>${escapeHtml(nodeDisplayName(node))}</h2>
               <div class="meta-line">
                 <span>${escapeHtml(node.submission.title)}</span>
-                <span>${escapeHtml(node.kind)}</span>
+                <span>${escapeHtml(nodeKindLabel(node))}</span>
                 ${node.axiomReference ? `<span>proves ${escapeHtml(node.axiomReference)}</span>` : ""}
+                ${node.kind === "axiom" && provingProofs.length ? `<span>proved by ${provingProofs.length} proof${provingProofs.length === 1 ? "" : "s"}</span>` : ""}
               </div>
             </div>
             <div class="links-row">
@@ -944,7 +1096,7 @@
           <section class="panel">
             <div class="panel-head">
               <h3>Declaration</h3>
-              <span class="badge ${escapeAttr(node.kind)}">${escapeHtml(node.kind)}</span>
+              <span class="badge ${escapeAttr(node.kind)}">${escapeHtml(nodeKindLabel(node))}</span>
             </div>
             <div class="panel-body">
               ${infoTable([
@@ -952,18 +1104,22 @@
                 ["Name", code(node.name || "Not recorded")],
                 ["Type", code(node.raw.Type || node.kind)],
                 ["Submission", internalLink(submissionHref(node.submission), node.submission.title)],
-                ["Axiom reference", node.axiomReference ? dependencyLink(node.axiomReference) : code("None")]
+                ...(node.kind === "proof" ? [["Axiom reference", node.axiomReference ? dependencyLink(node.axiomReference) : code("None")]] : []),
+                ...(node.kind !== "proof" ? [["Presented proofs", provingProofs.length ? provingProofs.map(nodeLink).join("") : code("None")]] : [])
               ])}
             </div>
           </section>
 
+          ${provesSection}
+          ${provedBySection}
+
           <section class="panel">
             <div class="panel-head">
-              <h3>Dependencies</h3>
+              <h3>${dependencyTitle}</h3>
               <span class="badge">${node.dependencies.length}</span>
             </div>
             <div class="panel-body">
-              ${node.dependencies.length ? node.dependencies.map((name) => dependencyLink(name)).join("") : `<div class="empty">No dependencies recorded.</div>`}
+              ${node.dependencies.length ? node.dependencies.map((name) => dependencyLink(name)).join("") : `<div class="empty">${dependencyEmpty}</div>`}
             </div>
           </section>
 
@@ -991,7 +1147,7 @@
             <div class="panel-head">
               <h3>TeX</h3>
             </div>
-            <div class="panel-body">${node.tex ? `<pre>${escapeHtml(node.tex)}</pre>` : `<div class="empty">No InlineTexReference recorded.</div>`}</div>
+            <div class="panel-body">${node.tex ? renderTexReference(node.tex) : `<div class="empty">No InlineTexReference recorded.</div>`}</div>
           </section>
 
           <section class="panel">
@@ -1007,9 +1163,14 @@
         const graph = dependencyGraphFor(root);
         const layout = dependencyGraphLayout(graph.nodes);
         const edgePaths = graph.edges
-          .map((edge) => dependencyGraphEdgePath(edge, layout.positions))
-          .filter(Boolean)
-          .map((path) => `<path class="graph-edge" d="${escapeAttr(path)}"></path>`)
+          .map((edge) => ({ edge, path: dependencyGraphEdgePath(edge, layout.positions) }))
+          .filter((item) => item.path)
+          .map(({ edge, path }) => {
+            const kind = edge.kind === "proves" ? "proves" : "depends";
+            const marker = edge.kind === "proves" ? "proves-arrow" : "dependency-arrow";
+            const label = edge.kind === "proves" ? "proves axiom" : "depends on";
+            return `<path class="graph-edge ${escapeAttr(kind)}" d="${escapeAttr(path)}" marker-end="url(#${marker})"><title>${escapeHtml(label)}</title></path>`;
+          })
           .join("");
         const graphNodes = graph.nodes.map((item) => dependencyGraphNodeHtml(item, layout.positions.get(item.name))).join("");
 
@@ -1021,10 +1182,20 @@
                   <marker id="dependency-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
                     <path d="M 0 0 L 8 4 L 0 8 z" fill="#9aa39d"></path>
                   </marker>
+                  <marker id="proves-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth">
+                    <path d="M 0 0 L 8 4 L 0 8 z" fill="#1f7a4d"></path>
+                  </marker>
                 </defs>
-                <g marker-end="url(#dependency-arrow)">${edgePaths}</g>
+                ${edgePaths}
               </svg>
               ${graphNodes}
+            </div>
+            <div class="graph-legend" aria-hidden="true">
+              <span class="graph-legend-item"><span class="graph-legend-line"></span>depends on</span>
+              <span class="graph-legend-item"><span class="graph-legend-line proves"></span>proves axiom</span>
+              <span class="graph-legend-item"><span class="graph-legend-dot proven"></span>proven axiom</span>
+              <span class="graph-legend-item"><span class="graph-legend-dot assumption"></span>assumption</span>
+              <span class="graph-legend-item"><span class="graph-legend-dot error"></span>stale LML dependency</span>
             </div>
           </div>
         `;
@@ -1035,23 +1206,42 @@
         const edgeSet = new Set();
         const edges = [];
 
-        function remember(name, depth) {
+        function remember(name, depth, options = {}) {
           const existing = nodes.get(name);
           const resolved = state.nodeByName.get(name);
+          const proofCount = proofsForAxiom(name).length;
+          const proven = Boolean(options.proven || (resolved?.kind === "axiom" && proofCount));
+          const assumption = Boolean(options.assumption || !resolved || (resolved?.kind === "axiom" && !proven));
+          const broken = Boolean(options.broken || (!resolved && inferredDeclarationSubmission(name)));
           if (!existing) {
             nodes.set(name, {
               name,
               depth,
               node: resolved,
               kind: resolved?.kind || "external",
-              current: name === root.name
+              current: name === root.name,
+              provenTarget: Boolean(options.provenTarget || proven),
+              proven,
+              assumption,
+              broken
             });
             return;
           }
-          existing.depth = Math.max(existing.depth, depth);
+          existing.provenTarget = existing.provenTarget || Boolean(options.provenTarget || proven);
+          existing.proven = existing.proven || proven;
+          existing.assumption = existing.assumption && assumption;
+          existing.broken = existing.broken || broken;
+          existing.depth = Math.min(existing.depth, depth);
         }
 
-        function visit(name, depth, path) {
+        function addEdge(from, to, kind = "depends") {
+          const edgeKey = `${kind}\n${from}\n${to}`;
+          if (edgeSet.has(edgeKey)) return;
+          edgeSet.add(edgeKey);
+          edges.push({ from, to, kind });
+        }
+
+        function expandDeclaration(name, depth, path) {
           remember(name, depth);
           const resolved = state.nodeByName.get(name);
           if (!resolved || path.has(name)) return;
@@ -1060,18 +1250,46 @@
           nextPath.add(name);
           for (const dependency of resolved.dependencies) {
             remember(dependency, depth + 1);
-            const edgeKey = `${name}\n${dependency}`;
-            if (!edgeSet.has(edgeKey)) {
-              edgeSet.add(edgeKey);
-              edges.push({ from: name, to: dependency });
-            }
+            addEdge(name, dependency);
             if (!nextPath.has(dependency)) {
-              visit(dependency, depth + 1, nextPath);
+              expandDeclaration(dependency, depth + 1, nextPath);
+            }
+          }
+
+          if (resolved.kind === "proof") return;
+          for (const proof of proofsForAxiom(name)) {
+            expandProof(proof, depth + 1, nextPath);
+          }
+        }
+
+        function expandProof(proof, depth, path) {
+          remember(proof.name, depth);
+          if (path.has(proof.name)) return;
+
+          const nextPath = new Set(path);
+          nextPath.add(proof.name);
+          if (proof.axiomReference) {
+            remember(proof.axiomReference, Math.max(0, depth - 1), { proven: true, provenTarget: true });
+            addEdge(proof.name, proof.axiomReference, "proves");
+          }
+
+          for (const dependency of proof.dependencies) {
+            remember(dependency, depth + 1);
+            addEdge(proof.name, dependency);
+            if (!nextPath.has(dependency)) {
+              expandDeclaration(dependency, depth + 1, nextPath);
             }
           }
         }
 
-        visit(root.name, 0, new Set());
+        if (root.kind === "proof" && root.axiomReference) {
+          expandDeclaration(root.axiomReference, 0, new Set());
+        } else if (root.kind === "proof") {
+          expandProof(root, 0, new Set());
+        } else {
+          expandDeclaration(root.name, 0, new Set());
+        }
+
         return {
           nodes: [...nodes.values()].sort((left, right) => left.depth - right.depth || left.name.localeCompare(right.name)),
           edges
@@ -1118,25 +1336,32 @@
         const to = positions.get(edge.to);
         if (!from || !to) return "";
         const startX = from.x + from.width / 2;
-        const startY = from.y + from.height;
+        const upward = to.y < from.y;
+        const startY = upward ? from.y : from.y + from.height;
         const endX = to.x + to.width / 2;
-        const endY = to.y;
+        const endY = upward ? to.y + to.height : to.y;
         const control = Math.max(10, Math.abs(endY - startY) / 2);
-        return `M ${startX} ${startY} C ${startX} ${startY + control}, ${endX} ${endY - control}, ${endX} ${endY}`;
+        const firstControlY = upward ? startY - control : startY + control;
+        const secondControlY = upward ? endY + control : endY - control;
+        return `M ${startX} ${startY} C ${startX} ${firstControlY}, ${endX} ${secondControlY}, ${endX} ${endY}`;
       }
 
       function dependencyGraphNodeHtml(item, position) {
         const label = dependencyGraphNodeLabel(item);
-        const href = item.node ? nodeHref(item.node) : "";
+        const href = item.node ? nodeHref(item.node) : externalDeclarationUrl(item.name);
         const classes = [
           "graph-node",
           item.kind,
           item.current ? "current" : "",
+          item.provenTarget ? "proven-target" : "",
+          item.proven ? "proven" : "",
+          item.assumption ? "assumption" : "",
+          item.broken ? "broken" : "",
           item.node ? "" : "external"
         ].filter(Boolean).join(" ");
         const style = `left: ${position.x}px; top: ${position.y}px;`;
         return href
-          ? `<a class="${escapeAttr(classes)}" style="${escapeAttr(style)}" href="${href}" title="${escapeAttr(label)}" aria-label="${escapeAttr(label)}"></a>`
+          ? `<a class="${escapeAttr(classes)}" style="${escapeAttr(style)}" href="${escapeAttr(href)}" ${item.node ? "" : `target="_blank" rel="noopener"`} title="${escapeAttr(label)}" aria-label="${escapeAttr(label)}"></a>`
           : `<div class="${escapeAttr(classes)}" style="${escapeAttr(style)}" title="${escapeAttr(label)}" aria-label="${escapeAttr(label)}"></div>`;
       }
 
@@ -1158,16 +1383,23 @@
         return `
           <a class="node-link${state.active === node.name ? " active" : ""}" href="${nodeHref(node)}">
             <span class="node-name">${escapeHtml(nodeDisplayName(node))}</span>
-            <span class="badge ${escapeAttr(node.kind)}">${escapeHtml(node.kind)}</span>
+            <span class="badge ${escapeAttr(node.kind)}">${escapeHtml(nodeKindLabel(node))}</span>
           </a>
         `;
       }
 
       function dependencyLink(name) {
         const node = state.nodeByName.get(name);
-        return node
-          ? nodeLink(node)
-          : `<div class="node-link"><span class="node-name">${escapeHtml(name)}</span><span class="badge">external</span></div>`;
+        if (node) return nodeLink(node);
+        const href = externalDeclarationUrl(name);
+        const broken = isBrokenLmlDependency(name);
+        const title = broken
+          ? `Stale LML dependency: ${name} is not present in the current registry`
+          : `External dependency: ${name}`;
+        const content = `<span class="node-name">${escapeHtml(name)}</span><span class="badge ${broken ? "error" : ""}">${broken ? "error" : "external"}</span>`;
+        return href
+          ? `<a class="node-link${broken ? " broken" : ""}" href="${escapeAttr(href)}" target="_blank" rel="noopener" title="${escapeAttr(title)}">${content}</a>`
+          : `<div class="node-link${broken ? " broken" : ""}" title="${escapeAttr(title)}">${content}</div>`;
       }
 
       function submissionSummary(submission) {
@@ -1188,7 +1420,7 @@
           <div class="record-row">
             <a class="record-title" href="${nodeHref(node)}">${escapeHtml(nodeDisplayName(node))}</a>
             <div class="record-meta">
-              <span class="badge ${escapeAttr(node.kind)}">${escapeHtml(node.kind)}</span>
+              <span class="badge ${escapeAttr(node.kind)}">${escapeHtml(nodeKindLabel(node))}</span>
               ${internalLink(submissionHref(node.submission), node.submission.title)}
               ${node.axiomReference ? `<span>proves ${inlineDependencyLink(node.axiomReference)}</span>` : ""}
             </div>
@@ -1229,6 +1461,18 @@
 
       function dependencyCount() {
         return state.nodes.reduce((sum, node) => sum + node.dependencies.length, 0);
+      }
+
+      function proofsForAxiom(name) {
+        if (!name) return [];
+        return state.nodes.filter((node) => node.kind === "proof" && node.axiomReference === name);
+      }
+
+      function nodeKindLabel(node) {
+        if (node?.kind === "axiom" && proofsForAxiom(node.name).length) {
+          return "proven axiom";
+        }
+        return node?.kind || "node";
       }
 
       function statementNodes() {
@@ -1281,9 +1525,68 @@
 
       function inlineDependencyLink(name) {
         const node = state.nodeByName.get(name);
-        return node
-          ? `<a class="inline-node" href="${nodeHref(node)}">${escapeHtml(nodeDisplayName(node))}</a>`
-          : `<span class="inline-node">${escapeHtml(name)}</span>`;
+        if (node) {
+          return `<a class="inline-node" href="${nodeHref(node)}">${escapeHtml(nodeDisplayName(node))}</a>`;
+        }
+        const href = externalDeclarationUrl(name);
+        const broken = isBrokenLmlDependency(name);
+        const title = broken ? `Stale LML dependency: ${name} is not present in the current registry` : `External dependency: ${name}`;
+        return href
+          ? `<a class="inline-node${broken ? " broken" : ""}" href="${escapeAttr(href)}" target="_blank" rel="noopener" title="${escapeAttr(title)}">${escapeHtml(name)}</a>`
+          : `<span class="inline-node${broken ? " broken" : ""}" title="${escapeAttr(title)}">${escapeHtml(name)}</span>`;
+      }
+
+      function externalDeclarationUrl(name) {
+        const owner = inferredDeclarationSubmission(name);
+        if (!owner) return "";
+        const sourcePath = declarationSourcePath(name, owner);
+        return sourcePath ? sourceFileUrl(owner, sourcePath) : sourceFolderUrl(owner, ".");
+      }
+
+      function isBrokenLmlDependency(name) {
+        return Boolean(!state.nodeByName.has(name) && inferredDeclarationSubmission(name));
+      }
+
+      function inferredDeclarationSubmission(name) {
+        const moduleName = declarationModuleName(name);
+        if (!moduleName) return null;
+
+        let best = null;
+        let bestLength = -1;
+        for (const candidate of state.nodes) {
+          const candidateModule = declarationModuleName(candidate.name);
+          if (!candidateModule) continue;
+          const common = commonNamespaceLength(moduleName, candidateModule);
+          if (common > bestLength) {
+            best = candidate.submission;
+            bestLength = common;
+          }
+        }
+        return bestLength > 0 ? best : null;
+      }
+
+      function declarationSourcePath(name, submission) {
+        const moduleName = declarationModuleName(name);
+        if (!moduleName) return "";
+        const root = moduleName.includes(".Proofs.") ? submission.proofRoot : submission.statementRoot;
+        const modulePath = `${moduleName.split(".").join("/")}.lean`;
+        return [root, modulePath].filter(Boolean).join("/");
+      }
+
+      function declarationModuleName(name) {
+        const parts = String(name || "").split(".").filter(Boolean);
+        if (parts.length < 2) return "";
+        return parts.slice(0, -1).join(".");
+      }
+
+      function commonNamespaceLength(left, right) {
+        const leftParts = String(left || "").split(".");
+        const rightParts = String(right || "").split(".");
+        let index = 0;
+        while (index < leftParts.length && index < rightParts.length && leftParts[index] === rightParts[index]) {
+          index += 1;
+        }
+        return index;
       }
 
       function sourceFolderLink(submission, path, label) {
@@ -1424,9 +1727,187 @@
           });
       }
 
-      function parseTexAbstract(text) {
+      function renderTexReference(text) {
+        const blocks = texBlocks(text);
+        if (blocks.length === 0) {
+          return `<div class="empty">No TeX text could be rendered.</div>`;
+        }
+        return `<div class="tex-rendered">${blocks.join("")}</div>`;
+      }
+
+      function texBlocks(text) {
+        const blocks = [];
+        const source = stripTexComments(text)
+          .replace(/\\begin\{abstract\}|\\end\{abstract\}/g, "")
+          .replace(/\r\n?/g, "\n")
+          .trim();
+        const paragraphPattern = /\\paragraph\{([^{}]*)\}/g;
+        let cursor = 0;
+        let match;
+
+        while ((match = paragraphPattern.exec(source))) {
+          appendTexParagraphs(blocks, source.slice(cursor, match.index));
+          blocks.push(`<h4>${renderTexInline(match[1])}</h4>`);
+          cursor = paragraphPattern.lastIndex;
+        }
+        appendTexParagraphs(blocks, source.slice(cursor));
+        return blocks;
+      }
+
+      function appendTexParagraphs(blocks, text) {
+        for (const paragraph of String(text || "").split(/\n\s*\n/)) {
+          const trimmed = paragraph.replace(/\s*\n\s*/g, " ").replace(/\s+/g, " ").trim();
+          if (trimmed) {
+            blocks.push(`<p>${renderTexInline(trimmed)}</p>`);
+          }
+        }
+      }
+
+      function renderTexInline(text) {
+        return texSegments(text).map((segment) => {
+          if (segment.math) return renderTexMath(segment.value);
+          return renderTexText(segment.value);
+        }).join("");
+      }
+
+      function texSegments(text) {
+        const segments = [];
+        const source = String(text || "");
+        const pattern = /(\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)|\$\$[\s\S]*?\$\$|\$[^$\n]+\$)/g;
+        let cursor = 0;
+        let match;
+        while ((match = pattern.exec(source))) {
+          if (match.index > cursor) {
+            segments.push({ math: false, value: source.slice(cursor, match.index) });
+          }
+          segments.push({ math: true, value: match[0] });
+          cursor = pattern.lastIndex;
+        }
+        if (cursor < source.length) {
+          segments.push({ math: false, value: source.slice(cursor) });
+        }
+        return segments;
+      }
+
+      function renderTexMath(text) {
+        const source = String(text || "");
+        const display = source.startsWith("$$") || source.startsWith("\\[");
+        const value = decodeTexMath(source);
+        const className = display ? "tex-math tex-display-math" : "tex-math";
+        return `<span class="${className}">${escapeHtml(value)}</span>`;
+      }
+
+      function decodeTexMath(text) {
         return String(text || "")
-          .replace(/(^|[^\\])%.*$/gm, "$1")
+          .replace(/^\$\$|\$\$$/g, "")
+          .replace(/^\\\[|\\\]$/g, "")
+          .replace(/^\\\(|\\\)$/g, "")
+          .replace(/^\$|\$$/g, "")
+          .replace(/\\operatorname\{([^{}]*)\}/g, "$1")
+          .replace(/\\([%&_$#{}])/g, "$1")
+          .replace(/\\le\b/g, "<=")
+          .replace(/\\ge\b/g, ">=")
+          .replace(/\\lt\b/g, "<")
+          .replace(/\\gt\b/g, ">")
+          .replace(/\\to\b/g, "->")
+          .replace(/\s+/g, " ")
+          .trim();
+      }
+
+      function renderTexText(text) {
+        let html = "";
+        const source = String(text || "").replace(/~+/g, " ");
+        let index = 0;
+
+        while (index < source.length) {
+          if (source[index] !== "\\") {
+            const next = source.indexOf("\\", index);
+            const end = next === -1 ? source.length : next;
+            html += escapeHtml(source.slice(index, end));
+            index = end;
+            continue;
+          }
+
+          const escaped = texEscapedChar(source, index);
+          if (escaped) {
+            html += escapeHtml(escaped.char);
+            index = escaped.end;
+            continue;
+          }
+
+          const command = source.slice(index + 1).match(/^([a-zA-Z]+)\*?/);
+          if (!command) {
+            html += escapeHtml(source[index]);
+            index += 1;
+            continue;
+          }
+
+          const name = command[1];
+          let cursor = index + 1 + command[0].length;
+          const argument = readTexGroup(source, cursor);
+          if (!argument) {
+            html += escapeHtml(`\\${command[0]}`);
+            index = cursor;
+            continue;
+          }
+
+          if (["emph", "textit"].includes(name)) {
+            html += `<em>${renderTexInline(argument.value)}</em>`;
+          } else if (name === "textbf") {
+            html += `<strong>${renderTexInline(argument.value)}</strong>`;
+          } else if (name === "texttt") {
+            html += code(decodeTexText(argument.value));
+          } else if (name === "textrm") {
+            html += renderTexInline(argument.value);
+          } else if (["cite", "ref", "eqref"].includes(name)) {
+            html += escapeHtml(decodeTexText(argument.value));
+          } else if (name !== "label") {
+            html += renderTexInline(argument.value);
+          }
+          index = argument.end;
+        }
+
+        return html;
+      }
+
+      function texEscapedChar(text, index) {
+        const char = text[index + 1];
+        if (char && /[%&_$#{}]/.test(char)) {
+          return { char, end: index + 2 };
+        }
+        return null;
+      }
+
+      function readTexGroup(text, index) {
+        let cursor = index;
+        while (/\s/.test(text[cursor] || "")) cursor += 1;
+        if (text[cursor] !== "{") return null;
+
+        let depth = 0;
+        for (let i = cursor; i < text.length; i += 1) {
+          if (text[i] === "\\" && i + 1 < text.length) {
+            i += 1;
+            continue;
+          }
+          if (text[i] === "{") depth += 1;
+          if (text[i] === "}") depth -= 1;
+          if (depth === 0) {
+            return { value: text.slice(cursor + 1, i), end: i + 1 };
+          }
+        }
+        return null;
+      }
+
+      function decodeTexText(text) {
+        return String(text || "")
+          .replace(/\\([%&_$#{}])/g, "$1")
+          .replace(/~+/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+      }
+
+      function parseTexAbstract(text) {
+        return stripTexComments(text)
           .replace(/\\begin\{abstract\}|\\end\{abstract\}/g, "")
           .replace(/\\(?:emph|textit|textbf|textrm|texttt)\{([^{}]*)\}/g, "$1")
           .replace(/\\(?:cite|ref|eqref|label)\{[^{}]*\}/g, "")
@@ -1440,6 +1921,10 @@
           .replace(/[{}]/g, "")
           .replace(/\s+/g, " ")
           .trim() || "No abstract text could be parsed.";
+      }
+
+      function stripTexComments(text) {
+        return String(text || "").replace(/(^|[^\\])%.*$/gm, "$1");
       }
 
       function unique(items) {

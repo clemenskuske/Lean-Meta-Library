@@ -2,13 +2,12 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
-import { maxBuildOutputBytes, walkFiles } from "../common.mjs";
-import { loadLakeConfig } from "../lake-config.mjs";
+import { lakeCommandTimeoutMs, maxBuildOutputBytes, walkFiles } from "../common.mjs";
+import { lakeDependencies, loadLakeConfig } from "../lake-config.mjs";
 
 const markerVersion = 1;
 const lockTimeoutMs = 5 * 60 * 1000;
 const staleLockMs = 10 * 60 * 1000;
-const lakeCommandTimeoutMs = Number(process.env.LML_LAKE_COMMAND_TIMEOUT_MS ?? 20 * 60 * 1000);
 
 export function ensureLakeAvailable(errors) {
   const result = spawnSync("lake", ["--version"], {
@@ -281,36 +280,83 @@ function pruneLakePackageGitDirsForCi(cwd, warnings) {
 }
 
 function cacheGetArgs(cwd, label, warnings) {
-  const importedMathlibModules = mathlibImportModules(cwd);
-  if (importedMathlibModules.length > 0) {
-    return importedMathlibModules;
-  }
-
   const configErrors = [];
   const config = loadLakeConfig(cwd, `${label} lakefile`, configErrors);
   if (configErrors.length > 0) {
     warnings.push(...configErrors);
   }
+
+  const importedMathlibModules = mathlibImportModules(cwd, config, warnings);
+  if (importedMathlibModules.length > 0) {
+    return importedMathlibModules;
+  }
+
   return (config?.leanLibs ?? [])
     .map((lib) => lib.name)
     .filter(Boolean);
 }
 
-function mathlibImportModules(cwd) {
+export function mathlibImportModules(cwd, config = null, warnings = [], visited = new Set()) {
+  const key = resolve(cwd);
+  if (config && visited.has(key)) {
+    return [];
+  }
+  if (config) {
+    visited.add(key);
+  }
+
+  const roots = leanSourceRoots(cwd, config);
   const modules = new Set();
-  for (const file of walkFiles(cwd)) {
-    if (!file.endsWith(".lean")) {
+
+  for (const root of roots) {
+    if (!existsSync(root)) {
       continue;
     }
-    const source = readFileSync(file, "utf8");
-    for (const line of source.split(/\r?\n/)) {
-      const match = line.match(/^\s*import\s+([A-Za-z_][A-Za-z0-9_']*(?:\.[A-Za-z_][A-Za-z0-9_']*)*)\s*$/);
-      if (match && match[1].startsWith("Mathlib.")) {
-        modules.add(match[1]);
+    for (const file of walkFiles(root)) {
+      if (!file.endsWith(".lean")) {
+        continue;
+      }
+      const source = readFileSync(file, "utf8");
+      for (const line of source.split(/\r?\n/)) {
+        const match = line.match(/^\s*import\s+([A-Za-z_][A-Za-z0-9_']*(?:\.[A-Za-z_][A-Za-z0-9_']*)*)\s*$/);
+        if (match && match[1].startsWith("Mathlib.")) {
+          modules.add(match[1]);
+        }
       }
     }
   }
+
+  if (config) {
+    for (const dependency of lakeDependencies(config)) {
+      if (dependency.kind !== "local" || !dependency.path) {
+        continue;
+      }
+
+      const dependencyRoot = resolve(cwd, dependency.path);
+      if (!existsSync(dependencyRoot)) {
+        continue;
+      }
+
+      const dependencyErrors = [];
+      const dependencyConfig = loadLakeConfig(dependencyRoot, `${dependency.name} lakefile`, dependencyErrors);
+      if (dependencyErrors.length > 0) {
+        warnings.push(...dependencyErrors);
+      }
+      for (const moduleName of mathlibImportModules(dependencyRoot, dependencyConfig, warnings, visited)) {
+        modules.add(moduleName);
+      }
+    }
+  }
+
   return [...modules].sort();
+}
+
+function leanSourceRoots(cwd, config) {
+  const roots = [resolve(cwd)];
+  for (const lib of config?.leanLibs ?? []) {
+    roots.push(resolve(cwd, lib.srcDir ?? "."));
+  }
+  return [...new Set(roots)];
 }
 
 function pruneDependencyGitMetadata(packageDir) {

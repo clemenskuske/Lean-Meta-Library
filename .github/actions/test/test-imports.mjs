@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 // Runs negative import fixtures and verifies each one fails for its intended reason.
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import YAML from "yaml";
 import { createOutputConfig } from "../create-submission/create-output-config.mjs";
+import { mathlibImportModules } from "./general/prepare-lake-package.mjs";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, "../../..");
@@ -84,6 +85,12 @@ const fixtures = [
     stripMathlibDependencyForCheck: true
   },
   {
+    name: "non-prop-proof-target-package",
+    checker: "proofs/type-matches-statements.mjs",
+    expected: /proof target is not a proposition/,
+    stripMathlibDependencyForCheck: true
+  },
+  {
     name: "sorry-proof-package",
     checker: "proofs/no-forbidden-axioms.mjs",
     expected: /FORBIDDEN_AXIOM|compiled proof theorem depends on forbidden axioms/,
@@ -151,6 +158,21 @@ const fixtures = [
     name: "duplicate-slug-package",
     checker: "general/slug-unique.mjs",
     expected: /SubmissionSlug "duplicate-slug" is already taken/
+  },
+  {
+    name: "update-unknown-slug-package",
+    checker: "general/submission-update-policy.mjs",
+    expected: /SubmissionSlug "update-unknown-slug" is not present in submissions\.jsonl/
+  },
+  {
+    name: "update-missing-statement-package",
+    checker: "general/submission-update-policy.mjs",
+    expected: /existing statement is missing from update: UpdateMissingStatement\.Statements\.Main\.removed/
+  },
+  {
+    name: "update-lean-statement-changed-package",
+    checker: "general/submission-update-policy.mjs",
+    expected: /InlineLeanStatement changed for existing statement: UpdateLeanStatementChanged\.Statements\.Main\.same_name/
   }
 ];
 
@@ -172,6 +194,14 @@ const acceptedFixtures = [
     checker: "final-proof-build.mjs",
     precheckers: ["proofs/axiom-dependencies.mjs"],
     expectAxiomDependencies: true
+  },
+  {
+    name: "update-compatible-package",
+    checker: "general/submission-update-policy.mjs"
+  },
+  {
+    name: "duplicate-slug-update-package",
+    checker: "general/slug-unique.mjs"
   }
 ];
 
@@ -184,6 +214,24 @@ try {
 } catch (error) {
   failed = true;
   console.error(`FAIL output config enrichment: ${error.message}`);
+}
+
+console.log("RUN submission update policy no-slug no-op");
+try {
+  testSubmissionUpdatePolicyNoSlug();
+  console.log("PASS submission update policy no-slug no-op");
+} catch (error) {
+  failed = true;
+  console.error(`FAIL submission update policy no-slug no-op: ${error.message}`);
+}
+
+console.log("RUN Mathlib cache module discovery");
+try {
+  testMathlibCacheModuleDiscovery();
+  console.log("PASS Mathlib cache module discovery");
+} catch (error) {
+  failed = true;
+  console.error(`FAIL Mathlib cache module discovery: ${error.message}`);
 }
 
 for (const fixture of fixtures) {
@@ -220,7 +268,7 @@ if (failed) {
   process.exit(1);
 }
 
-console.log(`All ${fixtures.length} negative import fixtures failed as expected, ${acceptedFixtures.length} acceptance fixtures passed, and output config enrichment passed.`);
+console.log(`All ${fixtures.length} negative import fixtures failed as expected, ${acceptedFixtures.length} acceptance fixtures passed, output config enrichment passed, and submission update policy no-slug no-op passed.`);
 
 function testOutputConfigEnrichment() {
   const sourceManifest = join(repoRoot, "test-imports", "shared-statement-declarations-package", "manifest.yaml");
@@ -278,6 +326,68 @@ function testUnicodeDisplayTextManifestCheck() {
       maxBuffer: 1024 * 1024
     });
     assert(result.status === 0, `expected Unicode display manifest to pass manifest-check\n${result.stdout}${result.stderr}`.trim());
+  } finally {
+    rmSync(tmpRoot, { recursive: true, force: true });
+  }
+}
+
+function testSubmissionUpdatePolicyNoSlug() {
+  const tmpRoot = mkdtempSync(join(tmpdir(), "lml-update-policy-no-slug-"));
+  const manifestPath = join(tmpRoot, "manifest.yaml");
+  writeFileSync(manifestPath, [
+    'manifestVersion: "1"',
+    'leanVersion: "v4.30.0"',
+    'mathlibVersion: "c5ea00351c28e24afc9f0f84379aa41082b1188f"',
+    "AbstractPath: abstract.tex",
+    "LicenseFile: LICENSE",
+    "SubmissionName: Update Policy No Slug Fixture",
+    "BibEntries: []",
+    ""
+  ].join("\n"));
+
+  try {
+    const result = spawnSync(process.execPath, [join(here, "general/submission-update-policy.mjs"), `--manifest=${manifestPath}`], {
+      cwd: repoRoot,
+      encoding: "utf8",
+      maxBuffer: 1024 * 1024
+    });
+    assert(result.status === 0, `expected submission-update-policy to no-op without SubmissionSlug\n${result.stdout}${result.stderr}`.trim());
+  } finally {
+    rmSync(tmpRoot, { recursive: true, force: true });
+  }
+}
+
+function testMathlibCacheModuleDiscovery() {
+  const tmpRoot = mkdtempSync(join(tmpdir(), "lml-mathlib-cache-modules-"));
+  const packageRoot = join(tmpRoot, "statements");
+  const sourceRoot = join(tmpRoot, "source", "Fixture", "Statements", "Source");
+  const packageModuleRoot = join(packageRoot, "Fixture", "Statements");
+
+  try {
+    mkdirSync(sourceRoot, { recursive: true });
+    mkdirSync(packageModuleRoot, { recursive: true });
+    writeFileSync(join(sourceRoot, "Heavy.lean"), [
+      "import Mathlib.Data.Finset.Basic",
+      "import Mathlib.Combinatorics.SimpleGraph.Basic",
+      ""
+    ].join("\n"));
+    writeFileSync(join(packageModuleRoot, "Main.lean"), [
+      "import Fixture.Statements.Source.Heavy",
+      "import Mathlib.Data.Nat.Basic",
+      ""
+    ].join("\n"));
+
+    const modules = mathlibImportModules(packageRoot, {
+      leanLibs: [
+        { name: "Fixture.Statements.Source", srcDir: "../source" },
+        { name: "Fixture.Statements" }
+      ],
+      requires: []
+    });
+
+    assert(modules.includes("Mathlib.Combinatorics.SimpleGraph.Basic"), "expected Mathlib import under lean_lib srcDir to be discovered");
+    assert(modules.includes("Mathlib.Data.Finset.Basic"), "expected all Mathlib imports under lean_lib srcDir to be discovered");
+    assert(modules.includes("Mathlib.Data.Nat.Basic"), "expected Mathlib import in package root to still be discovered");
   } finally {
     rmSync(tmpRoot, { recursive: true, force: true });
   }

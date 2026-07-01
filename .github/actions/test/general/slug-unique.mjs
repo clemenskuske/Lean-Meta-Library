@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Checks that the submission slug is not already present in submissions.jsonl.
+// Checks that the submission slug is not already present in submissions.jsonl,
+// unless the matching row is the same submission being updated.
 // Run `lml update` first to ensure submissions.jsonl is current.
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -35,10 +36,44 @@ function checkUniqueness(slug, path) {
     }
     const existing = record.SubmissionData?.SubmissionSlug ?? record.SubmissionSlug ?? null;
     if (existing === slug) {
+      if (isSameSubmission(record, manifest)) {
+        continue;
+      }
       errors.push(`SubmissionSlug "${slug}" is already taken in submissions.jsonl`);
       return;
     }
   }
+}
+
+function isSameSubmission(record, currentManifest) {
+  const data = record.SubmissionData ?? {};
+  const existingIssueNumber = positiveIntegerOrNull(data.submissionIssueNumber ?? record.submissionIssueNumber);
+  const currentIssueNumber = positiveIntegerOrNull(currentManifest.submissionIssueNumber);
+  if (existingIssueNumber && currentIssueNumber && existingIssueNumber === currentIssueNumber) {
+    return true;
+  }
+
+  const existingRepo = normalizeUrl(data.Repo ?? record["Repo Url"] ?? record["Git Repo"]);
+  const currentRepo = normalizeUrl(currentManifest.Repo);
+  const existingManifestPath = String(data.ManifestPath ?? record["Manifest File"] ?? "").trim();
+  const currentManifestPath = String(currentManifest.ManifestPath ?? process.env.MANIFEST_PATH ?? "").trim();
+  return Boolean(
+    existingRepo &&
+    currentRepo &&
+    existingManifestPath &&
+    currentManifestPath &&
+    existingRepo === currentRepo &&
+    existingManifestPath === currentManifestPath
+  );
+}
+
+function positiveIntegerOrNull(value) {
+  const parsed = Number.parseInt(String(value ?? ""), 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function normalizeUrl(value) {
+  return String(value ?? "").trim().replace(/\.git$/i, "").replace(/\/$/g, "");
 }
 
 function findSubmissionsJsonl(start) {
