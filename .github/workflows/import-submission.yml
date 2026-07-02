@@ -55,25 +55,6 @@ jobs:
           ISSUE_BODY: ${{ github.event.issue.body }}
         run: node .github/actions/read-submission-issue.mjs
 
-      - name: "Comment progress: submission issue read"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_SERVER_URL: ${{ github.server_url }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-          STEP_NUMBER: 1
-          TOTAL_STEPS: 10
-          STEP_NAME: Submission issue was parsed
-          NEXT_STEP: Checkout the submitted repository
-          STEP_DETAILS: |
-            Repository: ${{ steps.issue.outputs.repo-url }}
-            Branch: ${{ steps.issue.outputs.source-branch }}
-            Commit: ${{ steps.issue.outputs.source-commit }}
-            manifest file: ${{ steps.issue.outputs.manifest-path }}
-            Submitted by: ${{ steps.issue.outputs.submitter-login || github.event.issue.user.login }}
-        run: node .github/actions/import-progress-comment.mjs
-
       - name: Checkout submitted repository
         env:
           REPO_URL: ${{ steps.issue.outputs.repo-url }}
@@ -153,19 +134,27 @@ jobs:
           }
           NODE
 
-      - name: "Comment progress: repository checked out"
+      - name: Check manifest shape and required files
+        env:
+          MANIFEST_PATH: ${{ steps.issue.outputs.manifest-path }}
+        run: |
+          node "$GITHUB_WORKSPACE/.github/actions/test/general/files-present.mjs" "$GITHUB_WORKSPACE/submission/$MANIFEST_PATH"
+          node "$GITHUB_WORKSPACE/.github/actions/test/general/manifest-check.mjs" "$GITHUB_WORKSPACE/submission/$MANIFEST_PATH"
+
+      - name: "Comment progress: manifest and files valid"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
-          STEP_NUMBER: 2
-          TOTAL_STEPS: 10
-          STEP_NAME: Submitted repository was checked out at the requested commit
-          NEXT_STEP: Prepare the Lean build/cache
-          STEP_DETAILS: |
-            Checked out commit: ${{ steps.issue.outputs.source-commit }}
+          STEP_NUMBER: 1
+          TOTAL_STEPS: 5
+          COMPLETED_STEPS: |
+            Issue was parsed
+            Submitted repository was checked out
+            Workflow-created manifest fields were normalized
+            Required files and manifest shape were validated
         run: node .github/actions/import-progress-comment.mjs
 
       - name: Prepare Lean build/cache
@@ -175,19 +164,6 @@ jobs:
         run: |
           node "$GITHUB_WORKSPACE/.github/actions/test/statements/prepare-build-cache.mjs" "$GITHUB_WORKSPACE/submission/$MANIFEST_PATH"
           node "$GITHUB_WORKSPACE/.github/actions/test/proofs/prepare-build-cache.mjs" "$GITHUB_WORKSPACE/submission/$MANIFEST_PATH"
-
-      - name: "Comment progress: build/cache prepared"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_SERVER_URL: ${{ github.server_url }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-          STEP_NUMBER: 3
-          TOTAL_STEPS: 10
-          STEP_NAME: Lean build/cache preparation completed
-          NEXT_STEP: Run first-run submission checks
-        run: node .github/actions/import-progress-comment.mjs
 
       - name: Run submission checks
         env:
@@ -207,17 +183,19 @@ jobs:
           node "$GITHUB_WORKSPACE/.github/actions/test/general/submission-update-policy.mjs" \
             "$GITHUB_WORKSPACE/submission/update-policy-manifest.yaml"
 
-      - name: "Comment progress: submission checks passed"
+      - name: "Comment progress: packages built and checked"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
-          STEP_NUMBER: 4
-          TOTAL_STEPS: 10
-          STEP_NAME: First-run submission checks passed
-          NEXT_STEP: Generate proof axiom dependencies
+          STEP_NUMBER: 3
+          TOTAL_STEPS: 5
+          COMPLETED_STEPS: |
+            Lean build/cache preparation completed
+            First-run submission checks passed
+            ${{ steps.update.outputs.is-update == 'true' && 'Submission update policy passed' || 'No existing submission update policy was needed' }}
         run: node .github/actions/import-progress-comment.mjs
 
       - name: Generate proof axiom dependencies
@@ -239,10 +217,11 @@ jobs:
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
-          STEP_NUMBER: 5
-          TOTAL_STEPS: 10
-          STEP_NAME: Final proof build passed
-          NEXT_STEP: Upload the checked manifest artifact
+          STEP_NUMBER: 4
+          TOTAL_STEPS: 5
+          COMPLETED_STEPS: |
+            Proof axiom dependencies were generated
+            Final proof build passed
         run: node .github/actions/import-progress-comment.mjs
 
       - name: Stage checked manifest
@@ -260,19 +239,6 @@ jobs:
           name: checked-submission-manifest
           path: checked-manifest/manifest.yaml
           if-no-files-found: error
-
-      - name: "Comment progress: checked manifest uploaded"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_SERVER_URL: ${{ github.server_url }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-          STEP_NUMBER: 6
-          TOTAL_STEPS: 10
-          STEP_NAME: Checked manifest artifact was uploaded
-          NEXT_STEP: Download the checked manifest artifact in the import job
-        run: node .github/actions/import-progress-comment.mjs
 
   import:
     name: Import submission manifest
@@ -301,19 +267,6 @@ jobs:
         with:
           name: checked-submission-manifest
           path: checked-submission
-
-      - name: "Comment progress: checked manifest downloaded"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_SERVER_URL: ${{ github.server_url }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-          STEP_NUMBER: 7
-          TOTAL_STEPS: 10
-          STEP_NAME: Checked manifest artifact was downloaded
-          NEXT_STEP: Update submissions.jsonl
-        run: node .github/actions/import-progress-comment.mjs
 
       - name: Update submissions log
         env:
@@ -434,19 +387,6 @@ jobs:
 
           NODE
 
-      - name: "Comment progress: submissions log updated"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_SERVER_URL: ${{ github.server_url }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-          STEP_NUMBER: 8
-          TOTAL_STEPS: 10
-          STEP_NAME: submissions.jsonl was updated locally
-          NEXT_STEP: Commit and push submissions.jsonl if it changed
-        run: node .github/actions/import-progress-comment.mjs
-
       - name: Commit submissions log
         run: |
           if git diff --quiet -- submissions.jsonl; then
@@ -461,21 +401,6 @@ jobs:
           git pull --rebase origin "$GITHUB_REF_NAME"
           git push origin HEAD:"$GITHUB_REF_NAME"
 
-      - name: "Comment progress: submissions log committed"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_SERVER_URL: ${{ github.server_url }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-          STEP_NUMBER: 9
-          TOTAL_STEPS: 10
-          STEP_NAME: submissions.jsonl commit step completed
-          NEXT_STEP: Close the imported issue
-          STEP_DETAILS: |
-            If submissions.jsonl already contained this submission, no commit was needed.
-        run: node .github/actions/import-progress-comment.mjs
-
       - name: Close imported issue
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -483,9 +408,14 @@ jobs:
           GITHUB_SERVER_URL: ${{ github.server_url }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           ISSUE_NUMBER: ${{ github.event.issue.number }}
-          STEP_NUMBER: 10
-          TOTAL_STEPS: 10
-          STEP_NAME: Imported issue was closed
+          STEP_NUMBER: 5
+          TOTAL_STEPS: 5
+          COMPLETED_STEPS: |
+            Checked manifest artifact was uploaded
+            Checked manifest artifact was downloaded
+            submissions.jsonl was updated
+            submissions.jsonl commit step completed
+            Imported issue was closed
         run: |
           node <<'NODE'
           const { writeFileSync } = require("node:fs");
