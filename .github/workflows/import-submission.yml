@@ -464,6 +464,7 @@ jobs:
           }
           NODE
           node .github/actions/import-progress-comment.mjs
+          node .github/actions/import-summary-comment.mjs
 
   notify-failure:
     name: Comment on failed import
