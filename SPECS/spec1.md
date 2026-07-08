@@ -1,6 +1,4 @@
-# lml ideas
-
-## Documentation
+# High Level Documentation
 
 lax:  lean archive
 
@@ -57,8 +55,6 @@ highlighted statements?
 orders on statements?
 
 
-
-
 ## Community Review
 While the correctness of the proof packages is checked by lean itself, we still require human effort to check that the formal surface statements match their natural language counterparts. Contributors can register with their ORCID identity and publicly approve of flag submitted formalizations, thereby helping us to close the trust obligations.
 
@@ -73,7 +69,49 @@ In particular, we pin the recommend lean version to xxx, lake version to xxx, an
 Moreover, You may mark a submission as "work-in-progress" which allows you to freely overwrite it. However, this prevents downstream submissions from citing your work, as we do not (yet?) allow work-in-progress dependencies.
 
 
-## THE Implementation Details
+# Implementation Details
+
+## Manifest
+
+TODO: give one complete example of a manifest file, briefly explaining each relevant flag.
+TODO: shall we rename ``submission slug`` to ``submission id``? Then all our objects have ids.
+
+## Namespaces and Ids
+
+Each declaration and proof has an ``id`` corresponding to its name in the global namespace.
+We enfore that declarations and proofs of a submission ``mysubmission`` are contained within the namespaces ``mysubmission.decs`` and ``mysubmission.proofs``, respectively (allowing subnamespaces).
+To avoid colliding ids, no two objects may have the same name.
+
+example:
+id of submission:``mysubmission``
+id of a declaration within: ``mysubmission.decs.OptionalNestedSubNamespaces.mydeclaration``
+id of a proof within: ``mysubmission.proofs.OptionalNestedSubNamespaces.myproof``
+
+
+## Natural Language Math
+
+Natural language math is written in latex (to the degree it is supported by pandoc).
+This should allow all we need and more: sections, bold/italic, inline and display math, macros, etc.
+We add a new custom command ``\Cref{id}`` that renders to ``Declaration/Proof/Submission nameOfObject``
+
+## Declaration Package
+
+Every module of submission ``mysubmission`` starts by opening
+the namespace ``mysubmission.decs`` and ends by closing it.
+It is not allowed to open and close other namespaces. But it is allowed to place
+objects into subnamespaces as in ``def Sub.Name.Space : Nat := 0``.
+
+To lift a lean declaration into the archive, one adds two lean annotations
+``@[name text]``, where ``text`` is a short description like "Ramsey's theorem for simple graphs".
+``@[naturalLanguageInline text]``, where ``text`` is the full natural language half of the statement
+``@[naturalLanguageFile file]``, where ``file`` is either tex or tex-flavored-markdown
+
+Not all lean declarations need to get these annotations.
+Lean declarations without them are called "hidden declarations", and will be given less prominence on the website.
+
+
+
+## TODO: leftovers from this morning
 
 This archive does not store submissions, but merely aggregates, presents and links them. Users submit their formalizations in the form of pointers to specific commits and folders in their public git repos, allowing clear attribution of work. To prevent link rot, we may create our own backup copy (e.g. using https://archive.softwareheritage.org/save/)
 
@@ -116,12 +154,6 @@ for each submission, there exist:
 
 moreover, in the root dir of the repo, there exist:
 - submissions.jsonl: the list of all submissions in the archive, managed by the cli (pretty printed for manual inspection)
-
-## suggested changes of manifest.yaml
-
-- one "publishes" a surface declaration by annotating it with ``@[name "the name of it"]``.
-to annotate with natural language maybe as follows?
-``@[naturalLanguageStatement text or link to file]``
 
 not all declarations in the surface file need to be published.
 - one "publishes" a proof by annotating it with ``@[proves submissionname.DeclarationName]`` and ``@[dependsOn DeclarationName1 submissionname.DeclarationName2 ...`` or similar.
