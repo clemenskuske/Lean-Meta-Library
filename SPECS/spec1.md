@@ -18,67 +18,114 @@ Example: the following diamond DAG. kuratowskis theorem depends on planar graphs
 
 ## Proofs
 
-A proof takes a set of input declarations and derives an output declaration. We can model the network of proofs as a circuit. Each proof is represented by a node labelled  ⊦ with incoming nodes from the assumptions and an outgoing node to the conclusion. An unconditional proof has no incoming edges. By navigating the Proof Circuit, we can see which statements are already proven, which are still conjectures, and which are proven relative to other conjectures.
+A proof takes a set of input statements (named assumptions) (which are declarations) and derives an output statement (named conclusion). We can model the network of proofs as a directed bipartite graph between statements and proofs. Each proof is represented by a node labelled ⊦ with incoming edges from the assumptions and an outgoing edge to the conclusion. An self-contained (?) proof has no incoming edges. By navigating the Proof Circuit, we can see which statements are already proven, which are still conjectures, and which are proven relative to other conjectures.
 
-Example: a theorem that follows from either A and B or from C and D,  A and C are fully proven (incoming ⊦ with no dependency). 
+Example: a theorem X that follows from either A and B or from C and D,  A and C are fully proven (incoming ⊦ with no dependency). 
+
+  X
+  ^^ 
+  | \
+  ⊦ 
+ ^^
+ / \
+A   B   C   D
+^       ^
+|       |
+⊦       ⊦
 
 We hope this visualization encourages other authors to fill some of the missing proof obligations of key results. A list of the biggest open obligations can be found (link to website)
 
 ## Submissions 
-The basic unit is  **submission**. Each submission consists of a metadata file together with two separate lake files or lean projects. More concretely: 
+The basic unit is  **submission**. Each submission consists of a manifest file together with two separate lake files or lean projects. More concretely: 
 
-- **metadata.yaml** states title, abstract etc. the data format can be found under todo.
+- **manifest.yaml** states title, abstract etc. the data format can be found under todo.
 
-- The **surface package** contains lean statements and definitions without proofs. It merely annotates which natural language statements/definitions are formalized by which lean declarations. The surface package is supposed to be especially clean lean code written for and in collaboration with humans. It covers the minimal trust boundary that is not covered by the lean checker. surface packages and their contents and dependencies etc can be browsed at (link to website).
+- The **declaration package** contains lean statements and definitions without proofs. It merely annotates which natural language statements/definitions are formalized by which lean declarations. The surface package is supposed to be especially clean lean code (to be defined in subsection!) written for and in collaboration with humans. It covers the minimal trust boundary that is not covered by the lean checker. surface packages and their contents and dependencies etc can be browsed at (link to website).
 
-- the **proof package** contains the actual lean proofs. It is supposed to compile without sorrißes, but otherwise (almost) anything goes. It contains annotations highlighting which surface-level statements it proves. It’s proven statements are orthogonal to the surface package: It may leave  proof obligations of the submissions surface package open, and it may prove proof obligations from other submissions. As the correctness of proofs can be checked by lean, the writing of the proof package can be fully outsurced to to ai agents without compromising correctness.
+TODO: it is supposed to contain the minimal content to fully specify the semantics of the things we want to prove??
+TODO: it doesnt need to be fully self contained, it can use declarations from other submissions.
 
-(TODO: I prefer "surface" over "statement", since the package should contain both definitions and statements. Any other names for this package?)
+- the **proof package** contains the actual lean proofs. It is supposed to compile without sorries, but otherwise anything goes. It contains annotations highlighting which surface-level statements it proves. It’s proven statements are orthogonal to the surface package: It may leave  proof obligations of the submissions surface package open, and it may prove proof obligations from other submissions. As the correctness of proofs can be checked by lean, the writing of the proof package can be fully outsurced to to ai agents without compromising correctness.
+
+
+TODOS for manifest.yaml (to decide)
+
+abstact:
+Here, we prove \Cref{submissionsname.maintheorem}.
+
+highlighted statements?
+orders on statements?
+
+
+
 
 ## Community Review
 While the correctness of the proof packages is checked by lean itself, we still require human effort to check that the formal surface statements match their natural language counterparts. Contributors can register with their ORCID identity and publicly approve of flag submitted formalizations, thereby helping us to close the trust obligations.
 
+TODO: we now have two authentication mechansisms: github and orcid. we need to clearly separate their concerns. github for code and orcid for scientific identities?
 
 ## Versioning
 
 Unlike most software projects where code freely changes over time, submissions are (for now) frozen in time. This makes it easy for later submissions to reference earlier submissions, allowing the organic growth of a dependency network mirroring the citations of scientific publications. We understand that this brings along its own problems, which we believe are worth it for now.
 
-In particular, we pin the recommend lean version to xxx, lake version to xxx, and mathlib to xxx. Updating the shared mathlib version would immediately make all existing submissions obsolete, and we therefore intend to update mathlib only very infrequently. In the future, we may explore less invasive options for mathlib updates. You may nevertheless submit works with a different mathlib version, but note that you may not cite or be cited by works with a different version than yours. 
+In particular, we pin the recommend lean version to xxx, lake version to xxx, and mathlib to xxx. Updating the shared mathlib version would immediately make all existing submissions obsolete, and we therefore intend to update mathlib only very infrequently. TODO: We dont claim anything because we are unsure about the future??? In the future, we may explore less invasive options for mathlib updates.
 
-If you want to apply changes to your submission, you may resubmit the submission and mark it as new version. This makes both the new and old version avaliable for other authors to build upon.
-
-Moreover, You may mark a submission as "volatile" which allows you to freely overwrite it. However, this prevents downstream submissions from citing your work, as we do not (yet?) allow volatile dependencies.
+Moreover, You may mark a submission as "work-in-progress" which allows you to freely overwrite it. However, this prevents downstream submissions from citing your work, as we do not (yet?) allow work-in-progress dependencies.
 
 
-## More Implementation Details
+## THE Implementation Details
 
 This archive does not store submissions, but merely aggregates, presents and links them. Users submit their formalizations in the form of pointers to specific commits and folders in their public git repos, allowing clear attribution of work. To prevent link rot, we may create our own backup copy (e.g. using https://archive.softwareheritage.org/save/)
 
 To allow interaction with our system, submissions must conform to the following rules. 
 
 Each submission is a folder in a public git repository consisting of
-- a metadata.yaml file in root position with the following contents: todo
-- A proof and surface lean package with the following tool chains: todo
+- a manifest.yaml file in root position with the following contents
+    - TODO
+    - TODO
+    - TODO
+    - TODO
+    - TODO
+    - TODO
+- A proof and declaration lean package with the following tool chains: todo
+    - where does the lakefile live?
+    - are there restrictions of what can and cannot be in the lakefile?
+    - TODO
+    - TODO
+    - TODO
+    - TODO
 
 It must satisfy various rules:
 - to avoid RCE surface packages can only use whitelist dialect. At this point we only define this implicitly by whatever the check accepts. May change down the road
-- …
 
+
+TODO: fully specify the lean dialect of the declaration package
+- do we allow namespaces?
+- TODO
+- TODO
+- TODO
+
+TODO: do we also want to layout what the submission.json typically looks like in this subsection?
 
 # Internal interfaces
 
 ## relevant files
 for each submission, there exist:
-- metadata.yaml: the small input file containing mostly metadata
+- manifest.yaml: the small input file containing mostly metadata
 - submission.json:  the larger file generated by the build process containing all information consumed by the website.
 
 moreover, in the root dir of the repo, there exist:
 - submissions.jsonl: the list of all submissions in the archive, managed by the cli (pretty printed for manual inspection)
 
-## suggested changes of metadata.yaml
+## suggested changes of manifest.yaml
 
-- one "publishes" a surface declaration by annotating it with ``@[public]``. not all declarations in the surface file need to be published.
-- one "publishes" a proof by annotating it with ``@[proves DeclarationName]`` and ``@[dependsOn DeclarationName1 DeclarationName2 ...`` or similar.
+- one "publishes" a surface declaration by annotating it with ``@[name "the name of it"]``.
+to annotate with natural language maybe as follows?
+``@[naturalLanguageStatement text or link to file]``
+
+not all declarations in the surface file need to be published.
+- one "publishes" a proof by annotating it with ``@[proves submissionname.DeclarationName]`` and ``@[dependsOn DeclarationName1 submissionname.DeclarationName2 ...`` or similar.
+
 
 ## suggested changes of submission.json
 - lets normalize redundant entries. It seems like AxiomDependencies is the same as SemanticDependencies of the corresponding statement entry? if yes, drop it
@@ -86,11 +133,12 @@ moreover, in the root dir of the repo, there exist:
 - for each declaration we should have
 	- file name
 	- line number range for declaration
-	- line number range for docstring
+	- line number range for docstring?
 	- contents of declaration and docstring?
     - ??
 
-- for each surface file we should have
+TODO: optional, maybe later
+- for each declaration file we should have
 	- list of contained statements
 	- line number range of docstring
 	- contents of docstring?
@@ -99,7 +147,7 @@ moreover, in the root dir of the repo, there exist:
 # apis and implementations
 
 ## building submissions
-"lml build submission path-to-submission" constructs submission.json from manifest.yaml, source code and includes. It only needs to look at stuff within the included entries of the lakefile of the submission. (i.e., it does *not* do the global substitution). Thus run time is proportional to submission size.
+"lml build submission path-to-submission" constructs submission.json from manifest.yaml, source code and includes. It only needs to look at stuff within the included entries of the lakefile of the submission. (i.e., it does *not* do the global prooftree). Thus run time is proportional to submission size.
 
 ## building submissions implementation
 
@@ -109,9 +157,8 @@ This would help us
 - to have a flag to reset the package folder with the mathlib
 - Build multiple submissions in parallel?
 
-
-## global substitutioncheck
-"lml build substitutioncheck rootdir" can do the full global subsitution build of all proofs. Considers only submissions contained in rootdir (recursively scans for metadata.yaml files to identify submissions). So to do it on the server, one needs to place all submissions into the rootdir.
+## global prooftree 
+"lml build globalprooftree rootdir" can do the full global subsitution build of all proofs. Considers only submissions contained in rootdir (recursively scans for manifest.yaml files to identify submissions). So to do it on the server, one needs to place all submissions into the rootdir.
 
 ## building the website
 "lml build website target1 target2 ...", where each target is of either of the following types
@@ -126,9 +173,9 @@ This creates a static website containing all targets
 
 **submission view**: contains
 - title
-- Abstract (allows cref to other submissions or declarations etc)
+- Abstract (allows \cref to other submissions or declarations etc)
 
-- as overview: Semantic dag with new declarations , ending at external grayed out external dependencies
+- as overview: Semantic dag with new declarations , ending at external grayed out external dependencies. TODO: paremterize and see what works best. toggles on website?
 - As overview: proof circuit induced on all declarations appearing in proof package. Mark external declarations, mark proven and unproven ones
 
 - list of new declarations (clickable, names big with small teaser prefix of natural language statement)
@@ -150,7 +197,7 @@ The surface lean dialect needs to be so that the semantics can be fully deduced 
 
 - Show the full semantic dependency DAG
 
-- Show the full incoming proof circuit: all statements that are used to prove something about this. 
+- Show the full incoming proof graph: all statements that are used to prove something about this. 
 
 
 **proof view**: todo
