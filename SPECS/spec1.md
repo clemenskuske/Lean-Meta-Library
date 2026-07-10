@@ -110,6 +110,67 @@ Not all lean declarations need to get these annotations.
 Lean declarations without them are called "hidden declarations", and will be given less prominence on the website.
 
 
+## THREE SUGGESTED BUILDING BLOCKS
+
+I suggest the basic building blocks of our submissions are **declarations**, **concepts** and **proofs**.
+
+A **Declaration** is an individual lean declaration, def or axiom. 
+They may be annotated with names and natural language descriptions to make them more interpretable on the website.
+The **semantic closure** of a declaration is the set of all declarations required to state it.
+
+
+A **concept** is a natural language description of a mathematical concept (e.g.a theorem or a definition in a paper)
+together with a set of lean declarations that faithfully encode the concept.
+Each concept has **dependencies**, which are other concepts that are required to state the concept.
+
+Concepts are encoded in `metadata.yaml` via the following entries
+    - `id`: a unique identifier
+    - `name`: a natural language name like "ramsey's theorem" or "treewidth"
+    - `declarations`: a list of lean declarations that faithfully encode the concept. Does not need to be semantically closed.
+    - `dependencies`: a list of other concepts that are used to define the new concept.
+
+Key rule: Every declaration in the semantic closure of the declarations of concept X
+needs to be either contained in the declarations of X,
+or in the semantic closure of the declarations of a dependency of X.
+This rule ensures that a concept's semantic closure is covered by its's transitive dependencies.
+
+Declararions can be in multiple concepts. Therefore, the dependencies can not be automatically derived:
+There maybe multiple incomparable ways to cover the semantic closure with concepts.
+
+Additional considerations:
+Concepts can use declarations from other submissions.
+A declaration that is in no concept is allowed, but issues a warning during build.
+
+For proofs, I see two possible ways to go:
+
+1) A **proof** takes a set of statement-declarations and derives an output statement-declaration.
+This is the finer, more natural granularity than 2).
+But as statement-declarations can be in multiple concepts, one cannot uniquely say things like "this concept is used to prove that concept".
+
+2) A **proof** takes a set of concepts and derives an output statement-declaration.
+A concept is proven if all statement-declarations inside it are proven.
+This lets us say "this concept is used to prove that concept",
+and allows us to create a proof graph on the level of concepts, which might be nicer to visualize.
+
+## THREE SUGGESTED BUILDING BLOCKS (with partition instead of cover)
+
+I suggest the basic building blocks of our submissions are declarations, concepts and proofs. A Declaration is an individual lean declaration, def or axiom. They may be annotated with names and natural language descriptions to make them more interpretable on the website. The semantic closure of a declaration is the set of all declarations required to state it. A concept is a natural language description of a mathematical concept (e.g. a theorem or a definition in a paper) together with a set of lean declarations that faithfully encode the concept. Concepts are encoded in `metadata.yaml` via the following entries
+- `id`: a unique identifier
+- `name`: a natural language name like "ramsey's theorem" or "treewidth"
+- `declarations`: a list of lean declarations that faithfully encode the concept. Does not need to be semantically closed.
+
+Key rule: Every declaration belongs to exactly one concept. Concepts partition the declarations of the archive (declarations of the trusted base, i.e., the pinned mathlib, are exempt).
+
+Because ownership is unique, dependencies do not need to be declared: concept X depends on concept Y if and only if the semantic closure of a declaration of X contains a declaration owned by Y. The concept dependency graph is derived automatically from the declaration DAG. There is nothing to annotate and nothing that can drift out of sync.
+
+Additional considerations:
+- Concepts can depend on declarations from other submissions, but never claim them. Ownership is immutable within a frozen submission.
+- If a lemma feels like it belongs to two concepts, it doesn't: extract it into its own (possibly small) concept that both depend on. Any overlapping assignment can be decomposed this way.
+
+For proofs, the situation simplifies. A proof takes a set of statement-declarations and derives an output statement-declaration.
+This uniquely identifies the set of concepts used in the proof.
+
+One thing to watch either: the derived concept graphs (both dependency and proof) are not automatically acyclic, since interleaved ownership can create cycles even though the declaration DAG is acyclic. We should forbid this?
 
 ## TODO: leftovers from this morning
 
