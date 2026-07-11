@@ -110,7 +110,7 @@ Not all lean declarations need to get these annotations.
 Lean declarations without them are called "hidden declarations", and will be given less prominence on the website.
 
 
-## THREE SUGGESTED BUILDING BLOCKS
+## THREE SUGGESTED BUILDING BLOCKS (Version 1)
 
 I suggest the basic building blocks of our submissions are **declarations**, **concepts** and **proofs**.
 
@@ -152,7 +152,7 @@ A concept is proven if all statement-declarations inside it are proven.
 This lets us say "this concept is used to prove that concept",
 and allows us to create a proof graph on the level of concepts, which might be nicer to visualize.
 
-## THREE SUGGESTED BUILDING BLOCKS (with partition instead of cover)
+## THREE SUGGESTED BUILDING BLOCKS (Version 2)
 
 I suggest the basic building blocks of our submissions are declarations, concepts and proofs. A Declaration is an individual lean declaration, def or axiom. They may be annotated with names and natural language descriptions to make them more interpretable on the website. The semantic closure of a declaration is the set of all declarations required to state it. A concept is a natural language description of a mathematical concept (e.g. a theorem or a definition in a paper) together with a set of lean declarations that faithfully encode the concept. Concepts are encoded in `metadata.yaml` via the following entries
 - `id`: a unique identifier
@@ -171,6 +171,41 @@ For proofs, the situation simplifies. A proof takes a set of statement-declarati
 This uniquely identifies the set of concepts used in the proof.
 
 One thing to watch either: the derived concept graphs (both dependency and proof) are not automatically acyclic, since interleaved ownership can create cycles even though the declaration DAG is acyclic. We should forbid this?
+
+
+## THREE SUGGESTED BUILDING BLOCKS (Version 3)
+
+**Declaration.** Any single Lean declaration (def, structure, inductive, instance, axiom, ...). Definitions encode mathematical objects: 
+Axioms encode statements whose proofs are provided separately.
+
+A **proof** is a lean proof that assumes a set of statements (i.e. declarations) and derives an output statement.
+
+**Concept.** A concept encodes one well-defined mathematical unit (a definition or theorem as it would appear in a paper), both as natural-language mathematics and as a faithful Lean formalization. Technically, a concept is a single Lean module containing exactly one module docstring (first command after imports) followed by its declarations. Each docstring, that is,  /-! -/ for the module, /-- -/ for declarations, begins with a level-1 Markdown header giving a title (not necessarily unique; identity is the module path / declaration name), followed by an optional natural-language description of the intended mathematics. Every public declaration carries a docstring.
+
+Example:
+
+    /-!
+    # Title of the concept, e.g. Twin-width
+    Natural language description of the concept. E.g., we define twin-width via contraction sequences ...
+    -/
+
+    /--
+    # Title of the declaration, e.g., Contraction Sequence
+    Optional natural language descrition of the declaration
+    -/
+    def ContractionSequence ...
+
+    /--
+    # Red Graph
+    Descrition
+    -/
+    def RedGraph ...
+
+
+**Declaration use graph.** For declarations d, e, write d ⤳ e iff e occurs among the constants of d's type or definitional body (for theorems: the type only).
+
+**Concept DAG.** The concept DAG rooted at a concept A is obtained by projection: take the ⤳-reachability set of A's declarations (its semantic cone), map each reached declaration to its owning concept, and inherit the edges — concept C points to concept D iff some reached declaration of C uses, in one ⤳-step, a reached declaration of D. Acyclicity follows from acyclicity of imports. Reached constants owned by no concept (mathlib, core) form A's background footprint and are not expanded. This is a smaller graph than just following the imports.
+
 
 ## TODO: leftovers from this morning
 
