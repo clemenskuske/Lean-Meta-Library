@@ -175,12 +175,12 @@ One thing to watch either: the derived concept graphs (both dependency and proof
 
 ## THREE SUGGESTED BUILDING BLOCKS (Version 3)
 
-**Declaration.** Any single Lean declaration (def, structure, inductive, instance, axiom, ...). Definitions encode mathematical objects: 
+**Declaration.** Any single Lean declaration (def, structure, inductive, instance, axiom, ...). Definitions encode mathematical objects.
 Axioms encode statements whose proofs are provided separately.
 
 A **proof** is a lean proof that assumes a set of statements (i.e. declarations) and derives an output statement.
 
-**Concept.** A concept encodes one well-defined mathematical unit (a definition or theorem as it would appear in a paper), both as natural-language mathematics and as a faithful Lean formalization. Technically, a concept is a single Lean module containing exactly one module docstring (first command after imports) followed by its declarations. Each docstring, that is,  /-! -/ for the module, /-- -/ for declarations, begins with a level-1 Markdown header giving a title (not necessarily unique; identity is the module path / declaration name), followed by an optional natural-language description of the intended mathematics. Every public declaration carries a docstring.
+**Concept.** A concept encodes one well-defined mathematical unit (a definition or theorem as it would appear in a paper), both as natural-language mathematics and as a faithful Lean formalization. Technically, a concept is a single Lean module containing exactly one module docstring (first command after imports) followed by its declarations. Each docstring, that is,  /-! -/ for the module, /-- -/ for declarations, begins with a level-1 Markdown header giving a title (not necessarily unique), followed by a natural-language description of the intended mathematics.
 
 Example:
 
@@ -202,9 +202,13 @@ Example:
     def RedGraph ...
 
 
-**Declaration use graph.** For declarations d, e, write d ⤳ e iff e occurs among the constants of d's type or definitional body (for theorems: the type only).
+**Declaration Dependency DAG.** For declarations d, e, add an edge from e to d iff e occurs among the constants of d's type or definitional body (for theorems: the type only). This DAG is shown on the website for each declaration.
 
-**Concept DAG.** The concept DAG rooted at a concept A is obtained by projection: take the ⤳-reachability set of A's declarations (its semantic cone), map each reached declaration to its owning concept, and inherit the edges — concept C points to concept D iff some reached declaration of C uses, in one ⤳-step, a reached declaration of D. Acyclicity follows from acyclicity of imports. Reached constants owned by no concept (mathlib, core) form A's background footprint and are not expanded. This is a smaller graph than just following the imports.
+**Concept Dependency DAG.** The concept DAG rooted at a concept A is obtained by projection: take the dependencies of the Declaration DAG, map each reached declaration to its owning concept, and inherit the edges — concept D points to concept C iff some reached declaration of C uses, in one dependency DAG step, a reached declaration of D. Acyclicity follows from acyclicity of imports. Reached constants owned by no concept (mathlib, core) form A's background footprint and are not expanded. This DAG is shown on the website for each concept.
+
+Each rooted Concept DAG is a potentially smaller graph than the DAG obtained by quotienting declaration DAG via concepts.
+In particular, if an author groups admissibility and coloring numbers into a single concept A, and a follow up submission creates a concept B that only uses admissibility from concept A, then the concepts containing dependencies of the coloring numbers are not in B's concept DAG.
+On the website, we may want to display a percentage for each concept stating what fraction of its declarations are contained in the displayed concept DAG.
 
 
 ## TODO: leftovers from this morning
