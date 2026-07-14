@@ -125,6 +125,12 @@ its substance directly, bottoming out in Mathlib definitions, Lean core definiti
 accepted/proven LML statements. If a helper definition is introduced, its own entry must be equally
 transparent and its role must be clear from the Lean statement and TeX.
 
+**Hard constraint**: every announced statement must be submitted together with the semantic closure of the definitions it uses.
+Do not make a statement transparent by dropping or inlining away definitions that are part of its intended mathematical meaning.
+Every submitted definition in this closure must be written transparently, bottoming out in Mathlib/Lean or accepted LML entries,
+and must have matching TeX. The announced statements themselves must also have matching TeX. From the submitted contract definitions,
+contract statements, a reviewer must be able to tell whether the intended mathematics has been formalized correctly.
+
 For intendedly self-contained submissions, never leave an axiom or declared assumption without a proof path.
 Every axiom-like dependency must be either:
 - already part of Lean/Mathlib/classical logic,
@@ -203,3 +209,6 @@ it should track the submitted Lean statement closely enough that a reviewer can 
 
   - letting a successful local lml test override the transparency/self-contained
     requirements.
+
+
+  

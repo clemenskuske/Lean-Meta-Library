@@ -666,6 +666,15 @@
         query: ""
       };
 
+      const temporarilyHiddenSubmissionSlugs = new Set([
+    "twin-width-mixed-minor-number-equivalence"
+  ]);
+
+  function shouldDisplaySubmission(row) {
+    return !temporarilyHiddenSubmissionSlugs.has(row?.SubmissionData?.SubmissionSlug);
+  }
+
+      
       const els = {
         title: document.querySelector("#site-title"),
         submissionList: document.querySelector("#submission-list"),
@@ -694,7 +703,7 @@
       async function load() {
         try {
           const result = await fetchRows();
-          state.rows = result.rows;
+          state.rows = result.rows.filter(shouldDisplaySubmission); ///state.rows = result.rows;
           state.submissions = state.rows.map(normalizeSubmission);
           state.nodes = state.submissions.flatMap((submission) => submission.nodes);
           state.nodeByName = new Map(state.nodes.map((node) => [node.name, node]));
