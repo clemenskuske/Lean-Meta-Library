@@ -1,4 +1,4 @@
-# High Level Documentation
+# Introduction and Vision
 
 lax:  lean archive
 
@@ -8,7 +8,7 @@ This project aims to archive and connect lean formalizations. What arxiv is to p
 
 The basic building blocks of this archive are **declarations**. A declaration pairs
 - a mathematical object (either a definition or statement), presented in natural language  (via Tex or markdown), and
-- a faithful encoding of this object in lean (either as def or as axiom).
+- a faithful encoding of this object in lean.
 
 The meaning of a declaration may depend on other declarations We visualize these dependencies via what we call the **Semantic DAG**.
 
@@ -69,7 +69,126 @@ In particular, we pin the recommend lean version to xxx, lake version to xxx, an
 Moreover, You may mark a submission as "work-in-progress" which allows you to freely overwrite it. However, this prevents downstream submissions from citing your work, as we do not (yet?) allow work-in-progress dependencies.
 
 
-# Implementation Details
+
+
+
+
+
+
+# Datastructures
+
+We define the basic building blocks of the archive and the constraints we place on them.
+
+## Declarations
+
+A **declaration** is any single Lean declaration (def, structure, inductive, instance, axiom, ...). 
+Here, definitions encode mathematical objects and 
+axioms encode statements whose proofs are provided separately. We say **declaration A depends on declaration B** if 
+B occurs among the constants of A's type or definitional body (for theorems: the type only).
+We say the **declaration DAG** is the directed graph on the declarations with an edge from A to B if A depends on B.
+We say the **declaration DAG rooted at A** is the declaration DAG induced on all declarations reachable from A.
+
+## Concepts
+
+A **concept** encodes one well-defined mathematical unit (a definition or theorem as it would appear in a paper), both as natural-language mathematics and as a faithful Lean formalization. From lean's perspective, a concept is a set of declarations. 
+We require that concepts partition the set of declarations.
+The **concept DAG** is obtained by quotienting the declaration DAG by concepts.
+We require the concept DAG to be acyclic.
+The **concept DAG rooted at A** is obtained by taking all declarations reachable from A in the declaration DAG, and quotienting by concepts.
+Note that the concept DAG rooted at A is not necessarily an induced subgraph of the concept DAG.
+
+## Proofs
+
+A **proof** is a lean proof that assumes a set of input statements and derives an output statement.
+The **proof network** is the hypergraph over the declarations where every proof with assumptions a1,...,ak and conclusion c
+corresponds to a hyperedge (a1,...,ak,c).
+
+## Submissions
+
+A **submission** is a set of concepts together with a set of proofs.
+
+
+
+
+# Implementation of these datastructures 
+
+We model concepts via namespaces below the submission-level namespace.
+For a submission ``Mysubmission`` and concept ``Myconcept``
+all its declarations have the name ``Mysubmission.Cpts.Myconcept.Optional.Nested.Sub.Namespaces.Name``.
+
+We use docstrings to annotate both namespaces and declarations.
+By default, docstrings can only annotate declarations, but with some tweaks (discussed below), they can also annotate namespaces.
+
+    namespace Mysubmission.Cpts
+
+    /-- annotation of concept A -/
+    namespace A
+
+    /-- annotation of declaration X -/
+    def X ...
+
+    /-- annotation of declaration Y -/
+    axiom Y ...
+
+    end A
+
+    /-- annotation of concept B -/
+    namespace B
+
+    /-- annotation of declaration X -/
+    def U ...
+
+    /-- annotation of declaration Y -/
+    axiom V ...
+
+    end B
+
+    end Mysubmission.Cpts
+
+
+Each annotation is a docstring that we parse as markdown with optional yaml frontmatter (common pattern for static site generators).
+When placing the whole docstring into json, the markdown at the end gets placed into a ``body`` key or similar.
+
+    /--
+    ---
+    key: value
+    key: value
+    key: value
+    ---
+    description
+    -/
+
+## Claude's idea on how to annotate namespaces
+
+register your own environment extension mapping Name → String, and add syntax that makes /-- ... -/ namespace A legal by elaborating the doc into your extension and then delegating to the real namespace command:
+
+    import Lean
+    open Lean Elab Command
+
+    initialize namespaceDocExt :
+        SimplePersistentEnvExtension (Name × String) (NameMap String) ←
+      registerSimplePersistentEnvExtension {
+        addEntryFn := fun m (n, d) => m.insert n d
+        addImportedFn := fun arrs =>
+          arrs.foldl (fun m es => es.foldl (fun m (n, d) => m.insert n d) m) {}
+      }
+
+    syntax (name := docNamespace) (priority := high)
+      docComment "namespace" ident : command
+
+    elab_rules : command
+      | `(docNamespace| $doc:docComment namespace $id:ident) => do
+        let text ← getDocStringText doc
+        -- resolve relative to the current namespace, like `namespace` itself does
+        let ns := (← getCurrNamespace) ++ id.getId
+        modifyEnv (namespaceDocExt.addEntry · (ns, text))
+        elabCommand (← `(namespace $id))
+
+and retrieval is `(namespaceDocExt.getState env).find? A`. Since it's a persistent extension, the docstrings survive across imports, so downstream files and doc tooling can query them.
+
+
+# Implementation Details inside Lean
+
 
 ## Manifest
 
@@ -86,7 +205,6 @@ example:
 id of submission:``mysubmission``
 id of a declaration within: ``mysubmission.decs.OptionalNestedSubNamespaces.mydeclaration``
 id of a proof within: ``mysubmission.proofs.OptionalNestedSubNamespaces.myproof``
-
 
 ## Natural Language Math
 
@@ -110,70 +228,7 @@ Not all lean declarations need to get these annotations.
 Lean declarations without them are called "hidden declarations", and will be given less prominence on the website.
 
 
-## THREE SUGGESTED BUILDING BLOCKS (Version 1)
-
-I suggest the basic building blocks of our submissions are **declarations**, **concepts** and **proofs**.
-
-A **Declaration** is an individual lean declaration, def or axiom. 
-They may be annotated with names and natural language descriptions to make them more interpretable on the website.
-The **semantic closure** of a declaration is the set of all declarations required to state it.
-
-
-A **concept** is a natural language description of a mathematical concept (e.g.a theorem or a definition in a paper)
-together with a set of lean declarations that faithfully encode the concept.
-Each concept has **dependencies**, which are other concepts that are required to state the concept.
-
-Concepts are encoded in `metadata.yaml` via the following entries
-    - `id`: a unique identifier
-    - `name`: a natural language name like "ramsey's theorem" or "treewidth"
-    - `declarations`: a list of lean declarations that faithfully encode the concept. Does not need to be semantically closed.
-    - `dependencies`: a list of other concepts that are used to define the new concept.
-
-Key rule: Every declaration in the semantic closure of the declarations of concept X
-needs to be either contained in the declarations of X,
-or in the semantic closure of the declarations of a dependency of X.
-This rule ensures that a concept's semantic closure is covered by its's transitive dependencies.
-
-Declararions can be in multiple concepts. Therefore, the dependencies can not be automatically derived:
-There maybe multiple incomparable ways to cover the semantic closure with concepts.
-
-Additional considerations:
-Concepts can use declarations from other submissions.
-A declaration that is in no concept is allowed, but issues a warning during build.
-
-For proofs, I see two possible ways to go:
-
-1) A **proof** takes a set of statement-declarations and derives an output statement-declaration.
-This is the finer, more natural granularity than 2).
-But as statement-declarations can be in multiple concepts, one cannot uniquely say things like "this concept is used to prove that concept".
-
-2) A **proof** takes a set of concepts and derives an output statement-declaration.
-A concept is proven if all statement-declarations inside it are proven.
-This lets us say "this concept is used to prove that concept",
-and allows us to create a proof graph on the level of concepts, which might be nicer to visualize.
-
-## THREE SUGGESTED BUILDING BLOCKS (Version 2)
-
-I suggest the basic building blocks of our submissions are declarations, concepts and proofs. A Declaration is an individual lean declaration, def or axiom. They may be annotated with names and natural language descriptions to make them more interpretable on the website. The semantic closure of a declaration is the set of all declarations required to state it. A concept is a natural language description of a mathematical concept (e.g. a theorem or a definition in a paper) together with a set of lean declarations that faithfully encode the concept. Concepts are encoded in `metadata.yaml` via the following entries
-- `id`: a unique identifier
-- `name`: a natural language name like "ramsey's theorem" or "treewidth"
-- `declarations`: a list of lean declarations that faithfully encode the concept. Does not need to be semantically closed.
-
-Key rule: Every declaration belongs to exactly one concept. Concepts partition the declarations of the archive (declarations of the trusted base, i.e., the pinned mathlib, are exempt).
-
-Because ownership is unique, dependencies do not need to be declared: concept X depends on concept Y if and only if the semantic closure of a declaration of X contains a declaration owned by Y. The concept dependency graph is derived automatically from the declaration DAG. There is nothing to annotate and nothing that can drift out of sync.
-
-Additional considerations:
-- Concepts can depend on declarations from other submissions, but never claim them. Ownership is immutable within a frozen submission.
-- If a lemma feels like it belongs to two concepts, it doesn't: extract it into its own (possibly small) concept that both depend on. Any overlapping assignment can be decomposed this way.
-
-For proofs, the situation simplifies. A proof takes a set of statement-declarations and derives an output statement-declaration.
-This uniquely identifies the set of concepts used in the proof.
-
-One thing to watch either: the derived concept graphs (both dependency and proof) are not automatically acyclic, since interleaved ownership can create cycles even though the declaration DAG is acyclic. We should forbid this?
-
-
-## THREE SUGGESTED BUILDING BLOCKS (Version 3)
+## THREE SUGGESTED BUILDING BLOCKS
 
 **Declaration.** Any single Lean declaration (def, structure, inductive, instance, axiom, ...). Definitions encode mathematical objects.
 Axioms encode statements whose proofs are provided separately.
@@ -185,9 +240,18 @@ A **proof** is a lean proof that assumes a set of statements (i.e. declarations)
 Example:
 
     /-!
-    # Title of the concept, e.g. Twin-width
+
     Natural language description of the concept. E.g., we define twin-width via contraction sequences ...
+
+    In particuar, the type of our moduel is
+    @type = adsfadsf
+
     -/
+
+    /--
+    used from package bla
+    -/
+    abbrev mysymlink := name in other package
 
     /--
     # Title of the declaration, e.g., Contraction Sequence
@@ -202,13 +266,6 @@ Example:
     def RedGraph ...
 
 
-**Declaration Dependency DAG.** For declarations d, e, add an edge from e to d iff e occurs among the constants of d's type or definitional body (for theorems: the type only). This DAG is shown on the website for each declaration.
-
-**Concept Dependency DAG.** The concept DAG rooted at a concept A is obtained by projection: take the dependencies of the Declaration DAG, map each reached declaration to its owning concept, and inherit the edges — concept D points to concept C iff some reached declaration of C uses, in one dependency DAG step, a reached declaration of D. Acyclicity follows from acyclicity of imports. Reached constants owned by no concept (mathlib, core) form A's background footprint and are not expanded. This DAG is shown on the website for each concept.
-
-Each rooted Concept DAG is a potentially smaller graph than the DAG obtained by quotienting declaration DAG via concepts.
-In particular, if an author groups admissibility and coloring numbers into a single concept A, and a follow up submission creates a concept B that only uses admissibility from concept A, then the concepts containing dependencies of the coloring numbers are not in B's concept DAG.
-On the website, we may want to display a percentage for each concept stating what fraction of its declarations are contained in the displayed concept DAG.
 
 
 ## TODO: leftovers from this morning
