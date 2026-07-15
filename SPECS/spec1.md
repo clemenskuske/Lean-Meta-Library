@@ -1,5 +1,7 @@
 # Introduction and Vision
 
+TODO: adapt this section to the new stuff layout out in the ===-delimited sections below
+
 lax:  lean archive
 
 This project aims to archive and connect lean formalizations. What arxiv is to preprints, this project shall be to lean formalizations.
@@ -38,25 +40,18 @@ The basic unit is  **submission**. Each submission consists of a manifest file t
 
 - **manifest.yaml** states title, abstract etc. the data format can be found under todo.
 
-- The **declaration package** contains lean statements and definitions without proofs. It merely annotates which natural language statements/definitions are formalized by which lean declarations. The surface package is supposed to be especially clean lean code (to be defined in subsection!) written for and in collaboration with humans. It covers the minimal trust boundary that is not covered by the lean checker. surface packages and their contents and dependencies etc can be browsed at (link to website).
+- The **concept package** contains lean statements and definitions without proofs. It merely annotates which natural language statements/definitions are formalized by which lean declarations. The concept package is supposed to be especially clean lean code (to be defined in subsection!) written for and in collaboration with humans. It covers the minimal trust boundary that is not covered by the lean checker.
+concept packages and their contents and dependencies etc can be browsed at (link to website).
 
 TODO: it is supposed to contain the minimal content to fully specify the semantics of the things we want to prove??
 TODO: it doesnt need to be fully self contained, it can use declarations from other submissions.
 
-- the **proof package** contains the actual lean proofs. It is supposed to compile without sorries, but otherwise anything goes. It contains annotations highlighting which surface-level statements it proves. It’s proven statements are orthogonal to the surface package: It may leave  proof obligations of the submissions surface package open, and it may prove proof obligations from other submissions. As the correctness of proofs can be checked by lean, the writing of the proof package can be fully outsurced to to ai agents without compromising correctness.
+- the **proof package** contains the actual lean proofs. It is supposed to compile without sorries, but otherwise anything goes. It contains annotations highlighting which concept-level statements it proves. It’s proven statements are orthogonal to the concept package: It may leave proof obligations of the submissions concept package open, and it may prove proof obligations from other submissions. As the correctness of proofs can be checked by lean, the writing of the proof package can be fully outsurced to to ai agents without compromising correctness.
 
-
-TODOS for manifest.yaml (to decide)
-
-abstact:
-Here, we prove \Cref{submissionsname.maintheorem}.
-
-highlighted statements?
-orders on statements?
 
 
 ## Community Review
-While the correctness of the proof packages is checked by lean itself, we still require human effort to check that the formal surface statements match their natural language counterparts. Contributors can register with their ORCID identity and publicly approve of flag submitted formalizations, thereby helping us to close the trust obligations.
+While the correctness of the proof packages is checked by lean itself, we still require human effort to check that the formal concept statements match their natural language counterparts. Contributors can register with their ORCID identity and publicly approve of flag submitted formalizations, thereby helping us to close the trust obligations.
 
 TODO: we now have two authentication mechansisms: github and orcid. we need to clearly separate their concerns. github for code and orcid for scientific identities?
 
@@ -69,65 +64,153 @@ In particular, we pin the recommend lean version to xxx, lake version to xxx, an
 Moreover, You may mark a submission as "work-in-progress" which allows you to freely overwrite it. However, this prevents downstream submissions from citing your work, as we do not (yet?) allow work-in-progress dependencies.
 
 
-
-
-
-
-
+======================================================================================================================
 
 # Datastructures
 
-We define the basic building blocks of the archive and the constraints we place on them.
+We define the basic building blocks of the archive and the constraints we place
+on them.
 
 ## Declarations
 
-A **declaration** is any single Lean declaration (def, structure, inductive, instance, axiom, ...). 
-Here, definitions encode mathematical objects and 
-axioms encode statements whose proofs are provided separately. We say **declaration A depends on declaration B** if 
-B occurs among the constants of A's type or definitional body (for theorems: the type only).
-We say the **declaration DAG** is the directed graph on the declarations with an edge from A to B if A depends on B.
-We say the **declaration DAG rooted at A** is the declaration DAG induced on all declarations reachable from A.
+A **declaration** is a single Lean declaration command. Besides its named
+constant, a declaration comprises all auxiliary kernel constants its command
+generates (e.g., a ``structure`` also generates its constructor and
+projections). 
+
+We say **declaration A depends on declaration B** if some constant of B occurs
+in the type or body of some constant of A (theorems: type only).
+
+**Atoms** are the building blocks of the archive: a distinguished subset of the
+declarations, specified later (see Concepts and Packages), paired with a
+natural-language description. Every atom is declared by one of the commands
+``def``, ``abbrev``, ``structure``, ``class``, ``inductive``, ``instance``, or
+``axiom`` — though not every such declaration is an atom. An atom declared by
+``axiom`` is called a **statement**; its proof is provided separately (see
+Proofs).
+
+The **declaration DAG** is the directed graph on the atoms and all declarations
+reachable from them, with an edge from A to B if A depends on B. We require
+that non-atoms of the declaration DAG do not depend on atoms. The **declaration
+DAG rooted at A** is the declaration DAG induced on all declarations reachable
+from A.
+
+Caveat: declarations in a ``mutual`` block may depend on each other. With
+slight abuse of terminology, we still call the graph the declaration DAG: it is
+acyclic except for cycles within mutual blocks.
+
 
 ## Concepts
 
-A **concept** encodes one well-defined mathematical unit (a definition or theorem as it would appear in a paper), both as natural-language mathematics and as a faithful Lean formalization. From lean's perspective, a concept is a set of declarations. 
-We require that concepts partition the set of declarations.
-The **concept DAG** is obtained by quotienting the declaration DAG by concepts.
-We require the concept DAG to be acyclic.
-The **concept DAG rooted at A** is obtained by taking all declarations reachable from A in the declaration DAG, and quotienting by concepts.
-Note that the concept DAG rooted at A is not necessarily an induced subgraph of the concept DAG.
+A **concept** is a set of atoms together with a natural-language text. The
+intent is that the text states one well-defined mathematical unit (a definition
+or theorem as it would appear in a paper) and that the atoms faithfully
+formalize it. Every atom belongs to exactly one concept.
+
+
+The **concept DAG** is obtained from the declaration DAG by inducing on atoms
+and quotienting by concepts (dropping self-loops). We require the concept DAG
+to be acyclic; in particular, this forces all atoms of a ``mutual`` block into
+the same concept. For a declaration A, the **concept DAG rooted at A** is the
+declaration DAG restricted to the nodes reachable from A, induced and
+quotiented as above. Note that the concept DAG rooted at A is not necessarily
+an induced subgraph of the concept DAG.
 
 ## Proofs
 
-A **proof** is a lean proof that assumes a set of input statements and derives an output statement.
-The **proof network** is the hypergraph over the declarations where every proof with assumptions a1,...,ak and conclusion c
-corresponds to a hyperedge (a1,...,ak,c).
+A **proof** is a ``theorem`` declaration that is annotated with the
+statement it proves. Its **conclusion** is that statement; we
+require the theorem's type to match the type of the conclusion (up to
+definitional equality?). Its **assumptions** are the statements occurring
+in the theorem's axiom set (as reported by ``#print axioms``). (The standard
+axioms ``propext``, ``Classical.choice``, ``Quot.sound`` are ignored;
+``sorryAx`` is rejected.)
+
+The **proof network** is the directed hypergraph over the statements where
+every proof with assumptions A and conclusion c corresponds to a hyperedge (A →
+c). A statement is **proven** if it is the conclusion of some proof all of
+whose assumptions are (recursively) proven; otherwise it is a **conjecture**.
+More generally, a statement is **proven relative to** a set C of conjectures if
+it becomes proven once the statements in C are taken as proven.
 
 ## Submissions
 
 A **submission** is a set of concepts together with a set of proofs.
 
+## Key-Value Annotations
+
+We annotate concepts, atoms and proofs with various key-value pairs. We require
+the following keys, though we may later allow some additional optional keys.
+
+Proof:
+    - conclusion: id of the conclusion
+
+Concept:
+    - title: natural-language name like "Ramsey's Theorem"
+    - description: natural-language description
+
+Atom:
+    - title: natural-language name
+    - description: natural-language description
+
+Submission:
+    - id: an archive-wide unique id
+    - TODO
 
 
+# Implementation of These Datastructures 
 
-# Implementation of these datastructures 
+## Packages
 
-We model concepts via namespaces below the submission-level namespace.
-For a submission ``Mysubmission`` and concept ``Myconcept``
-all its declarations have the name ``Mysubmission.Cpts.Myconcept.Optional.Nested.Sub.Namespaces.Name``.
+Lake terminology, which we adopt: a **package** is the unit of distribution — a
+folder with a ``lakefile.toml`` that declares its own dependencies; a package
+contains one or more **libraries** (``lean_lib`` targets); a library consists
+of **modules** (``.lean`` files). Dependencies are declared per package, not
+per library.
 
-We use docstrings to annotate both namespaces and declarations.
-By default, docstrings can only annotate declarations, but with some tweaks (discussed below), they can also annotate namespaces.
+Each submission creates two Lake packages: a **concept package** containing its
+concepts and atoms and a **proof package** containing its proofs. For a
+submission ``Mysubmission``, these two packages are called
+``mysubmission-cpts`` and ``mysubmission-prfs``. We use two packages (rather
+than two libraries within one package) because the two need different
+dependency policies:
+- the concept package may depend only on the pinned mathlib and on concept
+  packages of other submissions;
+- the proof package additionally depends on its own concept package. It may
+  depend also on other submissions' proof packages, though this is discouraged
+  for safety and hygiene reasons. 
+
+## Namespaces
+
+Each submission with id ``Mysubmission`` corresponds to a top-level namespace
+``Mysubmission``. All proofs of the submission are placed into the namespace
+``Mysubmission.Prfs``. All atoms of a concept ``Myconcept`` are placed within
+the namespace ``Mysubmission.Cpts.Myconcept``. Both proofs and atoms may be
+arbitrarily nested within subnamespaces. Submission ids are UpperCamelCase,
+since they double as Lean namespaces.
+
+Example:
+- id of submission: ``Mysubmission``
+- id of an atom of concept ``Myconcept`` within the submission:
+  ``Mysubmission.Cpts.Myconcept.OptionalNestedSubNamespaces.Myatom``
+- id of a proof within the submission:
+  ``Mysubmission.Prfs.OptionalNestedSubNamespaces.Myproof``
+
+## Annotations
+
+We use docstrings to annotate concepts, atoms, and proofs.
+
+An example module within the concept package:
 
     namespace Mysubmission.Cpts
 
     /-- annotation of concept A -/
     namespace A
 
-    /-- annotation of declaration X -/
+    /-- annotation of atom X -/
     def X ...
 
-    /-- annotation of declaration Y -/
+    /-- annotation of atom Y -/
     axiom Y ...
 
     end A
@@ -135,10 +218,10 @@ By default, docstrings can only annotate declarations, but with some tweaks (dis
     /-- annotation of concept B -/
     namespace B
 
-    /-- annotation of declaration X -/
+    /-- annotation of atom U -/
     def U ...
 
-    /-- annotation of declaration Y -/
+    /-- annotation of atom V -/
     axiom V ...
 
     end B
@@ -146,8 +229,17 @@ By default, docstrings can only annotate declarations, but with some tweaks (dis
     end Mysubmission.Cpts
 
 
+An example module within the proof package:
+
+    namespace Mysubmission.Prfs
+
+    /-- annotation of proof P -/
+    theorem P ...
+
+    end Mysubmission.Prfs
+
 Each annotation is a docstring that we parse as markdown with optional yaml frontmatter (common pattern for static site generators).
-When placing the whole docstring into json, the markdown at the end gets placed into a ``body`` key or similar.
+When placing the whole docstring into json, the markdown at the end gets placed into the ``description`` key
 
     /--
     ---
@@ -158,7 +250,9 @@ When placing the whole docstring into json, the markdown at the end gets placed 
     description
     -/
 
-## Claude's idea on how to annotate namespaces
+## Claude's idea on how to annotate namespaces (Side comment)
+
+By default, docstrings can only annotate lean declarations, but with some tweaks (discussed below), they can also annotate namespaces.
 
 register your own environment extension mapping Name → String, and add syntax that makes /-- ... -/ namespace A legal by elaborating the doc into your extension and then delegating to the real namespace command:
 
@@ -186,6 +280,7 @@ register your own environment extension mapping Name → String, and add syntax 
 
 and retrieval is `(namespaceDocExt.getState env).find? A`. Since it's a persistent extension, the docstrings survive across imports, so downstream files and doc tooling can query them.
 
+==============================================================================================
 
 # Implementation Details inside Lean
 
@@ -194,77 +289,6 @@ and retrieval is `(namespaceDocExt.getState env).find? A`. Since it's a persiste
 
 TODO: give one complete example of a manifest file, briefly explaining each relevant flag.
 TODO: shall we rename ``submission slug`` to ``submission id``? Then all our objects have ids.
-
-## Namespaces and Ids
-
-Each declaration and proof has an ``id`` corresponding to its name in the global namespace.
-We enfore that declarations and proofs of a submission ``mysubmission`` are contained within the namespaces ``mysubmission.decs`` and ``mysubmission.proofs``, respectively (allowing subnamespaces).
-To avoid colliding ids, no two objects may have the same name.
-
-example:
-id of submission:``mysubmission``
-id of a declaration within: ``mysubmission.decs.OptionalNestedSubNamespaces.mydeclaration``
-id of a proof within: ``mysubmission.proofs.OptionalNestedSubNamespaces.myproof``
-
-## Natural Language Math
-
-Natural language math is written in latex (to the degree it is supported by pandoc).
-This should allow all we need and more: sections, bold/italic, inline and display math, macros, etc.
-We add a new custom command ``\Cref{id}`` that renders to ``Declaration/Proof/Submission nameOfObject``
-
-## Declaration Package
-
-Every module of submission ``mysubmission`` starts by opening
-the namespace ``mysubmission.decs`` and ends by closing it.
-It is not allowed to open and close other namespaces. But it is allowed to place
-objects into subnamespaces as in ``def Sub.Name.Space : Nat := 0``.
-
-To lift a lean declaration into the archive, one adds two lean annotations
-``@[name text]``, where ``text`` is a short description like "Ramsey's theorem for simple graphs".
-``@[naturalLanguageInline text]``, where ``text`` is the full natural language half of the statement
-``@[naturalLanguageFile file]``, where ``file`` is either tex or tex-flavored-markdown
-
-Not all lean declarations need to get these annotations.
-Lean declarations without them are called "hidden declarations", and will be given less prominence on the website.
-
-
-## THREE SUGGESTED BUILDING BLOCKS
-
-**Declaration.** Any single Lean declaration (def, structure, inductive, instance, axiom, ...). Definitions encode mathematical objects.
-Axioms encode statements whose proofs are provided separately.
-
-A **proof** is a lean proof that assumes a set of statements (i.e. declarations) and derives an output statement.
-
-**Concept.** A concept encodes one well-defined mathematical unit (a definition or theorem as it would appear in a paper), both as natural-language mathematics and as a faithful Lean formalization. Technically, a concept is a single Lean module containing exactly one module docstring (first command after imports) followed by its declarations. Each docstring, that is,  /-! -/ for the module, /-- -/ for declarations, begins with a level-1 Markdown header giving a title (not necessarily unique), followed by a natural-language description of the intended mathematics.
-
-Example:
-
-    /-!
-
-    Natural language description of the concept. E.g., we define twin-width via contraction sequences ...
-
-    In particuar, the type of our moduel is
-    @type = adsfadsf
-
-    -/
-
-    /--
-    used from package bla
-    -/
-    abbrev mysymlink := name in other package
-
-    /--
-    # Title of the declaration, e.g., Contraction Sequence
-    Optional natural language descrition of the declaration
-    -/
-    def ContractionSequence ...
-
-    /--
-    # Red Graph
-    Descrition
-    -/
-    def RedGraph ...
-
 
 
 
@@ -291,7 +315,7 @@ Each submission is a folder in a public git repository consisting of
     - TODO
 
 It must satisfy various rules:
-- to avoid RCE surface packages can only use whitelist dialect. At this point we only define this implicitly by whatever the check accepts. May change down the road
+- to avoid RCE concept packages can only use whitelist dialect. At this point we only define this implicitly by whatever the check accepts. May change down the road
 
 
 TODO: fully specify the lean dialect of the declaration package
@@ -312,7 +336,7 @@ for each submission, there exist:
 moreover, in the root dir of the repo, there exist:
 - submissions.jsonl: the list of all submissions in the archive, managed by the cli (pretty printed for manual inspection)
 
-not all declarations in the surface file need to be published.
+not all declarations in the concept file need to be published.
 - one "publishes" a proof by annotating it with ``@[proves submissionname.DeclarationName]`` and ``@[dependsOn DeclarationName1 submissionname.DeclarationName2 ...`` or similar.
 
 
@@ -401,3 +425,15 @@ Also allow a comment section below each statement/definition? List aggregated co
 # website auth
 
 Users log in through orcid oauth. This way, all endorsements of formalizations are backed by actual scientific identities
+
+
+# REST
+
+TODOS for manifest.yaml (to decide)
+
+abstact:
+Here, we prove \Cref{submissionsname.maintheorem}.
+
+highlighted statements?
+orders on statements?
+
