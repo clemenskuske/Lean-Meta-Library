@@ -10,7 +10,7 @@ into two packages.
 The **concept package** pairs
 - well-defined mathematical objects (such as a definition or theorem statement
   as it would appear in a paper), presented in natural language, and
-- a faithful encoding of such objects in lean. 
+- faithful encodings of such objects in lean. 
 Each such pairing is a **concept**. Crucially, concepts do not contain proofs.
 They are supposed to represent the minimal information needed to fully specify
 the semantics of a natural-language statement or definition within lean, but
@@ -19,7 +19,7 @@ written for and in collaboration with humans.
 
 On the other hand, the **proof package** contains the actual lean proofs to
 back up the correctness of the concepts. This package is supposed to compile
-without sorries, but otherwise anything goes.   As the correctness of proofs
+without sorries, but otherwise anything goes. As the correctness of proofs
 can be checked by lean, the writing of the proof package can be fully outsurced
 to to ai agents without compromising correctness. It's proven statements are
 orthogonal to the concept package: It may leave proof obligations of the
@@ -29,10 +29,10 @@ submissions.
 ## Community Review 
 
 While the correctness of the proof packages is checked by lean itself, we still
-require human effort to check that the formal concept statements match their
-natural language counterparts. Contributors can register with their ORCID
-identity and publicly approve of flag submitted formalizations, thereby helping
-us to close the trust obligations.
+require human effort to check that the formal concepts match their natural
+language counterparts. Contributors can register with their ORCID identity and
+publicly approve of flag submitted formalizations, thereby helping us to close
+the trust obligations.
 
 ## Versioning
 
@@ -47,9 +47,9 @@ Bumping the pins later (new toolchain, new mathlib) invalidates every
 submission so far. We have no plan how to handle this yet and will figure it
 out as we go.
 
-You may mark a submission as "work-in-progress" which allows you to
+Authors may mark a submission as "work-in-progress" which allows them to
 freely overwrite it. However, this prevents downstream submissions from citing
-your work, as we do not allow work-in-progress dependencies.
+the submission, as we do not allow work-in-progress dependencies.
 
 # Abstract Datastructures
 
@@ -147,12 +147,11 @@ Proof:
 
 ## Reviews
 
-Everything above is derived from the frozen submissions; reviews are the one
+Everything above is derived from the frozen submissions. Reviews are the one
 mutable layer on top. A **review** is a registered user's verdict on a
 concept: **approve** — the Lean side faithfully represents the description —
 or **flag** — it does not. One verdict per user per concept, revisable at any
-time; since the concept is frozen, a verdict never goes stale. We may also add
-a comment section per concept (TBD).
+time. We may also add a comment section per concept (TBD).
 
 
 # Implementation Details
@@ -206,7 +205,7 @@ The folder layout is fixed:
         Mysubmission/Prfs/...      -- modules of the proof package
 
 The concepts and proofs package folders are literally named ``cpts`` and
-``prfs``, since other submissions reference them via ``subDir``.
+``prfs``, since other submissions reference them via ``subDir`` in the lakefile.
 
 ``manifest.yaml`` holds the metadata: the submission's id and title,
 pointers to abstract and license, bibliography entries, and the environment
@@ -383,17 +382,17 @@ Further rules:
   body elaborates fine but leaves a hole in the trusted surface. Checked on
   the axiom set of every atom.
 
-- **Attributes.** None for now. Downstream proof packages can re-attach
-  them locally (``attribute [simp] …``), so this costs no ergonomics. The
-  exception is ``instance``, which must take effect already in the concept
-  package so that later atoms elaborate — hence it is an atom command.
 
-- **Deriving.** ``deriving`` clauses run arbitrary metaprograms; banned
-  initially. We may later whitelist standard handlers (``DecidableEq``,
-  ``Repr``, …), counting the generated instances as auxiliary constants of
-  the atom.
+### Additional thoughts by Claude
 
-### Additional thoughts
+TODO: **Attributes.** None for now. Downstream proof packages can re-attach
+them locally (``attribute [simp] …``), so this costs no ergonomics. The
+exception is ``instance``, which must take effect already in the concept
+package so that later atoms elaborate — hence it is an atom command.
+
+TODO: **Deriving.** ``deriving`` clauses run arbitrary metaprograms; banned
+initially. We may later whitelist standard handlers (``DecidableEq``, ``Repr``,
+…), counting the generated instances as auxiliary constants of the atom.
 
 TODO: Enforcement is layered. a purely syntactic linter checks every top-level
 command against the whitelist before elaboration; after elaboration, an
@@ -413,27 +412,16 @@ splice the used variables back into each displayed declaration. Postponed.
 
 ## Proofs
 
-TODO:
-
 The proof package is ordinary Lean — any command, any syntax. Correctness
 is delegated entirely to the kernel: the archive only inspects the proof
 theorems' types and axiom sets, so nothing in the proof package extends the
 trusted surface. (This is also why writing proof packages can be outsourced
 to AI agents without compromising correctness.)
 
-
-TODO: new paragraph??
-
-Axioms on the archive environment's ignore list are not counted as
-assumptions; an axiom set containing anything that is neither a statement
-nor ignored (e.g. ``sorryAx``, or an axiom declared in a proof package) is
-rejected.
-
-
 Further rules:
 
 A ``theorem`` whose docstring frontmatter carries the ``conclusion`` key is
-a proof (see the example in the Annotations section); all other
+a proof (see the example in the Annotations section). All other
 declarations are helpers and are ignored by the archive. The optional
 ``assumptions`` key, when present, must list exactly the assumptions the
 checker computes — a redundant sanity check for authors, not an input.
@@ -442,12 +430,11 @@ Checks per proof:
 
 1. The ``conclusion`` id resolves to a statement (an ``axiom`` atom) of the
    submission itself or of a registered dependency.
-2. The theorem's type is definitionally equal to the conclusion's type
-   (kernel check).
+2. The theorem's type is definitionally equal to the conclusion's type (kernel
+   check).
 3. Every axiom reported by ``#print axioms`` is either a statement (an
-   assumption) or on the archive environment's ignore list; any other
-   axiom — ``sorryAx``, an axiom declared in the proof package itself —
-   rejects the proof.
+   assumption) or on the archive environment's whitelist of background axioms.
+   Any other axiom — such as ``sorryAx`` — is forbidden.
 
 ## Annotations
 
@@ -457,8 +444,10 @@ by a module docstring ``/-! … -/`` placed directly before the ``namespace``
 that opens them — legal vanilla Lean, associated with the namespace
 positionally by the checker.
 
-Each annotation is a docstring that we parse as markdown with optional yaml frontmatter (common pattern for static site generators).
-When placing the whole docstring into json, the markdown at the end gets placed into the ``description`` key
+Each annotation is a docstring that we parse as markdown with optional yaml
+frontmatter (common pattern for static site generators). When placing the whole
+docstring into json, the markdown at the end gets placed into the
+``description`` key
 
     /--
     ---
@@ -469,9 +458,10 @@ When placing the whole docstring into json, the markdown at the end gets placed 
     description
     -/
 
-When no frontmatter is given we do the following:
-For concepts and axioms, we parse the #-headline as ``title`` key and everything below as ``description`` key.
-For proofs, we parse the #-headline as ``conclusion`` key and everything below as ``description`` key.
+When no frontmatter is given we do the following: For concepts and axioms, we
+parse the #-headline as ``title`` key and everything below as ``description``
+key. For proofs, we parse the #-headline as ``conclusion`` key and everything
+below as ``description`` key.
 
 An example module within the concept package:
 
@@ -536,4 +526,3 @@ Further rules:
 - A concept namespace may be opened many times (even across modules), but
   must be annotated at exactly one opening. (Atoms directly in
   ``Mysubmission.Cpts`` would belong to no concept and are rejected.)
-
