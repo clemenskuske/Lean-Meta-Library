@@ -71,7 +71,11 @@ Moreover, You may mark a submission as "work-in-progress" which allows you to fr
 We define the basic building blocks of the archive and the constraints we place
 on them.
 
-## Declarations
+## Submissions
+
+A **submission** is a **concept package** together with a **proof package**.
+
+## Declarations and Atoms
 
 A **declaration** is a single Lean declaration command. Besides its named
 constant, a declaration comprises all auxiliary kernel constants its command
@@ -81,13 +85,10 @@ projections).
 We say **declaration A depends on declaration B** if some constant of B occurs
 in the type or body of some constant of A (theorems: type only).
 
-**Atoms** are the building blocks of the archive: a distinguished subset of the
-declarations, specified later (see Concepts and Packages), paired with a
-natural-language description. Every atom is declared by one of the commands
-``def``, ``abbrev``, ``structure``, ``class``, ``inductive``, ``instance``, or
-``axiom`` — though not every such declaration is an atom. An atom declared by
-``axiom`` is called a **statement**; its proof is provided separately (see
-Proofs).
+An **Atom** is a declaration within the concept package. Every atom is declared
+by one of the commands ``def``, ``abbrev``, ``structure``, ``class``,
+``inductive``, ``instance``, or ``axiom``. An atom declared by ``axiom`` is
+called a **statement**.
 
 The **declaration DAG** is the directed graph on the atoms and all declarations
 reachable from them, with an edge from A to B if A depends on B. We require
@@ -106,56 +107,53 @@ A **concept** is a set of atoms together with a natural-language text. The
 intent is that the text states one well-defined mathematical unit (a definition
 or theorem as it would appear in a paper) and that the atoms faithfully
 formalize it. Every atom belongs to exactly one concept.
-
+Thus, concepts partition the declarations of the concept package.
 
 The **concept DAG** is obtained from the declaration DAG by inducing on atoms
 and quotienting by concepts (dropping self-loops). We require the concept DAG
-to be acyclic; in particular, this forces all atoms of a ``mutual`` block into
-the same concept. For a declaration A, the **concept DAG rooted at A** is the
+to be acyclic. For a declaration A, the **concept DAG rooted at A** is the
 declaration DAG restricted to the nodes reachable from A, induced and
 quotiented as above. Note that the concept DAG rooted at A is not necessarily
 an induced subgraph of the concept DAG.
 
 ## Proofs
 
-A **proof** is a ``theorem`` declaration that is annotated with the
-statement it proves. Its **conclusion** is that statement; we
-require the theorem's type to match the type of the conclusion (up to
-definitional equality?). Its **assumptions** are the statements occurring
-in the theorem's axiom set (as reported by ``#print axioms``). (The standard
-axioms ``propext``, ``Classical.choice``, ``Quot.sound`` are ignored;
-``sorryAx`` is rejected.)
+A **proof** is a ``theorem`` declaration in the proof package that is annotated
+with the statement it proves. Its **conclusion** is that statement. We require
+the theorem's type to match the type of the conclusion (up to definitional
+equality?). Its **assumptions** are the statements occurring in the theorem's
+axiom set (as reported by ``#print axioms``). (The standard axioms ``propext``,
+``Classical.choice``, ``Quot.sound`` are ignored and ``sorryAx`` is rejected.)
 
 The **proof network** is the directed hypergraph over the statements where
 every proof with assumptions A and conclusion c corresponds to a hyperedge (A →
 c). A statement is **proven** if it is the conclusion of some proof all of
-whose assumptions are (recursively) proven; otherwise it is a **conjecture**.
+whose assumptions are (recursively) proven. Otherwise it is a **conjecture**.
 More generally, a statement is **proven relative to** a set C of conjectures if
 it becomes proven once the statements in C are taken as proven.
 
-## Submissions
-
-A **submission** is a set of concepts together with a set of proofs.
 
 ## Key-Value Annotations
 
-We annotate concepts, atoms and proofs with various key-value pairs. We require
-the following keys, though we may later allow some additional optional keys.
+We annotate submissions, atoms, concepts, and proofs with various key-value pairs. The list
+of required and optional keys may later be extenede.
 
-Proof:
-    - conclusion: id of the conclusion
+Submission:
+    - id: an archive-wide unique id
+    - TODO
+
+Atom:
+    - title (optional): natural-language name
+    - description (optional): natural-language description
 
 Concept:
     - title: natural-language name like "Ramsey's Theorem"
     - description: natural-language description
 
-Atom:
-    - title: natural-language name
-    - description: natural-language description
+Proof:
+    - conclusion: id of the conclusion
+    - assumptions (optional): ids of all assumptions
 
-Submission:
-    - id: an archive-wide unique id
-    - TODO
 
 
 # Implementation of These Datastructures 
@@ -171,14 +169,35 @@ per library.
 Each submission creates two Lake packages: a **concept package** containing its
 concepts and atoms and a **proof package** containing its proofs. For a
 submission ``Mysubmission``, these two packages are called
-``mysubmission-cpts`` and ``mysubmission-prfs``. We use two packages (rather
-than two libraries within one package) because the two need different
-dependency policies:
-- the concept package may depend only on the pinned mathlib and on concept
-  packages of other submissions;
-- the proof package additionally depends on its own concept package. It may
+``mysubmission-cpts`` and ``mysubmission-prfs``. 
+
+- The concept package may depend only on the pinned mathlib and on concept
+  packages of other submissions.
+- The proof package usually depends on its own concept package. It may
   depend also on other submissions' proof packages, though this is discouraged
   for safety and hygiene reasons. 
+
+TODO: write two examples of lakefile.toml here.
+We dont allow lakefile.lean or such shenanigans
+because the we have clear rules of what a package should look like! TODO: what are these rules?
+
+## Concept Lean Dialect
+
+TODO: claude, please help me brainstorm this section!
+
+We want a minimal lean dialect such that:
+Given a declaration A together with its dependencies and the containment information into concepts,
+the semantics of the declaration are uniquely determined.
+
+as concept containment is avaliable information, we may allow top-level namespaces corresponding to concepts.
+but deeper namespaces need to be explicit (not opened closed to modify the local state, but explicit part of the declaration)
+There are probably a milion other ways lean may modify the local state that we need to forbid???
+
+I guess we only allow declarations of the form ``def``, ``abbrev``, ``structure``, ``class``,
+``inductive``, ``instance``, or ``axiom``?
+
+Generally, we want to have a minimal dialect that is super easy to review, yet still fully expressive and requires minimal awkward hoops to jump through as author. It should probably allow most kinds of implicit rewritings and such...
+
 
 ## Namespaces
 
