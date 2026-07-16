@@ -1,15 +1,64 @@
-# Context
+# Vision
 
-spec1.md is an outdated document that we dont currently work in, but it may provide useful context into motivation and vision.
+We outline the high-level idea of the archive.
 
-# Datastructures
+## Submissions 
 
-We define the basic building blocks of the archive and the constraints we place
-on them.
+The basic unit of the archive is a **submission**. Each submission is split
+into two packages.
 
-## Submissions
+The **concept package** pairs
+- well-defined mathematical objects (such as a definition or theorem statement
+  as it would appear in a paper), presented in natural language, and
+- a faithful encoding of such objects in lean. 
+Each such pairing is a **concept**. Crucially, concepts do not contain proofs.
+They are supposed to represent the minimal information needed to fully specify
+the semantics of a natural-language statement or definition within lean, but
+nothing more. The concept package is supposed to be especially clean lean code
+written for and in collaboration with humans.
 
-A **submission** is a **concept package** together with a **proof package**.
+On the other hand, the **proof package** contains the actual lean proofs to
+back up the correctness of the concepts. This package is supposed to compile
+without sorries, but otherwise anything goes.   As the correctness of proofs
+can be checked by lean, the writing of the proof package can be fully outsurced
+to to ai agents without compromising correctness. It's proven statements are
+orthogonal to the concept package: It may leave proof obligations of the
+submissions concept package open, and it may prove proof obligations from other
+submissions. 
+
+## Community Review 
+
+While the correctness of the proof packages is checked by lean itself, we still
+require human effort to check that the formal concept statements match their
+natural language counterparts. Contributors can register with their ORCID
+identity and publicly approve of flag submitted formalizations, thereby helping
+us to close the trust obligations.
+
+## Versioning
+
+Unlike most software projects where code freely changes over time, submissions
+are frozen in time. This makes it easy for later submissions to reference
+earlier submissions, allowing the organic growth of a dependency network
+mirroring the citations of scientific publications. We understand that this
+brings along its own problems, which we believe are worth it.
+In particular, we pin the version of lean, lake and mathlib.
+
+Bumping the pins later (new toolchain, new mathlib) invalidates every
+submission so far. We have no plan how to handle this yet and will figure it
+out as we go.
+
+You may mark a submission as "work-in-progress" which allows you to
+freely overwrite it. However, this prevents downstream submissions from citing
+your work, as we do not allow work-in-progress dependencies.
+
+# Abstract Datastructures
+
+We define the basic abstract datastructures of the archive. They come together
+with key-value annotations and form the backbone of the website.
+
+## Submission
+
+A **submission** consists of a **concept package** and a **proof package**.
 
 ## Declarations and Atoms
 
@@ -18,19 +67,23 @@ constant, a declaration comprises all auxiliary kernel constants its command
 generates (e.g., a ``structure`` also generates its constructor and
 projections). 
 
-We say **declaration A depends on declaration B** if some constant of B occurs
-in the type or body of some constant of A (theorems: type only).
-
 An **Atom** is a declaration within the concept package. Every atom is declared
 by one of the commands ``def``, ``abbrev``, ``structure``, ``class``,
 ``inductive``, ``instance``, or ``axiom``. An atom declared by ``axiom`` is
 called a **statement**.
 
+We say **declaration A depends on declaration B** if some constant of B occurs
+in the type or body of some constant of A (theorems: type only). 
+
 The **declaration DAG** is the directed graph on the atoms and all declarations
-reachable from them, with an edge from A to B if A depends on B. We require
-that non-atoms of the declaration DAG do not depend on atoms. The **declaration
-DAG rooted at A** is the declaration DAG induced on all declarations reachable
-from A.
+reachable from them, with an edge from A to B if A depends on B. Note that that
+non-atoms of the declaration DAG do not depend on atoms. The **declaration DAG
+rooted at A** is the declaration DAG induced on all declarations reachable from
+A.
+
+The concept package will be written in a restricted subset of Lean (defined
+later) to ensure that the semantics of an atom A are fully determined by the
+source code of the atoms reachable from A in the declaration DAG (and mathib).
 
 Caveat: declarations in a ``mutual`` block may depend on each other. With
 slight abuse of terminology, we still call the graph the declaration DAG: it is
@@ -39,10 +92,7 @@ acyclic except for cycles within mutual blocks.
 
 ## Concepts
 
-A **concept** is a set of atoms together with a natural-language text. The
-intent is that the text states one well-defined mathematical unit (a definition
-or theorem as it would appear in a paper) and that the atoms faithfully
-formalize it. Every atom belongs to exactly one concept.
+A **concept** is a set of atoms. Every atom belongs to exactly one concept.
 Thus, concepts partition the declarations of the concept package.
 
 The **concept DAG** is obtained from the declaration DAG by inducing on atoms
@@ -59,10 +109,6 @@ with the statement it proves. Its **conclusion** is that statement. We require
 the theorem's type to match the type of the conclusion up to definitional
 equality, as checked by the kernel. Its **assumptions** are the statements
 occurring in the theorem's axiom set (as reported by ``#print axioms``).
-Axioms on the archive environment's ignore list are not counted as
-assumptions; an axiom set containing anything that is neither a statement
-nor ignored (e.g. ``sorryAx``, or an axiom declared in a proof package) is
-rejected.
 
 The **proof network** is the directed hypergraph over the statements where
 every proof with assumptions A and conclusion c corresponds to a hyperedge (A →
@@ -75,10 +121,10 @@ it becomes proven once the statements in C are taken as proven.
 ## Key-Value Annotations
 
 We annotate submissions, atoms, concepts, and proofs with various key-value pairs. The list
-of required and optional keys may later be extenede.
+of required and optional keys may later be exteneded.
 
 Submission:
-    - id: an archive-wide unique id
+    - id: an archive-wide unique id in UpperCamelCase
     - TBD
 
 Atom:
@@ -86,55 +132,63 @@ Atom:
     - description (optional): natural-language description
 
 Concept:
-    - title: natural-language name like "Ramsey's Theorem"
-    - description: natural-language description
+    - title: natural-language name of the mathematical object, like "Ramsey's Theorem"
+    - description: natural-language description of the mathematical object the
+      concept represents. The whole validity of the archive rests on the
+      assumption that the Lean side of the concept faithfully represents the
+      natural-language description.
 
 Proof:
     - conclusion: id of the conclusion
     - assumptions (optional): ids of all assumptions
+    - description (optional): Additional information about the proof, like
+      attribution or high level idea.
 
 
+## Reviews
 
-# Implementation of These Datastructures 
+Everything above is derived from the frozen submissions; reviews are the one
+mutable layer on top. A **review** is a registered user's verdict on a
+concept: **approve** — the Lean side faithfully represents the description —
+or **flag** — it does not. One verdict per user per concept, revisable at any
+time; since the concept is frozen, a verdict never goes stale. We may also add
+a comment section per concept (TBD).
 
+
+# Implementation Details
 
 ## Archive Environment
 
-All submissions build against a single **archive environment**: one pinned
-Lean toolchain (which also fixes the lake version), one pinned mathlib
-revision, and one fixed set of build options.
+All submissions build against a single **archive environment**, which fixes
 
-### More Implementation Details
-
-Besides the versions, the environment also fixes:
-
-- the build options (``autoImplicit`` off for concept packages, none for
-  proof packages),
-- the axioms ignored when computing a proof's assumptions (``propext``,
-  ``Classical.choice``, ``Quot.sound``),
+- one pinned Lean toolchain (which also fixes the lake version),
+- one pinned mathlib revision
+- the build options (``autoImplicit`` off for concept packages, none for proof
+  packages),
+- the allowed background axioms in proofs (``propext``, ``Classical.choice``,
+  ``Quot.sound``),
 - resource limits on submissions (package and file sizes, build timeouts).
+- TBD
 
-All archive-wide values live in a single machine-readable file,
-``lml-env.json``, in the root of the archive repository.
+Implementation Note: All these archive-wide values live in ``lml-env.json`` in
+the root of the archive repository.
 
 ## Submissions
 
 The archive does not host submissions, it references them: a submission is a
-folder together with a commit hash in a public git repository. Work thus
-stays in the authors' repositories and attribution is clear. Since a
-submission is identified by a fixed commit, it is immutable; updating it
-means submitting a new commit. (To guard against link rot, we may keep
-backup copies, e.g. via https://archive.softwareheritage.org/save/.)
-
-The folder contains a manifest file with the submission's metadata and the
-two packages.
+folder together with a commit hash in a public git repository. Work thus stays
+in the authors' repositories and attribution is clear. (To guard against link rot, we
+may keep backup copies, e.g. via https://archive.softwareheritage.org/save/.)
 
 **Registering** a submission means running the archive's checks against its
 (repository, commit, folder) triple and, on success, recording the triple
-under the submission's id. Only registered submissions can be required by
+under the submission's id. Only registered submissions can be referenced by
 other submissions.
 
-### More Implementation Details
+Each submission has an **id**, an archive-wide unique submission id in
+UpperCamelCase, doubling as the Lean namespace. Ids are claimed at registration
+time and must not collide with a top-level namespace of the trusted base (a
+submission named ``Nat`` or ``Mathlib`` is rejected).
 
 The folder layout is fixed:
 
@@ -151,8 +205,8 @@ The folder layout is fixed:
         lake-manifest.json
         Mysubmission/Prfs/...      -- modules of the proof package
 
-The package folders are literally named ``cpts`` and ``prfs``, since other
-submissions reference them via ``subDir``.
+The concepts and proofs package folders are literally named ``cpts`` and
+``prfs``, since other submissions reference them via ``subDir``.
 
 ``manifest.yaml`` holds the metadata: the submission's id and title,
 pointers to abstract and license, bibliography entries, and the environment
@@ -168,13 +222,8 @@ Example:
     LicenseFile: LICENSE
     BibEntries: []
 
-The ``id`` is the archive-wide unique submission id from the Datastructures
-section: UpperCamelCase, doubling as the Lean namespace. The package names
-``mysubmission-cpts``/``-prfs`` are its lowercasing. Ids are claimed at
-registration time and must not collide with a top-level namespace of the
-trusted base (a submission named ``Nat`` or ``Mathlib`` is rejected). The
-registry is ``submissions.jsonl`` in the root of the archive repository,
-one line per registered submission.
+Implementation note: The registry is ``submissions.jsonl`` in the root of the
+archive repository, one line per registered submission.
 
 Further rules (to discuss):
 
@@ -183,6 +232,7 @@ Further rules (to discuss):
   plus ``lean-toolchain``, ``LICENSE``, ``README``) and must stay within the
   archive-wide size limits.
 - **License.** The submission must carry one of the accepted open licenses.
+
 
 ## Packages
 
@@ -195,10 +245,10 @@ concept packages, and proof packages may require only other submissions' proof
 and concept packages. We discourage requiring other submissions' proof packages
 for safety and hygiene reasons.
 
-### More Implementation Details
-
 We only allow ``lakefile.toml``, never ``lakefile.lean``, and enforce the
 following rules.
+
+Further rules:
 
 - **Whitelisted keys only.** The file may contain exactly ``name``,
   ``defaultTargets``, ``[[require]]`` entries, and one ``[[lean_lib]]``.
@@ -303,7 +353,6 @@ enumerating what is forbidden. Term-level syntax is unrestricted: all
 notation and implicit machinery of core Lean and the pinned mathlib remains
 available as trusted base. Submissions merely cannot extend it.
 
-### More Implementation Details
 
 A module of the concept package may only contain:
 
@@ -312,10 +361,13 @@ A module of the concept package may only contain:
 - ``namespace`` / ``end``,
 - module docstrings ``/-! … -/``, allowed only directly before a
   ``namespace`` (concept annotations, see the Annotations section),
+- normal docstrings ``/-- … -/``, allowed only directly before atoms
 - the atom commands ``def``, ``abbrev``, ``structure``, ``class``,
   ``inductive``, ``instance``, ``axiom``, each with an optional docstring
   and optionally prefixed by ``open … in``,
 - ``mutual`` blocks of the atom commands.
+
+Further rules:
 
 - **Namespaces.** ``namespace Foo.Bar`` prefixes declared names and opens
   ``Foo`` and ``Foo.Bar`` — both derivable from the atom's id, whose
@@ -343,13 +395,12 @@ A module of the concept package may only contain:
 
 ### Additional thoughts
 
-TODO
-Enforcement is layered: a purely syntactic linter checks every top-level
+TODO: Enforcement is layered. a purely syntactic linter checks every top-level
 command against the whitelist before elaboration; after elaboration, an
-environment diff checks that exactly the atoms and their auxiliary
-constants were added (the backstop against whitelist escapes); finally the
-DAG checks from the Datastructures section. In the beginning, the dialect
-is defined implicitly by whatever the checker accepts.
+environment diff checks that exactly the atoms and their auxiliary constants
+were added (the backstop against whitelist escapes); finally the DAG checks
+from the Datastructures section. In the beginning, the dialect is defined
+implicitly by whatever the checker accepts.
 
 TODO: typeclass resolution is ambient — an ``instance`` atom silently
 changes which instance a later atom picks up, invisible in the raw source.
@@ -360,81 +411,9 @@ TODO: allow ``variable`` for ergonomics? Would require the renderer to
 splice the used variables back into each displayed declaration. Postponed.
 
 
-## Annotations
-
-We use docstrings to annotate concepts, atoms, and proofs. Atoms and proofs
-carry ordinary declaration docstrings ``/-- … -/``. Concepts are annotated
-by a module docstring ``/-! … -/`` placed directly before the ``namespace``
-that opens them — legal vanilla Lean, associated with the namespace
-positionally by the checker.
-
-An example module within the concept package:
-
-    namespace Mysubmission.Cpts
-
-    /-! annotation of concept A -/
-    namespace A
-
-    /-- annotation of atom X -/
-    def X ...
-
-    /-- annotation of atom Y -/
-    axiom Y ...
-
-    end A
-
-    /-! annotation of concept B -/
-    namespace B
-
-    /-- annotation of atom U -/
-    def U ...
-
-    /-- annotation of atom V -/
-    axiom V ...
-
-    end B
-
-    end Mysubmission.Cpts
-
-The association is made canonical by three placement rules:
-
-- A ``/-! … -/`` must be immediately followed by a ``namespace`` command and
-  annotates the namespace it opens; every other placement is rejected.
-- The concepts are exactly the namespaces directly below
-  ``Mysubmission.Cpts``. Deeper namespaces are organization, not concepts,
-  and are never annotated.
-- A concept namespace may be opened many times (even across modules), but
-  must be annotated at exactly one opening. (Atoms directly in
-  ``Mysubmission.Cpts`` would belong to no concept and are rejected.)
-
-
-An example module within the proof package:
-
-    namespace Mysubmission.Prfs
-
-    /--
-    ---
-    conclusion: Mysubmission.Cpts.Myconcept.Mystatement
-    ---
-    annotation of proof P
-    -/
-    theorem P ...
-
-    end Mysubmission.Prfs
-
-Each annotation is a docstring that we parse as markdown with optional yaml frontmatter (common pattern for static site generators).
-When placing the whole docstring into json, the markdown at the end gets placed into the ``description`` key
-
-    /--
-    ---
-    key: value
-    key: value
-    key: value
-    ---
-    description
-    -/
-
 ## Proofs
+
+TODO:
 
 The proof package is ordinary Lean — any command, any syntax. Correctness
 is delegated entirely to the kernel: the archive only inspects the proof
@@ -442,7 +421,16 @@ theorems' types and axiom sets, so nothing in the proof package extends the
 trusted surface. (This is also why writing proof packages can be outsourced
 to AI agents without compromising correctness.)
 
-### More Implementation Details
+
+TODO: new paragraph??
+
+Axioms on the archive environment's ignore list are not counted as
+assumptions; an axiom set containing anything that is neither a statement
+nor ignored (e.g. ``sorryAx``, or an axiom declared in a proof package) is
+rejected.
+
+
+Further rules:
 
 A ``theorem`` whose docstring frontmatter carries the ``conclusion`` key is
 a proof (see the example in the Annotations section); all other
@@ -460,3 +448,92 @@ Checks per proof:
    assumption) or on the archive environment's ignore list; any other
    axiom — ``sorryAx``, an axiom declared in the proof package itself —
    rejects the proof.
+
+## Annotations
+
+We use docstrings to annotate concepts, atoms, and proofs. Atoms and proofs
+carry ordinary declaration docstrings ``/-- … -/``. Concepts are annotated
+by a module docstring ``/-! … -/`` placed directly before the ``namespace``
+that opens them — legal vanilla Lean, associated with the namespace
+positionally by the checker.
+
+Each annotation is a docstring that we parse as markdown with optional yaml frontmatter (common pattern for static site generators).
+When placing the whole docstring into json, the markdown at the end gets placed into the ``description`` key
+
+    /--
+    ---
+    key1: value
+    key2: value
+    key3: value
+    ---
+    description
+    -/
+
+When no frontmatter is given we do the following:
+For concepts and axioms, we parse the #-headline as ``title`` key and everything below as ``description`` key.
+For proofs, we parse the #-headline as ``conclusion`` key and everything below as ``description`` key.
+
+An example module within the concept package:
+
+    namespace Mysubmission.Cpts
+
+    /-!
+    # Title of concept A
+    description of concept A 
+    -/
+    namespace A
+
+    /-- 
+    # Title of atom X
+    description of atom X
+    -/
+    axiom X [...]
+
+    [...]
+
+    end A
+
+    /-!
+    ---
+    title: title of concept B
+    ---
+    description of concept B
+    -/
+    namespace B
+
+    [...]
+
+    end B
+
+    end Mysubmission.Cpts
+
+
+An example module within the proof package:
+
+    namespace Mysubmission.Prfs
+
+    /--
+    # Mysubmission.Cpts.Myconcept.Mystatement
+    description of proof P
+    -/
+    theorem P ...
+
+    /--
+    ---
+    conclusion: Mysubmission.Cpts.Myconcept.Mystatement
+    ---
+    description of proof Q
+    -/
+    theorem Q ...
+
+    end Mysubmission.Prfs
+
+
+Further rules:
+
+- A ``/-! … -/`` must be immediately followed by a ``namespace`` command and
+  annotates the namespace it opens; every other placement is rejected.
+- A concept namespace may be opened many times (even across modules), but
+  must be annotated at exactly one opening. (Atoms directly in
+  ``Mysubmission.Cpts`` would belong to no concept and are rejected.)
+
