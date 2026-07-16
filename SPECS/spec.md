@@ -102,6 +102,18 @@ declaration DAG restricted to the nodes reachable from A, induced and
 quotiented as above. Note that the concept DAG rooted at A is not necessarily
 an induced subgraph of the concept DAG.
 
+## Aliases
+
+An **alias** is an atom that merely re-exposes another atom, its **target**,
+under a new id — a symlink. The target may be an atom of the same or of
+another submission, and its semantics are exactly those of the target.
+Concretely, an alias is an ``abbrev`` or ``instance`` whose body is exactly
+one fully-qualified constant naming another atom; the checker recognizes this
+shape and records the alias-of relation.
+
+Statements cannot be aliases (an ``abbrev`` whose body is an ``axiom`` is a
+proof-valued definition, not a statement).
+
 ## Proofs
 
 A **proof** is a ``theorem`` declaration in the proof package that is annotated
