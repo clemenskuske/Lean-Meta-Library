@@ -79,8 +79,7 @@ start making sense once you have read the whole document.
 - manifestVersion: version of the manifest format.
 
 - id: The archive-assigned opaque id ``LaxN``, where N is a natural number.
-  Absent on the very first submit. Every later submit carries it as a given
-  key.
+  The ``init`` action creates this field. It is required by every ``submit``.
 
 - title: A non-unique title, like the title of the paper the submission formalizes.
 
@@ -90,11 +89,12 @@ start making sense once you have read the whole document.
 - owners: A non-empty list of GitHub handle forming the owner set. Used for
   rights-management only, not credits.
 
-- draft: Whether the submission is still an overwritable draft. Submitting
-  with ``draft: false`` registers it. Irreversible.
+- draft: Whether the submission is still an overwritable draft. Submitting a
+  draft with ``draft: false`` registers it. Registration is irreversible.
 
-- supersedes: Id of the submission this one supersedes. Optional. See
-  Lifecycle.
+- supersedes: Id of the registered submission this one is intended to
+  supersede. Optional. The supersession takes effect only when the successor
+  is registered. See Lifecycle.
 
 - leanVersion, mathlibVersion: The environment the submission was built
   against; must match the archive environment.
@@ -130,42 +130,93 @@ Submissions can be in four possible states.
 
 **local:** the submission starts on the dev machine. Our tooling checks
 whether it would be accepted and previews it on a local copy of the website.
+It has no archive id and no archive-side state.
 
-**draft:** visible on the website, overwritable by its owners, not citable,
-not reviewable, not allowed to be used in downstream submissions.
+**draft:** initialized in the archive and assigned an id. A draft may be only
+an empty placeholder created by ``init``, or it may point to the latest
+successfully submitted revision. It is visible on the website, overwritable by
+its owners, not citable, not reviewable, and not allowed to be used in
+downstream submissions.
 
-**registered:** immutable, citable, reviewable. The normal terminal state.
+**registered:** immutable, citable, reviewable. The normal published state.
 
 **superseded:** still immutable, citable, and reviewable, but carrying a
 prominently displayed pointer to its successor. Downstream submissions may
 still depend on superseded submissions.
 
-### Actions
+The only state transitions are:
 
-TODO: I think we should allow an init submission action that takes a folder containing only the bare minimum manifest (only author names are required?), registers an id, and puts it into the manifest.
-changes to propagate: submit does not allow empty submissions anymore. also text here and there...
+- ``local -> draft``, by ``init``;
+- ``draft -> draft``, by ``submit`` with ``draft: true``;
+- ``draft -> registered``, by ``submit`` with ``draft: false``;
+- ``registered -> superseded``, when a successor is registered.
+
+There is no transition out of ``superseded``. These states describe the
+submission record; local working copies may of course continue to change after
+registration.
+
+### Actions
 
 Opaque ids prevent the squatting of nice names like ``RamseyTheory``.
 
-Every action happens via our CLI tool. It has exactly one write action,
-**submit**, which hands the archive a (repository, commit, folder) triple. The
-manifest inside decides what the submit means:
+Every archive action happens via our CLI tool. It has two write actions:
+``init`` allocates an id, and ``submit`` uploads or registers content.
 
-- **has no id** — creates a new draft submission. Requires ``draft: true``. The new
-  submission has id ``LaxN``, where N is the next free natural number.
-- **has id of a draft submission** — overwrites the draft.
-- **has draft: false** — registers the submission.
-- **has supersedes: LaxN** — declares the submission the successor of ``LaxN``.
+**Init.** ``lml init`` takes a local submission folder containing a
+``manifest.yaml``. For initialization, the manifest need only contain
+``manifestVersion`` and a non-empty ``owners`` list. The authenticated GitHub
+account must occur in that list. The archive atomically reserves the next free
+id ``LaxN`` and creates a draft record containing the id and owner set. The CLI
+then writes ``id: LaxN`` and ``draft: true`` into the local manifest. Other
+manifest fields may already be present, but they remain provisional and are
+not accepted or displayed as submission content until a successful
+``submit``.
 
-The action is **authorized** if the submitting GitHub account appears in the
-owner list of the submitted manifest. If the submission references an existing
-id (``id`` or ``supersedes``), we further require the account to appear in the
-owner list of that submission (as stored by the archive).
+Initialization is not submission: it does not upload content, make the draft
+citable, or allow other submissions to depend on it. Its purpose is to make
+the archive-assigned id available before authors choose package, namespace,
+and declaration names.
 
-Supersession is self-replacement, as on arXiv. It takes effect when the
-successor is registered, and is accepted only if ``LaxN`` is registered and has
-no successor yet (plus the owner condition above). Successors thus form a
-chain. Revocation amounts to superseding by an empty submission.
+**Submit.** ``lml submit`` hands the archive a (repository, commit, folder)
+triple. The folder must contain a complete valid manifest with its previously
+allocated id. The id must resolve to a draft. Except for a revocation successor
+as defined below, the submitted content must contain at least one concept or
+proof; other submits with no concepts and no proofs are rejected.
+
+The authenticated GitHub account must occur both in the draft's stored owner
+set and in the owner set of the submitted manifest. Consequently, owners can
+be added or removed while a submission is a draft, but a complete ownership
+transfer requires an overlapping handoff: an existing owner first adds a new
+owner, and the new owner can then remove the old one in a later submit. The
+owner set becomes immutable on registration.
+
+- With ``draft: true``, a successful submit replaces the draft's previous
+  (repository, commit, folder) triple and mutable manifest metadata.
+- With ``draft: false``, a successful submit registers the draft and freezes
+  its triple, manifest, concepts, and proofs. Registration is atomic and
+  irreversible. Any later submit carrying that id is rejected.
+
+**Supersession.** A draft manifest may name a registered submission in its
+optional ``supersedes`` field. Every submit carrying this field must also be
+performed by an account in the stored owner set of the named predecessor. The
+field expresses an intention while the successor is a draft and has no effect
+on the predecessor yet.
+
+When the successor is registered, supersession is accepted atomically only if
+the predecessor is still registered, has no successor, and is not the
+successor itself. The predecessor then becomes superseded and gains a pointer
+to the successor. Its content and citations remain unchanged, and downstream
+submissions may continue to depend on it. A registered successor may later be
+superseded in the same way, so successors form a chain.
+
+**Revocation.** Superseding a submission with an empty registered submission
+is the archive's conventional way for its owners to revoke it. This is the
+sole exception to the rule that registered submissions are non-empty: the
+empty submission must name the revoked submission in ``supersedes`` and must
+satisfy all ordinary authorization and registration rules. Revocation is a
+public archival signal, not deletion. The revoked submission remains
+immutable, citable, and available to downstream submissions, with a prominent
+pointer to its empty successor.
 
 ### License
 
@@ -413,13 +464,15 @@ the root of the archive repository.
 
 ## Submissions
 
-Every **submit** hands the archive a (repository, commit, folder) triple. The
-archive runs its checks and, on success, records the triple under the
-submission's id. Only registered submissions can be referenced by other
-submissions.
+Every submission is first assigned an id by **init**, as specified in the
+Lifecycle section. Every **submit** then hands the archive a (repository,
+commit, folder) triple carrying that id. The archive runs its checks and, on
+success, records the triple as the current revision of the draft or as its
+immutable registered revision. Only registered submissions can be referenced
+by other submissions.
 
-Implementation note: The submitting account authenticates via GitHub OAuth
-(the submit tool can reuse a ``gh`` login).
+Implementation note: The acting account authenticates via GitHub OAuth (the
+CLI can reuse a ``gh`` login) for both ``init`` and ``submit``.
 
 The folder layout is fixed (example for a submission with id ``Lax261``):
 
@@ -446,7 +499,7 @@ bibliography entries, and the environment it was built against.
 This environment must match the archive environment. Example:
 
     manifestVersion: "1"
-    id: Lax261              # absent on the very first submit; assigned by the archive
+    id: Lax261              # assigned by lml init; required by lml submit
     draft: true             # submit with false to register
     leanVersion: "v4.30.0"
     mathlibVersion: "c5ea00351c28e24afc9f0f84379aa41082b1188f"
@@ -461,8 +514,10 @@ This environment must match the archive environment. Example:
     bibEntries: []
     supersedes: Lax042      # optional, see Lifecycle
 
-Implementation note: The registry is ``submissions.jsonl`` in the root of the
-archive repository, one line per registered submission.
+Implementation note: The permanent registry is ``submissions.jsonl`` in the
+root of the archive repository, one line per registered submission. Draft
+records are service state and do not become permanent registry entries until
+registration.
 
 Further rules (to discuss):
 
@@ -748,4 +803,3 @@ rank people with respect to multiple criteria (mixes reviewer and author stats)
 ## Person page
 
 Shows the identity of the person and their statistics (nr of approvals, nr of flags, nr of submissions etc)
-
