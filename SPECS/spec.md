@@ -3,12 +3,12 @@
 The archive is the social and archival layer for automated Lean formalization.
 
 **Social:** Lean's kernel checks proofs for free, but it cannot check whether
-a formal statement means what it claims to mean. The archive provides the
-missing trust: contributors publicly endorse formalizations as faithful,
+a formal statement means what it claims to mean. The archive aims to provide the
+missing trust: reviewers can publicly endorse formalizations as faithful,
 staking their names on them. 
 
-**Archival:** what arXiv is to preprints, the archive is to formalized
-mathematics — a decentralized network of independent citable submissions
+**Archival:** what arXiv is to preprints, the archive shall be to formalized
+mathematics: a decentralized network of independent citable submissions
 building on top of each other.
 
 
@@ -16,13 +16,13 @@ building on top of each other.
 
 The archive's content comes in two kinds.
 
-A **concept** pairs a well-defined mathematical object (a definition or
-theorem statement as it would appear in a paper), presented in natural
-language, with a faithful encoding of that object in Lean. Crucially,
-concepts contain no proofs: they carry exactly the information needed to pin
-down the semantics of a natural-language statement or definition within Lean,
-and nothing more. Concepts are especially clean Lean code written for and in
-collaboration with humans — the trusted surface of the archive.
+A **concept** pairs a well-defined mathematical object presented in natural
+language (a definition or theorem statement as it would appear in a paper),
+with a faithful encoding of that object in Lean. Crucially, concepts contain no
+proofs: they carry exactly the information needed to pin down the semantics of
+a natural-language statement or definition within Lean, and nothing more.
+Concepts are especially clean Lean code written for and in collaboration with
+humans.
 
 A **proof** is ordinary Lean code certifying a claim made by a concept. Since
 the kernel checks its correctness, writing proofs can be outsourced entirely
@@ -31,6 +31,7 @@ to AI agents without compromising trust.
 A **submission** is a single citable unit of work containing concepts and
 proofs. The two are decoupled: a submission may leave its own proof
 obligations open, and may discharge obligations of other submissions.
+
 
 ## Datastructures
 
@@ -47,7 +48,7 @@ Every statement thus carries two orthogonal quality signals:
 
 - **proven** — machine-checked, computed by the kernel from the proof network;
 - **faithful** — the Lean code means what its description claims. No machine
-  can check this; producing this signal is the job of the social layer.
+  can check this; producing this signal is the job of the trust layer.
 
 
 ## Versioning
@@ -56,7 +57,7 @@ Unlike mathlib, the archive is not a curated library: submissions are
 independent and frozen in time, cited like papers rather than merged like
 modules of a monorepo. Freezing makes it easy for later submissions to build
 on earlier ones, allowing the organic growth of a dependency network mirroring
-the citations of scientific publications. Freezing also underpins the social
+the citations of scientific publications. Freezing also underpins the trust
 layer: an endorsement pins immutable content, not a moving target. The price
 is that mistakes cannot be fixed in place: like a published paper, a flawed
 submission is superseded, not patched. To keep frozen submissions buildable, we pin the versions of Lean,
@@ -66,117 +67,109 @@ Bumping the pins later (new toolchain, new mathlib) invalidates every
 submission so far. We have no plan how to handle this yet and will figure it
 out as we go.
 
-===================================================================
-THE FOLLOWING SECTION IS AN AI DRAFT AND WORK IN PROGRESS.
-===================================================================
+
+# Metadata Full Reference
+
+Each submission carries two metadata files: ``manifest.yaml``, written by the
+author, and ``artifacts.json``, derived by the build. Some fields will only
+start making sense once you have read the whole document.
+
+## manifest.yaml
+
+- manifestVersion: version of the manifest format.
+
+- id: The archive-assigned opaque id ``LaxN``, where N is a natural number.
+  Absent on the very first submit. Every later submit carries it as a given
+  key.
+
+- title: A non-unique title, like the title of the paper the submission formalizes.
+
+- authors: An ordered, possibly empty, list of typed entries, each an ORCID id
+  or a GitHub handle. Used for credit only, not rights-management.
+
+- owners: A non-empty list of GitHub handles forming the owner set. Used for
+  rights-management only, not credits.
+
+- draft: Whether the submission is still an overwritable draft. Submitting
+  with ``draft: false`` registers it. Irreversible.
+
+- supersedes: Id of the submission this one supersedes. Optional. See
+  Lifecycle.
+
+- leanVersion, mathlibVersion: The environment the submission was built
+  against; must match the archive environment.
+
+- abstractPath, licenseFile, bibEntries: Pointers to abstract and license (an
+  accepted open license required), plus bibliography entries.
+
+## artifacts.json
+
+This contains build artifacts and mostly information derived from the source
+code and consumed by the website. For example, the individual concepts of a
+submission. TBD.
 
 
-# Social Layer
 
-The kernel settles correctness. Everything else the archive promises (meaning,
-trust, naming, credit) is social.
+# The Social Layer
 
-## Identities
+## The Submission Layer
 
-Two identities, two roles:
+An **owner** is a GitHub account listed in a submission's owner set, and is
+thereby allowed to act on the submission (e.g., submitting and editing).
+Owners take action on the submission layer.
 
-- **GitHub = capability.** Who can act: log in, reserve ids, register
-  submissions, overwrite work-in-progress. Submissions are git repositories,
-  so GitHub is the natural anchor. Accounts are cheap to mint; nothing
-  trust-bearing hangs on them.
-- **ORCID = stake.** Whose name is on the line: endorsing and flagging
-  require a verified ORCID. Reputation staking works with real-world
-  identities, not by tallying anonymous votes.
+### Lifecycle
 
-A **contributor** is a GitHub login, optionally linked to a verified ORCID
-(both via OAuth). Every submission has a set of **owners**, given in its
-metadata (non-empty, and including the reserving account): the GitHub
-accounts that may overwrite it while work-in-progress, supersede it (by
-registering a successor), and withdraw it. The owner set is frozen with the
-submission. If all owners become unreachable, the submission simply acquires
-no successor from them — anyone may still publish a competing formalization,
-and maintainers cover moderation cases. Registration itself is always
-performed by the reserving account (see Implementation Details). No further
-rights management for now: anyone with the required identity can act.
+Submissions can be in four possible states.
 
-## Authorship
-
-Authorship and endorsement are orthogonal speech acts:
-
-- **Authorship** is provenance and credit: "this came from me." It attests
-  nothing — an author may upload a thousand generated concepts they have
-  never read.
-- **Endorsement** is attestation: "I have read this and stake my name on its
-  faithfulness."
-
-Authorship therefore carries no trust weight and needs no ORCID: credit goes
-to the owners (GitHub handles) and the optional list of ORCID ids, and AI
-agents may author anything. The ORCID list is displayed as given, unverified
-for now; a consent/claim flow guarding against credit spoofing can be added
-once strangers arrive.
-
-Since GitHub accounts are thus the only submission gate and are cheap, the
-brakes against bulk spam live outside the trust model: per-account rate
-limits, the archive-wide size limits, and trust-sorted search.
-
-## Lifecycle
-
-**local** — the submission starts on the dev machine; our tooling checks
+**local:** the submission starts on the dev machine. Our tooling checks
 whether it would be accepted and previews it on a local copy of the website.
 
-**work-in-progress** — visible on the website, but freely overwritable, not
-citable, not allowed to be used in downstream submissions.
+**draft:** visible on the website, overwritable by its owners, not citable,
+not reviewable, not allowed to be used in downstream submissions.
 
-**registered** — frozen, citable, reviewable. The normal terminal state.
+**registered:** immutable, citable, reviewable. The normal terminal state.
 
-**superseded** — still frozen, still citable and buildable, but carrying a
-pointer to its successor. Downstream submissions may still depend on
-superseded submissions; the website displays the successor prominently.
-Supersession is self-replacement, as on arXiv: the new submission sets
-``supersedes: LaxN`` in its manifest, accepted at registration only if the
-owner sets intersect and ``LaxN`` has no successor yet. Successors thus form
-a chain — the version history of one line of work. A fix by outsiders is not
-a supersession but a competing formalization: it cites the old submission,
-and a flag directs readers to it.
+**superseded:** still immutable, citable, and reviewable, but carrying a
+prominently displayed pointer to its successor. Downstream submissions may
+still depend on superseded submissions.
 
-**withdrawn** — tombstoned by an owner or moderation (license violation,
-plagiarism, spam). Still resolvable so that dependents do not break, but
-marked, excluded from search, and barred from new dependencies.
+### Actions
 
-Endorsements and flags may target registered and superseded submissions only:
-work-in-progress is not reviewable, and withdrawn submissions accept no new
-social actions (existing ones are kept for the record).
+Every action happens via our CLI tool. It has exactly one write action,
+**submit**, which hands the archive a (repository, commit, folder) triple. The
+manifest inside decides what the submit means:
 
+- **has no id** — creates a new draft submission. Requires ``draft: true``. The new
+  submission has id ``LaxN``, where N is the next free natural number.
+- **has id of a draft submission** — overwrites the draft.
+- **has draft: false** — registers the submission.
+- **has supersedes: LaxN** — declares the submission the successor of ``LaxN``.
 
-## Metadata
+The action is **authorized** if the submitting GitHub account appears in the
+owner list of the submitted manifest. If the submission references an existing
+id (``id`` or ``supersedes``), we further require the account to appear in the
+owner list of that submission (as stored by the archive).
 
-Submission metadata splits into **given** keys and **derived** keys, computed by the archive at
-registration.
-
-**Given.**
-- title: a non-unique title, like the title of the paper the submission formalizes
-- authorsOrcid: a list of ORCID ids. Optional; displayed as given,
-  unverified for now (see Authorship).
-- owners: a list of GitHub handles forming the owner set. Must be non-empty
-  and include the reserving account.
-- supersedes: id of the submission this one supersedes. Optional; see
-  Lifecycle.
-- TBD
-
-**Derived.**
-- id: the archive-assigned opaque id ``LaxN``, see Implementation Details
-- the repository and commit the submission was registered from
-- later also the backup link?
+Supersession is self-replacement, as on arXiv. It takes effect when the
+successor is registered, and is accepted only if ``LaxN`` is registered and has
+no successor yet (plus the owner condition above). Successors thus form a
+chain. Revocation amounts to superseding by an empty submission.
 
 
 
-## Endorsements and Flags
+## The Trust Layer
 
-Contributors can **endorse** and **flag** individual concepts. Both are
-public verdicts staked on a verified ORCID and performed explicitly on the
-website — endorsement is opt-in, never implied by authorship.
+A **reviewer** is a verified ORCID identity (via OAuth) with a real-world name,
+leading to trust by reputation. Reviewers act on the trust layer.
 
-Endorsing means signing the following attestation, displayed at the moment
+### Endorsements and Flags
+
+Reviewers can **endorse** and **flag** individual concepts. Both are public
+verdicts staked on the reviewer's verified ORCID and performed explicitly on
+the website — endorsement is opt-in, never implied by authorship.
+
+**Endorsing** means signing the following attestation, displayed at the moment
 of endorsement:
 
     I have read this concept's description and its Lean code, and I attest
@@ -187,61 +180,40 @@ of endorsement:
     accordingly. My endorsement is conditional on each of them faithfully
     matching its own description.
 
-Endorsements are local: the endorser reads upstream descriptions, not
-upstream code — upstream faithfulness is someone else's endorsement. This
-keeps the cost of review at a single concept; the trust calculus recomposes
-global trust from local judgments. Endorsements are revocable.
+Endorsements are local: the endorser reads upstream descriptions, not upstream
+code — upstream faithfulness is someone else's endorsement. Endorsements are
+revocable.
 
 A **flag** is the opposite verdict and requires a message outlining the
 problem. A flag is a staked claim, not a final verdict: it stands until the
-flagger retracts it or a maintainer removes it. The natural fix for a
+flagger retracts it. The natural fix for a
 justified flag is superseding the submission, since content is frozen.
 
-## Trust Calculus
+### Trust Calculus
 
 The **trust level** of a concept A is the minimum number of endorsements over
-the concepts in the concept DAG rooted at A (including A itself).
-Faithfulness is conjunctive — a chain of meaning is as strong as its weakest
-link — so min is the honest aggregate. Mathlib is the trusted base and
-excluded from the computation.
+the concepts in the concept DAG rooted at A (including A itself). The trust
+level is just a proxy, and the real trust lies in checking and trusting the
+individual names behind the endorsements.
 
 Consequences and display rules:
 
-- Trust 0 means nobody has vouched for some concept in the rooted DAG, not
-  even its author — the intended default for freshly generated content.
+- Trust 0 means nobody has vouched for some concept in the rooted DAG, not even
+  its author.
 - The website shows the weakest link: the concepts attaining the minimum are
   exactly where review effort should go.
-- Self-endorsements are not treated specially in the count (with optional
-  ORCID authorship they cannot be reliably detected anyway). Instead, the
-  concept page shows the author and endorser lists — the check is one click
-  away.
-- An open flag anywhere in the rooted DAG is displayed prominently next to
-  the trust level, but does not alter the number: a flag is a claim, not a
-  verdict.
-- The number is a summary, not the primitive: the real data is the set of
-  (endorser, concept) pairs. Since ORCIDs are free to create, the count is
-  gameable in principle; the actual defenses are real names, the public
-  record, and maintainer undo.
+- Self-endorsements are not treated specially in the count. Instead, the
+  concept page shows the author and endorser lists, so the check for
+  self-endorsement is only one click away.
+- An open flag anywhere in the rooted DAG is displayed prominently next to the
+  trust level, but does not alter the number: a flag is a claim, not a verdict.
 
 
-## Maintainers
+## Beyond this Prototype
 
-Maintainers moderate conduct, not mathematics: they are never arbiters of
-faithfulness — that is settled in the open by endorsements, flags, and
-supersession. Their powers:
+We would later need maintenance mechanisms, anti-spam measures, etc. We
+intentionally don't discuss them for now.
 
-- withdraw submissions (license violation, plagiarism, spam, legal),
-- remove endorsements and flags (unfounded, manipulative, or spam),
-- ban contributors.
-
-Every maintainer action is publicly logged: a trust layer whose own
-operations are opaque undermines itself.
-
-
-
-===================================================================
-DRAFT END
-===================================================================
 
 
 # Abstract Datastructures
@@ -325,11 +297,8 @@ becomes proven once the statements in C are taken as proven.
 
 ## Key-Value Annotations
 
-We annotate submissions, atoms, concepts, and proofs with various key-value pairs. The list
+We annotate atoms, concepts, and proofs with various key-value pairs. The list
 of required and optional keys may later be exteneded.
-
-Submission:
-    - all the keys listed in the Social Layer section and maybe some more?
 
 Atom:
     - title (optional): natural-language name
@@ -347,16 +316,6 @@ Proof:
     - assumptions (optional): ids of all assumptions
     - description (optional): Additional information about the proof, like
       attribution or high level idea.
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -386,25 +345,33 @@ folder together with a commit hash in a public git repository. Work thus stays
 in the authors' repositories and attribution is clear. (To guard against link rot, we
 may keep backup copies, e.g. via https://archive.softwareheritage.org/save/.)
 
-**Registering** a submission means running the archive's checks against its
-(repository, commit, folder) triple and, on success, recording the triple
-under the submission's id. Only registered submissions can be referenced by
-other submissions.
+Every **submit** hands the archive a (repository, commit, folder) triple;
+the archive runs its checks and, on success, records the triple under the
+submission's id (see Actions in the Submission Layer for what a submit can
+mean). An **empty submission** — a manifest and nothing else — is valid: it
+is how fresh submissions start and how revocation works. Only registered
+submissions can be referenced by other submissions.
 
 Each submission has an **id**, assigned by the archive: ``LaxN`` where ``N``
-is the registration number (e.g. ``Lax261``). Ids are opaque and permanent and
+is the creation number (e.g. ``Lax261``). Ids are opaque and permanent and
 double as the Lean namespace; human-readable naming lives in the title
 metadata. Opaque ids prevent the squatting of nice names like
 ``RamseyTheory`` and by construction cannot collide with a top-level namespace
-of the trusted base. Since the id appears in lakefiles and module paths,
-authors reserve the id first, bake it into the submission, and then register
-the finished commit. Reservation binds the id to the reserving GitHub account
-— the first owner — and only that account can register a triple whose
-manifest carries that id; the manifest sitting in the commit then proves the
-cooperation of whoever controls the repository, so no separate ownership
+of the trusted base. Since the id appears in lakefiles and module paths, the
+first submit of a fresh submission is typically empty: it creates the
+submission and returns the id, which the author bakes into the packages
+before submitting again. Creation binds the id to the owner set given in the
+manifest; every later submit under that id is checked against the stored
+owner set (see Actions), and the manifest sitting in the commit proves
+the cooperation of whoever controls the repository, so no separate ownership
 check is needed. The archive records GitHub accounts by numeric id, never by
 handle: handles and repository slugs are reusable after renames and
 deletions, and ownership must survive both.
+
+Implementation note: the submitting account authenticates via GitHub OAuth
+(the submit tool can reuse a ``gh`` login); the owner check runs on the
+archive side. If submits are instead PRs against the archive repository,
+GitHub authenticates the actor and the check is a CI job. To decide.
 
 The folder layout is fixed (example for a submission with id ``Lax261``):
 
@@ -425,17 +392,21 @@ The concepts and proofs package folders are literally named ``concepts`` and
 ``proofs``, since other submissions reference them via ``subDir`` in the
 lakefile.
 
-``manifest.yaml`` holds the given metadata (see the Metadata section): the
+``manifest.yaml`` holds the given metadata (see the Metadata Full Reference): the
 submission's id and title, authors, pointers to abstract and license,
 bibliography entries, and the environment it was built against.
 This environment must match the archive environment. Example:
 
     manifestVersion: "1"
-    id: Lax261
+    id: Lax261              # absent on the very first submit; assigned by the archive
+    draft: true             # submit with false to register
     leanVersion: "v4.30.0"
     mathlibVersion: "c5ea00351c28e24afc9f0f84379aa41082b1188f"
     title: My Submission
-    authorsOrcid: ["0000-0002-1825-0097"]
+    TODO: authors should be a list of tuples!
+    authors:
+      - orcid: "0000-0002-1825-0097"
+      - github: bob
     owners: ["alice"]
     abstractPath: abstract.tex
     licenseFile: LICENSE
@@ -722,16 +693,16 @@ Further rules:
 
 This is a work in progress. I am just gathering some thoughts here to later turn into a proper website layout.
 
-## Contributor ranking
+## People ranking
 
-rank contributors with respect to multiple criteria
+rank people with respect to multiple criteria (mixes reviewer and author stats)
 - verified concepts
 - flaged concepts
 - created concepts
 - created proofs
 
 
-## Contributor page
+## Person page
 
-Shows the identity of the contributor and their statistics (nr of approvals, nr of flags, nr of submissions etc)
+Shows the identity of the person and their statistics (nr of approvals, nr of flags, nr of submissions etc)
 
