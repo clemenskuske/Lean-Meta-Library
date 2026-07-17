@@ -165,30 +165,18 @@ Every archive action happens via our CLI tool. It has two write actions:
 **Init.** ``lml init`` takes a local submission folder containing a
 ``manifest.yaml``. For initialization, the manifest need only contain
 ``manifestVersion`` and a non-empty ``owners`` list. The authenticated GitHub
-account must occur in that list. The archive atomically reserves the next free
+account must occur in that list. The archive reserves the next free
 id ``LaxN`` and creates a draft record containing the id and owner set. The CLI
-then writes ``id: LaxN`` and ``draft: true`` into the local manifest. Other
-manifest fields may already be present, but they remain provisional and are
-not accepted or displayed as submission content until a successful
-``submit``.
-
-Initialization is not submission: it does not upload content, make the draft
-citable, or allow other submissions to depend on it. Its purpose is to make
-the archive-assigned id available before authors choose package, namespace,
-and declaration names.
+then writes ``id: LaxN`` into the local manifest.
 
 **Submit.** ``lml submit`` hands the archive a (repository, commit, folder)
 triple. The folder must contain a complete valid manifest with its previously
-allocated id. The id must resolve to a draft. Except for a revocation successor
-as defined below, the submitted content must contain at least one concept or
-proof; other submits with no concepts and no proofs are rejected.
+allocated id. The id must resolve to a draft.
 
 The authenticated GitHub account must occur both in the draft's stored owner
-set and in the owner set of the submitted manifest. Consequently, owners can
-be added or removed while a submission is a draft, but a complete ownership
-transfer requires an overlapping handoff: an existing owner first adds a new
-owner, and the new owner can then remove the old one in a later submit. The
-owner set becomes immutable on registration.
+set and in the owner set of the submitted manifest. Consequently, owners can be
+added or removed while a submission is a draft. The owner set becomes immutable
+on registration.
 
 - With ``draft: true``, a successful submit replaces the draft's previous
   (repository, commit, folder) triple and mutable manifest metadata.
@@ -202,21 +190,13 @@ performed by an account in the stored owner set of the named predecessor. The
 field expresses an intention while the successor is a draft and has no effect
 on the predecessor yet.
 
-When the successor is registered, supersession is accepted atomically only if
-the predecessor is still registered, has no successor, and is not the
+When the successor is registered, supersession is accepted only if
+the predecessor is registered, has no successor, and is not the
 successor itself. The predecessor then becomes superseded and gains a pointer
 to the successor. Its content and citations remain unchanged, and downstream
 submissions may continue to depend on it. A registered successor may later be
 superseded in the same way, so successors form a chain.
 
-**Revocation.** Superseding a submission with an empty registered submission
-is the archive's conventional way for its owners to revoke it. This is the
-sole exception to the rule that registered submissions are non-empty: the
-empty submission must name the revoked submission in ``supersedes`` and must
-satisfy all ordinary authorization and registration rules. Revocation is a
-public archival signal, not deletion. The revoked submission remains
-immutable, citable, and available to downstream submissions, with a prominent
-pointer to its empty successor.
 
 ### License
 
@@ -566,6 +546,9 @@ Further rules:
   (repository, rev, subfolder) triple must resolve to a registered submission.
   Only exception: The proof package may require its own concept package via a
   relative path to the folder.
+
+- **Empty Submission.** It is allowed that the submission contains no concept
+  and no proof. Maybe useful to simulate revokation.
 
 - **Pinned toolchain.** ``lean-toolchain`` must contain the archive-wide
   toolchain verbatim.
