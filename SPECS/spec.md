@@ -1,55 +1,175 @@
 # Vision
 
-We outline the high-level idea of the archive.
+The archive is the social and archival layer for automated Lean formalization.
 
-## Submissions 
+**Social:** Lean's kernel checks proofs for free, but it cannot check whether
+a formal statement means what it claims to mean. The archive provides the
+missing trust: contributors publicly endorse formalizations as faithful,
+staking their names on them. 
 
-The basic unit of the archive is a **submission**. Each submission is split
-into two packages.
+**Archival:** what arxiv is to preprints, the archive is to formalized
+mathematics — a decentralized network of independent citable submissions
+building on top of each other.
 
-The **concept package** pairs
-- well-defined mathematical objects (such as a definition or theorem statement
-  as it would appear in a paper), presented in natural language, and
-- faithful encodings of such objects in lean. 
-Each such pairing is a **concept**. Crucially, concepts do not contain proofs.
-They are supposed to represent the minimal information needed to fully specify
-the semantics of a natural-language statement or definition within lean, but
-nothing more. The concept package is supposed to be especially clean lean code
-written for and in collaboration with humans.
 
-On the other hand, the **proof package** contains the actual lean proofs to
-back up the correctness of the concepts. This package is supposed to compile
-without sorries, but otherwise anything goes. As the correctness of proofs
-can be checked by lean, the writing of the proof package can be fully outsurced
-to to ai agents without compromising correctness. It's proven statements are
-orthogonal to the concept package: It may leave proof obligations of the
-submissions concept package open, and it may prove proof obligations from other
-submissions. 
+## Concepts and Proofs
 
-## Community Review 
+The archive's content comes in two kinds.
 
-While the correctness of the proof packages is checked by lean itself, we still
-require human effort to check that the formal concepts match their natural
-language counterparts. Contributors can register with their ORCID identity and
-publicly approve of flag submitted formalizations, thereby helping us to close
-the trust obligations.
+A **concept** pairs
+- a well-defined mathematical object (such as a definition or theorem
+  statement as it would appear in a paper), presented in natural language, with
+- a faithful encoding of that object in Lean.
+Crucially, concepts contain no proofs. They carry the minimal information
+needed to fully specify the semantics of a natural-language statement or
+definition within Lean, but nothing more. Concepts are especially clean Lean
+code written for and in collaboration with humans: they are the trusted
+surface of the archive.
+
+A **proof** is ordinary Lean code certifying a claim made by a concept. Since
+the kernel checks its correctness, writing proofs can be outsourced entirely
+to AI agents without compromising trust.
+
+A **submission** is a single ...
+containing concepts and proofs.
+Proofs and concepts of a submission are decoupled: A submission may leave its
+own proof obligations open, and may discharge obligations of other submissions.
+
+## Datastructures
+
+TODO: write a gentle introduction focusing on the intuition behind and introducing the basic datastructures.
+This may include the following, but it actually depends on what is used in the social layer section and therefore requires forshadowing.
+- submission
+- concept and proof Packages
+- atoms, statements
+- concepts
+- proofs
+- what it means for a statement to be proven.
+
 
 ## Versioning
 
-Unlike most software projects where code freely changes over time, submissions
-are frozen in time. This makes it easy for later submissions to reference
-earlier submissions, allowing the organic growth of a dependency network
-mirroring the citations of scientific publications. We understand that this
-brings along its own problems, which we believe are worth it.
-In particular, we pin the version of lean, lake and mathlib.
+Unlike mathlib, the archive is not a curated library: submissions are
+independent and frozen in time, cited like papers rather than merged like
+modules of a monorepo. Freezing makes it easy for later submissions to build
+on earlier ones, allowing the organic growth of a dependency network mirroring
+the citations of scientific publications. The price is that mistakes cannot be
+fixed in place: like a published paper, a flawed submission is superseded, not
+patched. To keep frozen submissions buildable, we pin the versions of Lean,
+Lake and mathlib.
 
 Bumping the pins later (new toolchain, new mathlib) invalidates every
 submission so far. We have no plan how to handle this yet and will figure it
 out as we go.
 
-Authors may mark a submission as "work-in-progress" which allows them to
-freely overwrite it. However, this prevents downstream submissions from citing
-the submission, as we do not allow work-in-progress dependencies.
+===================================================================
+
+# Social Layer
+
+The kernel settles correctness. Everything else the archive promises (meaning,
+trust, naming, credit) is social.
+
+## Identities and Authorship?
+
+TODO
+We need github and orcid Identities, both serving different roles. outline here.
+what is the clear split between these two identities?
+
+old paragraph:
+
+All social actions are performed by
+**contributors**, identified by their ORCID. Contributors are pseudonymity-free
+by design: the trust layer works by reputation staking, not by tallying
+anonymous votes.
+
+In this early phase, we do not need fancy rights management (yet?) to guard who can endorse or submit, anyone with an identity can.
+
+
+
+submissions with concepts require at least one orcid author.
+proof-only submissions may do without orcid.
+This means every concept has a list of authors,
+while encouraging anonymous outsiders to discharge proof obligations.
+
+## Lifecycle
+
+local - Submission starts on the dev machine. use our tooling to check if it is accepted by our system and to see how it would look on a local copy of the website.
+
+work-in-progress — freely overwritable, not citable, not allowed to be used in downstream submissions.
+
+registered — frozen, citable, reviewable. The normal terminal state.
+
+superseded — still frozen, still citable and buildable, but carrying
+a pointer to a successor submission. Set by the authors. Downstream
+submissions may still depend on superseded submissions; the website
+displays the successor prominently.
+
+TODO: how do we handle superseding best? a new submission sets the "supersedes:id" entry in the new submission,
+and the owners of the old submission need to confirm this on the website? or do you have better ideas?
+
+withdrawn — tombstoned by authors or moderation (license violation,
+plagiarism, spam). Still resolvable so that dependents do not break, but
+marked, excluded from search, and barred from new dependencies.
+
+
+## metadata
+
+Submission metadata splits into **given** keys and **derived** keys, computed by the archive at
+registration.
+
+**Given.**
+    - title: a non-unique title, like the title of the paper the submission formalizes 
+    - AuthorsORCID: a list of ORCID ids. May only be empty for proof-only submissions.
+    - AuthorsGitHub: a list of GitHub handles. May be empty.
+    - TBD
+
+**Derived.** 
+- id: the archive-assigned opaque id ``LaxN``, see Implementation Details
+- the repository and commit the submission was registered from
+- later also the backup link?
+
+
+
+## Endorements and Flags
+
+contributors can **endorse** and **flag** individual concepts.
+These are public verdicts involving social stake.
+
+For endoresement, the contributor has to agree to the following text or similar.
+todo: currently the text is a bit strange. can we improve it?
+
+    I have read this concept's Lean code and and confirm it faithfully represents its
+    description.
+
+    I read the descriptions of the 3 upstream concepts it uses (twin-width, graph classes,
+    FO logic), and my endorsement is conditional to the assumption that the upstream concepts' lean code faithfully represents them.
+
+This is supposed to mean endoresemtns are "local" and that reviewers dont need to transitively review everything.
+
+For a flag, its required to give a message outlining the problem.
+
+## Trust Calculus
+
+The trust level of a concept A is the minimal number of endoresements on the concepts in the concept dag rooted at A.
+An endoresement is a self-endorsement if the person doing it is author of the concept.
+The trust level should be displayed as: X (Y excluding self-endorsements).
+Probably with a clean explaination on the website that redefines what the trust level actually is.
+If some concept in the dependency has a flag, this should be displayed even more prominently next to the trust level.
+
+
+## Maintainers
+
+TODO
+
+Maintainers can
+- undo flags/endorsements of concepts
+- ban contributors?
+- what else?
+
+
+
+===================================================================
+
 
 # Abstract Datastructures
 
@@ -125,9 +245,9 @@ occurring in the theorem's axiom set (as reported by ``#print axioms``).
 The **proof network** is the directed hypergraph over the statements where
 every proof with assumptions A and conclusion c corresponds to a hyperedge (A →
 c). A statement is **proven** if it is the conclusion of some proof all of
-whose assumptions are (recursively) proven. Otherwise it is a **conjecture**.
-More generally, a statement is **proven relative to** a set C of conjectures if
-it becomes proven once the statements in C are taken as proven.
+whose assumptions are (recursively) proven, and **unproven** otherwise. More
+generally, a statement is **proven relative to** a set C of statements if it
+becomes proven once the statements in C are taken as proven.
 
 
 ## Key-Value Annotations
@@ -136,8 +256,7 @@ We annotate submissions, atoms, concepts, and proofs with various key-value pair
 of required and optional keys may later be exteneded.
 
 Submission:
-    - id: an archive-wide unique id in UpperCamelCase
-    - TBD
+    - all the keys listed in the socal section and maybe some more?
 
 Atom:
     - title (optional): natural-language name
@@ -157,13 +276,16 @@ Proof:
       attribution or high level idea.
 
 
-## Reviews
 
-Everything above is derived from the frozen submissions. Reviews are the one
-mutable layer on top. A **review** is a registered user's verdict on a
-concept: **approve** — the Lean side faithfully represents the description —
-or **flag** — it does not. One verdict per user per concept, revisable at any
-time. We may also add a comment section per concept (TBD).
+
+
+
+
+
+
+
+
+
 
 
 # Implementation Details
@@ -196,28 +318,33 @@ may keep backup copies, e.g. via https://archive.softwareheritage.org/save/.)
 under the submission's id. Only registered submissions can be referenced by
 other submissions.
 
-Each submission has an **id**, an archive-wide unique submission id in
-UpperCamelCase, doubling as the Lean namespace. Ids are claimed at registration
-time and must not collide with a top-level namespace of the trusted base (a
-submission named ``Nat`` or ``Mathlib`` is rejected).
+Each submission has an **id**, assigned by the archive: ``LaxN`` where ``N``
+is the registration number (e.g. ``Lax261``). Ids are opaque and permanent and
+double as the Lean namespace; human-readable naming lives in the title
+metadata. Opaque ids prevent the squatting of nice names like
+``RamseyTheory`` and by construction cannot collide with a top-level namespace
+of the trusted base. Since the id appears in lakefiles and module paths,
+authors reserve the id first, bake it into the submission, and then register
+the finished commit.
 
-The folder layout is fixed:
+The folder layout is fixed (example for a submission with id ``Lax261``):
 
     mysubmission/
       manifest.yaml
-      cpts/
+      concepts/
         lakefile.toml
         lean-toolchain
         lake-manifest.json
-        Mysubmission/Cpts/...      -- modules of the concept package
-      prfs/
+        Lax261/...                 -- modules of the concept package
+      proofs/
         lakefile.toml
         lean-toolchain
         lake-manifest.json
-        Mysubmission/Prfs/...      -- modules of the proof package
+        Lax261Proofs/...           -- modules of the proof package
 
-The concepts and proofs package folders are literally named ``cpts`` and
-``prfs``, since other submissions reference them via ``subDir`` in the lakefile.
+The concepts and proofs package folders are literally named ``concepts`` and
+``proofs``, since other submissions reference them via ``subDir`` in the
+lakefile.
 
 ``manifest.yaml`` holds the metadata: the submission's id and title,
 pointers to abstract and license, bibliography entries, and the environment
@@ -225,7 +352,7 @@ it was built against. This environment must match the archive environment.
 Example:
 
     manifestVersion: "1"
-    id: Mysubmission
+    id: Lax261
     leanVersion: "v4.30.0"
     mathlibVersion: "c5ea00351c28e24afc9f0f84379aa41082b1188f"
     SubmissionName: My Submission
@@ -247,9 +374,9 @@ Further rules (to discuss):
 
 ## Packages
 
-Each submission ``Mysubmission`` creates two Lake packages: a **concept
-package** ``mysubmission-cpts`` containing its concepts and atoms and a **proof
-package** ``mysubmission-prfs`` containing its proofs.
+Each submission ``Lax261`` creates two Lake packages: a **concept
+package** ``Lax261`` containing its concepts and atoms and a **proof
+package** ``Lax261Proofs`` containing its proofs.
 
 Besides mathlib, the concept package may require only other submissions'
 concept packages, and proof packages may require only other submissions' proof
@@ -267,11 +394,10 @@ Further rules:
   - ``autoImplicit`` off for concept packages,
   - no build-options for proof packages.
 
-- **Fixed names.** The package name is ``mysubmission-cpts`` resp.
-  ``mysubmission-prfs``. The single ``lean_lib`` is named ``Mysubmission.Cpts``
-  resp. ``Mysubmission.Prfs`` and is the only default target. With Lake's
-  default layout, module files therefore live under ``Mysubmission/Cpts/``
-  resp. ``Mysubmission/Prfs/``.
+- **Fixed names.** The package name and the name of the single ``lean_lib``
+  are both ``Lax261`` resp. ``Lax261Proofs``; the lib is the only default
+  target. With Lake's default layout, module files therefore live under
+  ``Lax261/`` resp. ``Lax261Proofs/``.
 
 - **Dependencies.** 
   As stated above (and besides mathlib), concept packages can only require
@@ -294,9 +420,9 @@ Further rules:
 
 Example ``lakefile.toml`` of a concept package:
 
-    # mysubmission/cpts/lakefile.toml
-    name = "mysubmission-cpts"
-    defaultTargets = ["Mysubmission.Cpts"]
+    # mysubmission/concepts/lakefile.toml
+    name = "Lax261"
+    defaultTargets = ["Lax261"]
 
     [[require]]
     name = "mathlib"
@@ -305,49 +431,47 @@ Example ``lakefile.toml`` of a concept package:
 
     # concept package of another submission this one builds on
     [[require]]
-    name = "othersubmission-cpts"
+    name = "Lax042"
     git = "https://github.com/alice/othersubmission"
     rev = "0123456789abcdef0123456789abcdef01234567"
-    subDir = "cpts"
+    subDir = "concepts"
 
     [[lean_lib]]
-    name = "Mysubmission.Cpts"
+    name = "Lax261"
 
 Example ``lakefile.toml`` of the corresponding proof package:
 
-    # mysubmission/prfs/lakefile.toml
-    name = "mysubmission-prfs"
-    defaultTargets = ["Mysubmission.Prfs"]
+    # mysubmission/proofs/lakefile.toml
+    name = "Lax261Proofs"
+    defaultTargets = ["Lax261Proofs"]
 
     [[require]]
-    name = "mysubmission-cpts"
-    path = "../cpts"
+    name = "Lax261"
+    path = "../concepts"
 
     # discouraged, but allowed: reusing another submission's proofs
     [[require]]
-    name = "othersubmission-prfs"
+    name = "Lax042Proofs"
     git = "https://github.com/alice/othersubmission"
     rev = "0123456789abcdef0123456789abcdef01234567"
-    subDir = "prfs"
+    subDir = "proofs"
 
     [[lean_lib]]
-    name = "Mysubmission.Prfs"
+    name = "Lax261Proofs"
 
 ## Namespaces
 
-Each submission with id ``Mysubmission`` corresponds to a top-level namespace
-``Mysubmission``. All proofs of the submission are placed into the namespace
-``Mysubmission.Prfs``. All atoms of a concept ``Myconcept`` are placed within
-the namespace ``Mysubmission.Cpts.Myconcept``. Both proofs and atoms may be
-arbitrarily nested within subnamespaces. Submission ids are UpperCamelCase,
-since they double as Lean namespaces.
+Each submission with id ``Lax261`` owns two top-level namespaces: its atoms
+live in ``Lax261`` and its proofs in ``Lax261Proofs``. All atoms of a concept
+``Myconcept`` are placed within the namespace ``Lax261.Myconcept``. Both
+proofs and atoms may be arbitrarily nested within subnamespaces.
 
 Example:
-- id of submission: ``Mysubmission``
+- id of submission: ``Lax261``
 - id of an atom of concept ``Myconcept`` within the submission:
-  ``Mysubmission.Cpts.Myconcept.OptionalNestedSubNamespaces.Myatom``
+  ``Lax261.Myconcept.OptionalNestedSubNamespaces.Myatom``
 - id of a proof within the submission:
-  ``Mysubmission.Prfs.OptionalNestedSubNamespaces.Myproof``
+  ``Lax261Proofs.OptionalNestedSubNamespaces.Myproof``
 
 ## Concept Lean Dialect
 
@@ -393,33 +517,6 @@ Further rules:
 - **Sorries.** The concept package must be sorry-free: a sorried ``def``
   body elaborates fine but leaves a hole in the trusted surface. Checked on
   the axiom set of every atom.
-
-
-### Additional thoughts by Claude
-
-TODO: **Attributes.** None for now. Downstream proof packages can re-attach
-them locally (``attribute [simp] …``), so this costs no ergonomics. The
-exception is ``instance``, which must take effect already in the concept
-package so that later atoms elaborate — hence it is an atom command.
-
-TODO: **Deriving.** ``deriving`` clauses run arbitrary metaprograms; banned
-initially. We may later whitelist standard handlers (``DecidableEq``, ``Repr``,
-…), counting the generated instances as auxiliary constants of the atom.
-
-TODO: Enforcement is layered. a purely syntactic linter checks every top-level
-command against the whitelist before elaboration; after elaboration, an
-environment diff checks that exactly the atoms and their auxiliary constants
-were added (the backstop against whitelist escapes); finally the DAG checks
-from the Datastructures section. In the beginning, the dialect is defined
-implicitly by whatever the checker accepts.
-
-TODO: typeclass resolution is ambient — an ``instance`` atom silently
-changes which instance a later atom picks up, invisible in the raw source.
-Do reviewers review the raw source, or a canonical rendering with resolved
-identifiers and instances shown on demand? Probably the latter.
-
-TODO: allow ``variable`` for ergonomics? Would require the renderer to
-splice the used variables back into each displayed declaration. Postponed.
 
 
 ## Proofs
@@ -477,7 +574,7 @@ below as ``description`` key.
 
 An example module within the concept package:
 
-    namespace Mysubmission.Cpts
+    namespace Lax261
 
     /-!
     # Title of concept A
@@ -507,28 +604,28 @@ An example module within the concept package:
 
     end B
 
-    end Mysubmission.Cpts
+    end Lax261
 
 
 An example module within the proof package:
 
-    namespace Mysubmission.Prfs
+    namespace Lax261Proofs
 
     /--
-    # Mysubmission.Cpts.Myconcept.Mystatement
+    # Lax261.Myconcept.Mystatement
     description of proof P
     -/
     theorem P ...
 
     /--
     ---
-    conclusion: Mysubmission.Cpts.Myconcept.Mystatement
+    conclusion: Lax261.Myconcept.Mystatement
     ---
     description of proof Q
     -/
     theorem Q ...
 
-    end Mysubmission.Prfs
+    end Lax261Proofs
 
 
 Further rules:
@@ -537,4 +634,22 @@ Further rules:
   annotates the namespace it opens; every other placement is rejected.
 - A concept namespace may be opened many times (even across modules), but
   must be annotated at exactly one opening. (Atoms directly in
-  ``Mysubmission.Cpts`` would belong to no concept and are rejected.)
+  ``Lax261`` would belong to no concept and are rejected.)
+
+# Website
+
+This is a work in progress. I am just gathering some thoughts here to later turn into a proper website layout.
+
+## Contributor ranking
+
+rank contributors with respect to multiple criteria
+- verified concepts
+- flaged concepts
+- created concepts
+- created proofs
+
+
+## Contributor page
+
+Shows the identity of the contributor and their statistics (nr of approvals, nr of flags, nr of submissions etc)
+
