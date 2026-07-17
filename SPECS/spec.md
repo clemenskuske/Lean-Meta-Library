@@ -70,7 +70,7 @@ out as we go.
 
 # Metadata Full Reference
 
-Each submission carries two metadata files: ``manifest.yaml``, written by the
+Each submission carries two central files: ``manifest.yaml``, written by the
 author, and ``artifacts.json``, derived by the build. Some fields will only
 start making sense once you have read the whole document.
 
@@ -87,7 +87,7 @@ start making sense once you have read the whole document.
 - authors: An ordered, possibly empty, list of typed entries, each an ORCID id
   or a GitHub handle. Used for credit only, not rights-management.
 
-- owners: A non-empty list of GitHub handles forming the owner set. Used for
+- owners: A non-empty list of GitHub handle forming the owner set. Used for
   rights-management only, not credits.
 
 - draft: Whether the submission is still an overwritable draft. Submitting
@@ -118,6 +118,12 @@ An **owner** is a GitHub account listed in a submission's owner set, and is
 thereby allowed to act on the submission (e.g., submitting and editing).
 Owners take action on the submission layer.
 
+The archive does not host submissions, it references them: a submission is a
+folder together with a commit hash in a public git repository. Work thus stays
+in the authors' repositories and attribution is clear. (To guard against link
+rot, we may keep backup copies, e.g. via
+https://archive.softwareheritage.org/save/.)
+
 ### Lifecycle
 
 Submissions can be in four possible states.
@@ -135,6 +141,11 @@ prominently displayed pointer to its successor. Downstream submissions may
 still depend on superseded submissions.
 
 ### Actions
+
+TODO: I think we should allow an init submission action that takes a folder containing only the bare minimum manifest (only author names are required?), registers an id, and puts it into the manifest.
+changes to propagate: submit does not allow empty submissions anymore. also text here and there...
+
+Opaque ids prevent the squatting of nice names like ``RamseyTheory``.
 
 Every action happens via our CLI tool. It has exactly one write action,
 **submit**, which hands the archive a (repository, commit, folder) triple. The
@@ -156,6 +167,10 @@ successor is registered, and is accepted only if ``LaxN`` is registered and has
 no successor yet (plus the owner condition above). Successors thus form a
 chain. Revocation amounts to superseding by an empty submission.
 
+### License
+
+To display the submission on our website and to make and serve backup copies, we require submissions to be poperly licensed.
+TODO: what license(s) do we accept?
 
 
 ## The Trust Layer
@@ -216,6 +231,9 @@ intentionally don't discuss them for now.
 
 
 
+
+
+
 # Abstract Datastructures
 
 We define the basic abstract datastructures of the archive. They come together
@@ -232,10 +250,9 @@ constant, a declaration comprises all auxiliary kernel constants its command
 generates (e.g., a ``structure`` also generates its constructor and
 projections). 
 
-An **Atom** is a declaration within the concept package. Every atom is declared
-by one of the commands ``def``, ``abbrev``, ``structure``, ``class``,
-``inductive``, ``instance``, or ``axiom``. An atom declared by ``axiom`` is
-called a **statement**.
+An **Atom** is a declaration within the concept package. An atom declared by
+``axiom`` is called a **statement**. The lean dialect of the concept package
+controlls which atoms are allowed.
 
 We say **declaration A depends on declaration B** if some constant of B occurs
 in the type or body of some constant of A (theorems: type only). 
@@ -266,18 +283,6 @@ to be acyclic. For a declaration A, the **concept DAG rooted at A** is the
 declaration DAG restricted to the nodes reachable from A, induced and
 quotiented as above. Note that the concept DAG rooted at A is not necessarily
 an induced subgraph of the concept DAG.
-
-## Aliases
-
-An **alias** is an atom that merely re-exposes another atom, its **target**,
-under a new id — a symlink. The target may be an atom of the same or of
-another submission, and its semantics are exactly those of the target.
-Concretely, an alias is an ``abbrev`` or ``instance`` whose body is exactly
-one fully-qualified constant naming another atom; the checker recognizes this
-shape and records the alias-of relation.
-
-Statements cannot be aliases (an ``abbrev`` whose body is an ``axiom`` is a
-proof-valued definition, not a statement).
 
 ## Proofs
 
@@ -320,7 +325,75 @@ Proof:
 
 
 
-# Implementation Details
+# Concept Lean Dialect
+
+TODO: I am very unsure about this section. I think it should be checked with a real lean expert?
+
+Modules of the concept package are written in a restricted dialect of Lean. Its
+purpose is **locality**: the unit of review on the website are individual
+concepts. Therefore the meaning of atoms must be reconstructible from its
+source text, its fully-qualified id, and its dependencies alone — a reviewer
+never consults the surrounding module. Any command that invisibly mutates
+elaborator state breaks locality.
+
+Since Lean offers a million ways to mutate ambient state (macros, notation,
+attributes, options, …), the dialect whitelists what is allowed rather than
+enumerating what is forbidden. Term-level syntax is unrestricted: all
+notation and implicit machinery of core Lean and the pinned mathlib remains
+available as trusted base. Submissions merely cannot extend it.
+
+
+A module of the concept package may only contain:
+
+- ``import`` commands for modules of the declared dependencies (Lean only
+  permits them at the top of a module),
+- ``namespace`` / ``end``,
+- module docstrings ``/-! … -/``, allowed only directly before a
+  ``namespace`` (concept annotations, see the Annotations section),
+- normal docstrings ``/-- … -/``, allowed only directly before atoms
+- the atom commands ``def``, ``abbrev``, ``structure``, ``class``,
+  ``inductive``, ``instance``, ``axiom``, each with an optional docstring
+  and optionally prefixed by ``open … in``,
+- ``mutual`` blocks of the atom commands.
+
+Further rules:
+
+- **Namespaces.** ``namespace Foo.Bar`` prefixes declared names and opens
+  ``Foo`` and ``Foo.Bar`` — both derivable from the atom's id, whose
+  prefixes are exactly the opened namespaces. So namespaces are the one
+  piece of ambient state we allow, arbitrarily nested. A standalone
+  ``open`` leaves no trace in the id and is banned; ``open … in def …`` is
+  part of the reviewed text and fine.
+
+- **Modifiers.** No ``partial``, no ``unsafe`` (their semantics are opaque
+  or absent); ``noncomputable`` is fine.
+
+- **Sorries.** The concept package must be sorry-free: a sorried ``def``
+  body elaborates fine but leaves a hole in the trusted surface. Checked on
+  the axiom set of every atom.
+
+- TODO: no deriving, no extends on class?
+
+## Aliases
+
+An **alias** is an atom that merely re-exposes another atom, its **target**,
+under a new id (like a symlink). The target may be an atom of the same or of
+another submission, and its semantics are exactly those of the target.
+Concretely, an alias is an ``abbrev`` whose body is exactly one fully-qualified
+constant naming another atom; the checker recognizes this shape and records the
+alias-of relation.
+
+Statements cannot be aliases (an ``abbrev`` whose body is an ``axiom`` is a
+proof-valued definition, not a statement).
+
+
+
+
+
+# Full Specification Valid Submissions
+
+This section provides all remaining details on what it means for a submission
+to be accepted by our system.
 
 ## Archive Environment
 
@@ -340,38 +413,13 @@ the root of the archive repository.
 
 ## Submissions
 
-The archive does not host submissions, it references them: a submission is a
-folder together with a commit hash in a public git repository. Work thus stays
-in the authors' repositories and attribution is clear. (To guard against link rot, we
-may keep backup copies, e.g. via https://archive.softwareheritage.org/save/.)
+Every **submit** hands the archive a (repository, commit, folder) triple. The
+archive runs its checks and, on success, records the triple under the
+submission's id. Only registered submissions can be referenced by other
+submissions.
 
-Every **submit** hands the archive a (repository, commit, folder) triple;
-the archive runs its checks and, on success, records the triple under the
-submission's id (see Actions in the Submission Layer for what a submit can
-mean). An **empty submission** — a manifest and nothing else — is valid: it
-is how fresh submissions start and how revocation works. Only registered
-submissions can be referenced by other submissions.
-
-Each submission has an **id**, assigned by the archive: ``LaxN`` where ``N``
-is the creation number (e.g. ``Lax261``). Ids are opaque and permanent and
-double as the Lean namespace; human-readable naming lives in the title
-metadata. Opaque ids prevent the squatting of nice names like
-``RamseyTheory`` and by construction cannot collide with a top-level namespace
-of the trusted base. Since the id appears in lakefiles and module paths, the
-first submit of a fresh submission is typically empty: it creates the
-submission and returns the id, which the author bakes into the packages
-before submitting again. Creation binds the id to the owner set given in the
-manifest; every later submit under that id is checked against the stored
-owner set (see Actions), and the manifest sitting in the commit proves
-the cooperation of whoever controls the repository, so no separate ownership
-check is needed. The archive records GitHub accounts by numeric id, never by
-handle: handles and repository slugs are reusable after renames and
-deletions, and ownership must survive both.
-
-Implementation note: the submitting account authenticates via GitHub OAuth
-(the submit tool can reuse a ``gh`` login); the owner check runs on the
-archive side. If submits are instead PRs against the archive repository,
-GitHub authenticates the actor and the check is a CI job. To decide.
+Implementation note: The submitting account authenticates via GitHub OAuth
+(the submit tool can reuse a ``gh`` login).
 
 The folder layout is fixed (example for a submission with id ``Lax261``):
 
@@ -419,15 +467,18 @@ archive repository, one line per registered submission.
 Further rules (to discuss):
 
 - **File whitelist.** A submission may only contain whitelisted file types
-  (``.lean``, ``.tex``, ``.yaml``, ``.json``, ``.bib``, ``.md``, ``.txt``,
-  plus ``lean-toolchain``, ``LICENSE``, ``README``) and must stay within the
+  (``.lean``, ``.tex``, ``.yaml``, ``.json``, ``.bib``, ``.md``, ``.txt``, plus
+  ``lean-toolchain``, ``LICENSE``, ``README``) and must stay within the
   archive-wide size limits.
+
 - **License.** The submission must carry one of the accepted open licenses.
+  TODO: Do we check that the license verbatim matches (and suggest a copy from
+  our download side if they dont?
 
 
 ## Packages
 
-Each submission ``Lax261`` creates two Lake packages: a **concept
+Each submission ``Lax261`` contains two Lake packages: a **concept
 package** ``Lax261`` containing its concepts and atoms and a **proof
 package** ``Lax261Proofs`` containing its proofs.
 
@@ -452,16 +503,14 @@ Further rules:
   target. With Lake's default layout, module files therefore live under
   ``Lax261/`` resp. ``Lax261Proofs/``.
 
-- **Dependencies.** 
-  As stated above (and besides mathlib), concept packages can only require
-  concept packages and proof packages may require both.
-  We issue a warning when a proof package is required.
-  Mathlib must be pinned to the archive-wide revision. 
-  Proof and concept packages are added by pinning the full commit hash and
-  subfolder of the submission's repository. Every such (repository, rev,
-  subfolder) triple must resolve to a registered submission.
-  Only exception: The proof package may require its own concept package via
-  a relative path to the folder.
+- **Dependencies.** As stated above (and besides mathlib), concept packages can
+  only require concept packages and proof packages may require both. We issue a
+  warning when a proof package is required. Mathlib must be pinned to the
+  archive-wide revision. Proof and concept packages are added by pinning the
+  full commit hash and subfolder of the submission's repository. Every such
+  (repository, rev, subfolder) triple must resolve to a registered submission.
+  Only exception: The proof package may require its own concept package via a
+  relative path to the folder.
 
 - **Pinned toolchain.** ``lean-toolchain`` must contain the archive-wide
   toolchain verbatim.
@@ -525,51 +574,6 @@ Example:
   ``Lax261.Myconcept.OptionalNestedSubNamespaces.Myatom``
 - id of a proof within the submission:
   ``Lax261Proofs.OptionalNestedSubNamespaces.Myproof``
-
-## Concept Lean Dialect
-
-Modules of the concept package are written in a restricted dialect of Lean.
-Its purpose is **locality**: the unit of review on the website is a single
-atom, and its meaning must be reconstructible from its source text, its
-fully-qualified id, and its dependencies alone — a reviewer never consults
-the surrounding module. Any command that invisibly mutates elaborator state
-breaks locality.
-
-Since Lean offers a million ways to mutate ambient state (macros, notation,
-attributes, options, …), the dialect whitelists what is allowed rather than
-enumerating what is forbidden. Term-level syntax is unrestricted: all
-notation and implicit machinery of core Lean and the pinned mathlib remains
-available as trusted base. Submissions merely cannot extend it.
-
-
-A module of the concept package may only contain:
-
-- ``import`` commands for modules of the declared dependencies (Lean only
-  permits them at the top of a module),
-- ``namespace`` / ``end``,
-- module docstrings ``/-! … -/``, allowed only directly before a
-  ``namespace`` (concept annotations, see the Annotations section),
-- normal docstrings ``/-- … -/``, allowed only directly before atoms
-- the atom commands ``def``, ``abbrev``, ``structure``, ``class``,
-  ``inductive``, ``instance``, ``axiom``, each with an optional docstring
-  and optionally prefixed by ``open … in``,
-- ``mutual`` blocks of the atom commands.
-
-Further rules:
-
-- **Namespaces.** ``namespace Foo.Bar`` prefixes declared names and opens
-  ``Foo`` and ``Foo.Bar`` — both derivable from the atom's id, whose
-  prefixes are exactly the opened namespaces. So namespaces are the one
-  piece of ambient state we allow, arbitrarily nested. A standalone
-  ``open`` leaves no trace in the id and is banned; ``open … in def …`` is
-  part of the reviewed text and fine.
-
-- **Modifiers.** No ``partial``, no ``unsafe`` (their semantics are opaque
-  or absent); ``noncomputable`` is fine.
-
-- **Sorries.** The concept package must be sorry-free: a sorried ``def``
-  body elaborates fine but leaves a hole in the trusted surface. Checked on
-  the axiom set of every atom.
 
 
 ## Proofs
@@ -689,6 +693,47 @@ Further rules:
   must be annotated at exactly one opening. (Atoms directly in
   ``Lax261`` would belong to no concept and are rejected.)
 
+
+## Generated Artifacts
+
+TODO: give a clean description of artifacts.json.
+it should contain everything extracted during build and required for website display.
+
+
+# Submission Layer Tooling
+
+TODO: describe the cli used to build and check submission.
+Emphasis should be placed on the local build that creates the artifacts.json required for local website building
+and the second step that creates the website from the artifacts.json
+
+
+-----------------------------
+TODO
+here are some notes from a very early draft of the spec. take it or leave it. i have no emotional attachment to these earlier ideas and its probably good to rethink them.
+
+## building submissions implementation
+
+Probably we want to have a wrapping package with our own package cache location and imports of dependencies filtered from the submission yaml 
+
+This would help us
+- to have a flag to reset the package folder with the mathlib
+- Build multiple submissions in parallel?
+
+
+## global substitutioncheck
+"lml build fullproofs rootdir" chains all the different axioms and proofs together into a full proof tree for every proven statement. no trust needed. the most paranoid check avaliable. Considers only submissions contained in rootdir (recursively scans for metadata.yaml files to identify submissions). So to do it on the server, one needs to place all submissions into the rootdir.
+
+## building the website
+"lml build website target1 target2 ...", where each target is of either of the following types
+- submission.jsonl (to append multiple entries)
+- submission.json (to append single entries)
+This creates a static website containing all targets
+
+-----------------------------
+
+
+
+
 # Website
 
 This is a work in progress. I am just gathering some thoughts here to later turn into a proper website layout.
@@ -698,9 +743,7 @@ This is a work in progress. I am just gathering some thoughts here to later turn
 rank people with respect to multiple criteria (mixes reviewer and author stats)
 - verified concepts
 - flaged concepts
-- created concepts
 - created proofs
-
 
 ## Person page
 
