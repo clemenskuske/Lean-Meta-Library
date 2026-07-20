@@ -125,9 +125,6 @@ The file ``manifest.yaml`` must contain the following keys and adhere to the fol
   tuple with a required ``name`` (display name) and optional ``orcid`` and
   ``github`` identifiers. Used for credit only, not rights-management.
 
-- ``supersedes``: Id of a submission this one is intended to supersede.
-  Optional.
-
 - ``bibEntries``: a possibly empty list of bibtex entries.
 
 Additional Rules:
@@ -147,7 +144,6 @@ Example:
       - name: Bob
         github: bob
     bibEntries: []
-    supersedes: Lax42       # optional, see Actions
 
 
 
@@ -174,8 +170,7 @@ following rules:
   warning when a proof package is required. Mathlib must be pinned to the
   archive-wide revision. Proof and concept packages are added by pinning the
   full commit hash and subfolder of the submission's repository. Every such
-  (repository, rev, subfolder) triple must resolve to a registered or
-  superseded submission.
+  (repository, rev, subfolder) triple must resolve to a registered or.
   Only exception: The proof package may require its own concept package via a
   relative path to the folder.
 
@@ -397,7 +392,7 @@ An example module within the proof package:
 
 The archive stores one folder per allocated id. ``LaxN/record.json`` holds the
 mutable lifecycle data: state, owner set, the current (repository, commit,
-folder) triple, and the supersession pointer. ``LaxN/build-output.json`` holds
+folder) triple. ``LaxN/build-output.json`` holds
 the build output, frozen on registration. This folder tree is the canonical
 state of the archive; everything else (website, indexes) is derived. The
 database is a single public git repository with a single writer, and every user
@@ -417,14 +412,12 @@ Example ``record.json``
         "repository": "https://github.com/alice/mysubmission",
         "commit": "0123456789abcdef0123456789abcdef01234567",
         "folder": "."
-      },
-      "supersededBy": "Lax262"
+      }
     }
 
 - ``owners``: GitHub handles, non-empty, immutable after registration.
 - ``source``: the (repository, commit, folder) triple; absent in the init
   state, frozen on registration.
-- ``supersededBy``: absent unless the submission is superseded.
 
 
 
@@ -514,10 +507,6 @@ not reviewable, and not allowed to be used in downstream submissions.
 
 **registered:** immutable, citable, reviewable. The normal published state.
 
-**superseded:** still immutable, citable, and reviewable, but carrying a
-prominently displayed pointer to its successor. Downstream submissions may
-still depend on superseded submissions.
-
 The only state transitions are:
 
 - ``-> init``,
@@ -525,7 +514,6 @@ The only state transitions are:
 - ``init -> registered``
 - ``draft -> draft``
 - ``draft -> registered``
-- ``registered -> superseded``
 
 ## Actions
 
@@ -557,17 +545,6 @@ authenticated GitHub account must occur in the record's stored owner set.
 - With ``--register``, a successful submit registers the submission and
   freezes its triple, manifest, concepts, and proofs.
 
-**Supersession.** A manifest may name a registered submission in its optional
-``supersedes`` field. Every submit carrying this field must also be performed
-by an account in the stored owner set of the named predecessor. When the
-successor is registered, supersession is accepted only if the predecessor is
-registered, has no successor, and is not the successor itself. The predecessor
-then becomes superseded and gains a pointer to the successor. Its content and
-citations remain unchanged, and downstream submissions may continue to depend
-on it. A registered successor may later be superseded in the same way, so
-successors form a chain.
-
-
 
 # Implementation
 
@@ -592,8 +569,8 @@ subsequent phases.
   with ``parseImports`` on the source text; no build is needed.
 
 - **Resolution** (miliseconds, no network): Check that every dependency triple
-  resolves to a registered or superseded submission in the local database. (For
-  users, we suggest to update the database if misses occur).
+  resolves to a registered submission in the local database. (For users, we
+  suggest to update the database if misses occur).
 
 - **Compile:** ``lake build`` in ``proofs/``, which may build the concept
   package as a path dependency under its own build options. Then ``lake
