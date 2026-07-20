@@ -1,6 +1,6 @@
 # Vision
 
-The archive is shall serve as social and archival layer for automated Lean
+The archive shall serve as the social and archival layer for automated Lean
 formalization.
 
 **Social:** Lean's kernel checks proofs for free, but it cannot check whether
@@ -45,7 +45,7 @@ are frozen in time. This makes it possible to build upon and cite previous
 submissions, allowing the organic growth of a dependency network mirroring that
 of scientific publications. We understand that this brings along its own
 problems, which we believe are worth it. In particular, we pin the version of
-lean, lake and mathlib.
+Lean, Lake and mathlib.
 
 
 
@@ -63,25 +63,25 @@ the build.
 We fix the following **archive environment**:
 
 - ``specVersion: "1"``
-- pinned Lean toolchain (which also fixes the lake version),
-    - v4.30.0
+- pinned Lean toolchain: ``leanprover/lean4:v4.30.0`` (the verbatim content
+  of every ``lean-toolchain`` file; it also fixes the Lake version)
 - trusted background imports
     - mathlib, pinned to revision ``c5ea00351c28e24afc9f0f84379aa41082b1188f``
-- build options 
-  - concept packages: 
+- ``enableArtifactCache`` on
+- concept build options
     - ``autoImplicit`` off
-    - ``enableArtifactCache`` on
-  - proof packages:
-    - ``enableArtifactCache`` on
-- allowed background axioms in proofs 
-    - ``propext``, 
-    - ``Classical.choice``,
-    - ``Quot.sound``,
+- proof build options
+    - ``autoImplicit`` on
+- allowed background axioms
+    - ``propext``
+    - ``Classical.choice``
+    - ``Quot.sound``
 
 
 ## File Structure
 
-A submission rooted at folder ``mysubmission`` with id ``Lax261`` **must** have the following folder layout with the following files.
+A submission rooted at folder ``mysubmission`` with id ``Lax261`` **must**
+have the following layout.
 
     mysubmission/
       manifest.yaml
@@ -90,24 +90,31 @@ A submission rooted at folder ``mysubmission`` with id ``Lax261`` **must** have 
       concepts/                    
         lakefile.toml
         lean-toolchain
+        Lax261.lean                -- root module of the concept package
         Lax261/...                 -- modules of the concept package
       proofs/                      
         lakefile.toml
         lean-toolchain
+        Lax261Proofs.lean          -- root module of the proof package
         Lax261Proofs/...           -- modules of the proof package
 
 Additional Rules:
 
 - **License.** The file ``LICENSE`` in the submission root folder must contain
   an accepted license, matched against the canonical text after whitespace
-  normalization. For the MVP we accept exactly one license: the **Apache
-  License 2.0**, the license of Lean and mathlib. 
+  normalization. An optional copyright line at the end of the file is
+  ignored. For the MVP we accept exactly one license: the **Apache License
+  2.0**, the license of Lean and mathlib.
 
-- **Abstract.** ``abstract.md`` must be valid markdown. This abstract will be
-  shown prominently on the website.
+- **Abstract.** ``abstract.md`` must be non-empty. It is rendered as markdown
+  and shown prominently on the website.
 
-- **Files.** Generated data must not be checked in, in particular
-  ``build-output.json`` and ``lake-manifest.json``.
+- **Generated files.** Generated files must not be checked in, in particular
+  ``build-output.json`` and ``lake-manifest.json`` (see the lock-file rule in
+  Packages).
+
+- **Additional files.** Files beyond the pictured layout (a README, figures,
+  …) are allowed and ignored by the archive.
 
 ## manifest.yaml
 
@@ -117,7 +124,10 @@ The file ``manifest.yaml`` must contain the following keys and adhere to the fol
 - ``mathlibVersion``: version the submission was built against
 - ``leanVersion``: version the submission was built against
 
-- ``id``: The archive-assigned unique id. must be of form ``LaxN`` for a natural number N written without leading zeros.
+- ``id``: The archive-assigned unique id. It must be of the form ``LaxN`` for
+  a positive natural number N written without leading zeros. Ids are
+  deliberately opaque; this prevents the squatting of nice names like
+  ``RamseyTheory``.
 
 - ``title``: A non-unique title, like the title of the paper the submission formalizes.
 
@@ -125,10 +135,15 @@ The file ``manifest.yaml`` must contain the following keys and adhere to the fol
   tuple with a required ``name`` (display name) and optional ``orcid`` and
   ``github`` identifiers. Used for credit only, not rights-management.
 
-- ``bibEntries``: a possibly empty list of bibtex entries.
+- ``bibEntries``: a possibly empty list of strings, each a single BibTeX
+  entry verbatim, as it would appear in a ``.bib`` file.
 
 Additional Rules:
-- ``specVersion``, ``leanVersion``, ``mathlibVersion``: must match the archive environment for now
+- ``specVersion``, ``leanVersion``, ``mathlibVersion``: must match the
+  archive environment for now. ``leanVersion`` holds the version tag
+  (``v4.30.0``); the full toolchain name (``leanprover/lean4:v4.30.0``)
+  appears only in the ``lean-toolchain`` files.
+- No keys beyond the ones listed here are allowed.
 
 Example:
 
@@ -156,48 +171,70 @@ package** ``Lax261Proofs`` containing its proofs.
 We only allow ``lakefile.toml``, never ``lakefile.lean``, and enforce the
 following rules:
 
-- **Whitelisted keys only.** The file may contain exactly ``name``,
-  ``defaultTargets``, ``[[require]]`` entries, and one ``[[lean_lib]]``.
-  Additionally build-options must match archive environment.
+- **Whitelisted keys only.** The file may contain exactly the keys shown in
+  the examples below: ``name``, ``defaultTargets``, the archive environment's
+  build options, ``[[require]]`` entries (exactly ``name``, ``git``, ``rev``,
+  optionally ``subDir`` — or ``name`` and ``path`` for the proof package's
+  own concept package), and one ``[[lean_lib]]`` (exactly ``name``).
 
 - **Fixed names.** The package name and the name of the single ``lean_lib``
-  are both ``Lax261`` resp. ``Lax261Proofs``. The lib is the only default
-  target. With Lake's default layout, module files therefore live under
-  ``Lax261/`` resp. ``Lax261Proofs/``.
+  are both ``Lax261`` in the concept package and both ``Lax261Proofs`` in
+  the proof package. The lib is the only default target. With Lake's default
+  layout, module files therefore live under ``Lax261/`` and
+  ``Lax261Proofs/`` respectively.
 
-- **Dependencies.** As stated above (and besides mathlib), concept packages can
-  only require concept packages and proof packages may require both. We issue a
-  warning when a proof package is required. Mathlib must be pinned to the
-  archive-wide revision. Proof and concept packages are added by pinning the
+- **Dependencies.** Besides mathlib, concept packages may require only
+  concept packages; proof packages may require both concept and proof
+  packages. We issue a warning whenever a proof package is required.
+  Requiring mathlib is optional in both packages (it is often already
+  present transitively); when required, it must be required under the name
+  ``mathlib`` from its canonical URL, pinned to the archive-wide revision.
+  Concept and proof packages of other submissions are added by pinning the
   full commit hash and subfolder of the submission's repository. Every such
-  (repository, rev, subfolder) triple must resolve to a registered or.
-  Only exception: The proof package may require its own concept package via a
-  relative path to the folder.
+  ``(git, rev, subDir)`` triple must resolve to a registered submission: a
+  record with ``repository = git``, ``commit = rev``, and ``subDir`` equal
+  to the record's ``folder`` joined with ``concepts`` or ``proofs``. Only
+  exception: the proof package may require its own concept package via the
+  relative path ``../concepts``.
+
+- **Imports.** A module may import only modules of its own package, of Lean
+  core (``Init``, ``Std``, ``Lean``), of mathlib, and of the packages its
+  package requires. Modules of mathlib's own dependencies (``Batteries``,
+  ``Aesop``, ``Qq``, …) are not importable; import the corresponding mathlib
+  module instead. Enforcement is a prefix check on the ``parseImports``
+  output: by the fixed-names rule, every archive module name begins with its
+  package name, so an import's first component identifies its package.
 
 - **Root modules.** Each package has a root module (``concepts/Lax261.lean``
-  resp. ``proofs/Lax261Proofs.lean``) consisting of exactly one ``import``
+  and ``proofs/Lax261Proofs.lean``) consisting of exactly one ``import``
   line per module of the package and nothing else, so that the default target
   builds everything. (This is the standard Lean layout — mathlib's
   ``Mathlib.lean`` works the same way.)
 
-- **Empty Submission.** It is allowed that the submission contains no concept
-  and no proof. Maybe useful to simulate revocation.
+- **Empty submission.** A submission may contain no concepts and no proofs.
+  (This may later serve as a lightweight stand-in for revocation.)
 
 - **Pinned toolchain.** ``lean-toolchain`` must contain the archive-wide
   toolchain verbatim.
 
-- **Lock file.** ``lake-manifest.json``, Lake's lock file, must not be checked
-  in. It carries no information the lakefile does not already determine: every
-  ``[[require]]`` pins a full commit hash, so resolution is deterministic. The
-  rule is about version control, not the filesystem: a local build leaves the
-  file behind as a byproduct, which is fine and expected. Enforcement therefore
-  asks git whether the file is tracked at the submitted commit.
+- **Builds.** Both packages must build: ``lake build`` succeeds in
+  ``concepts/`` and in ``proofs/``. Lean warnings do not fail a submission.
+
+- **Lock file.** ``lake-manifest.json``, Lake's lock file, must not be
+  checked in: every ``[[require]]`` pins a full commit hash, so it carries no
+  extra information. The rule is about version control, not the filesystem —
+  a local build leaving the file behind is fine; enforcement asks git whether
+  it is tracked.
 
 Example ``lakefile.toml`` of a concept package:
 
     # mysubmission/concepts/lakefile.toml
     name = "Lax261"
     defaultTargets = ["Lax261"]
+    enableArtifactCache = true
+
+    [leanOptions]
+    autoImplicit = false
 
     [[require]]
     name = "mathlib"
@@ -219,6 +256,10 @@ Example ``lakefile.toml`` of the corresponding proof package:
     # mysubmission/proofs/lakefile.toml
     name = "Lax261Proofs"
     defaultTargets = ["Lax261Proofs"]
+    enableArtifactCache = true
+
+    [leanOptions]
+    autoImplicit = true
 
     [[require]]
     name = "Lax261"
@@ -249,66 +290,101 @@ submission ``Lax261`` is the module ``Lax261.Myconcept``, stored at Lake's
 canonical path ``concepts/Lax261/Myconcept.lean``.
 
 Every declaration of the module must live in the namespace equal to the module
-name, e.g. ``Lax261.Myconcept``. Further subnamespaces are allowed. An
-``axiom`` declaration in the module is called a **statement** of the concept.
-Statements are to be discharged by proofs.
+name, e.g. ``Lax261.Myconcept``. Further subnamespaces are allowed.
 
-A concept may import mathlib modules and other concept modules (of the same or
-of other submissions). The **concept DAG** is the DAG with outgoing edges to
-each included module.
+A concept may import mathlib modules and other concept modules (of the same
+or of other submissions) — this is exactly what the import rule of the
+Packages section permits. These imports form the **concept DAG** (acyclic for
+free, since Lean imports are).
 
 Additional Rules:
 
+- **Allowed commands.** A concept module may use only the **atom commands**
+  ``axiom``, ``def``, ``abbrev``, ``opaque``, ``structure``, ``inductive``,
+  ``class``, ``instance``, and ``deriving instance`` — also grouped in
+  ``mutual`` blocks — and the structuring and meta commands ``import``,
+  ``namespace``/``end``, ``section``, ``open``, ``variable``, ``universe``,
+  ``notation``, ``syntax``, ``macro``, ``macro_rules``, ``elab``,
+  ``elab_rules``, ``set_option``, ``attribute``. Inline ``@[...]`` attributes
+  and declaration modifiers are unrestricted. ``theorem``, ``lemma``, and
+  ``example`` are forbidden — concepts contain no proofs. The whitelist is
+  deliberately lenient for the MVP; the future concept dialect will tighten
+  it.
+
+- **Atoms.** The **atoms** of a concept are the declarations introduced by
+  its atom commands. Auto-generated declarations (constructors, recursors,
+  projections, equation lemmas, …) are not atoms; they belong to their parent
+  atom. An ``axiom`` atom is a **statement** of the concept, to be discharged
+  by proofs.
+
 - **Sorry-free.** The axiom set (``#print axioms``) of every declaration may
-  contain only the archive environment's background axioms. In particular
-  ``sorryAx`` is forbidden.
+  contain only the archive environment's background axioms and statements (of
+  this or any other submission). In particular ``sorryAx`` and
+  ``Lean.ofReduceBool`` are forbidden — no ``sorry``, no ``native_decide``.
 
-### Future work: Lean Dialect for Concepts
+### Future work: Lean Dialect for Concepts and Proofs
 
-These are ideas for later that we want to ignore now. just writing them down
+These are ideas for later that we want to ignore now. Just writing them down
 for future reference.
 
-We want to ensure that concepts are written in a lean dialect in which it is
+We want to ensure that concepts are written in a Lean dialect in which it is
 safe to execute untrusted code. Given the small initial community, we postpone
 this. 
+
+For proofs, we need to enforce that a single set_option command cannot bypass
+the kernel, allowing the user to prove anything. This is a known and accepted
+pitfall, and for now we assume users properly cooperate.
+
+The command whitelist is checked on surface syntax, before macro expansion, so
+a ``macro`` or ``elab`` declaring a command that expands into a ``theorem``
+slips through. Since concepts may define their own syntax, this is not
+closable by parsing alone; the dialect will have to restrict what syntax a
+concept may introduce. Same bucket as the ``set_option`` pitfall: we assume
+cooperation for now.
 
 Later, we may want to decompose concepts into individual declarations with a
 dependency DAG on them, such that the semantics of a concept can be derived by
 only looking at the declarations reachable in the DAG. We call this "locality".
-This seems like quite a challenge as in lean there are a million ways for code
-to have non-local side-effects. I dont think we can implement this without
+This seems like quite a challenge as in Lean there are a million ways for code
+to have non-local side-effects. I don't think we can implement this without
 feedback from Lean experts.
 
 ## Proofs
 
-A **proof** is a ``theorem`` in the proof package whose docstring frontmatter
-carries the ``conclusion`` key. All other declarations are helpers and are
-ignored by the archive. Its **conclusion** is the statement named by that
-key; its **assumptions** are the statements occurring in the theorem's axiom
-set (as reported by ``#print axioms``). The optional ``assumptions`` key,
-when present, must list exactly the assumptions the inspector computes (a
-redundant sanity check for authors, not an input).
+A **proof** is a declaration of theorem kind in the proof package whose
+docstring frontmatter carries the ``conclusion`` key. The kind is the
+kernel's, not the surface syntax, so mathlib's ``lemma`` qualifies as well.
+All other declarations are helpers and are ignored by the archive. Its
+**conclusion** is the statement named by that key; its **assumptions** are
+the statements occurring in the theorem's axiom set (as reported by
+``#print axioms``). The optional ``assumptions`` key, when present, must
+equal, as a set, the assumptions the inspector computes (a redundant sanity
+check for authors, not an input).
 
 Rules:
 
 - The ``conclusion`` id resolves to an ``axiom`` in the concept package of
-   some submission.
+  some submission, and that axiom is present in the proof package's built
+  environment — i.e. the proof's module (transitively) imports the concept
+  module declaring it.
 
 - The theorem's type is definitionally equal to the conclusion's type (kernel
-   check).
+  check).
 
-- Every axiom reported by ``#print axioms`` is either a statement or on the
-   archive environment's whitelist of background axioms. In particular,
-   ``sorryAx`` is forbidden.
+- Every axiom reported by ``#print axioms`` for any declaration of the
+  proof package (helpers included) is either a statement or a background
+  axiom. In particular ``sorryAx`` and ``Lean.ofReduceBool`` are forbidden
+  — no ``sorry``, no ``native_decide``.
 
 - Every declaration of the proof package lives in the namespace
-   ``Lax261Proofs``; further subnamespaces are allowed.
+  ``Lax261Proofs``; further subnamespaces are allowed.
 
 Together, the proofs weave the statements of the archive into the **proof
 network**: the directed hypergraph over all statements with a hyperedge
 (A → c) for every proof with assumption set A and conclusion c. A statement
 is **proven** if it is the conclusion of some proof all of whose assumptions
-are (recursively) proven, and **unproven** otherwise. More generally, a
+are (recursively) proven, and **unproven** otherwise — a least fixed point,
+so statements in a dependency cycle do not prove each other. More generally, a
 statement is **proven relative to** a set C of statements if it becomes
 proven once the statements in C are taken as proven.
 
@@ -317,7 +393,9 @@ proven once the statements in C are taken as proven.
 Each annotation is a docstring that we parse as markdown with optional yaml
 frontmatter (a common pattern from static site generators). When later parsing
 this docstring into key-value pairs, the markdown after the frontmatter is
-placed into the ``description`` key.
+placed into the ``description`` key; a docstring without frontmatter is pure
+description. The frontmatter itself must therefore not contain a
+``description`` key, and keys outside the recognized list below are rejected.
 
     /--
     ---
@@ -340,14 +418,20 @@ Concept
       object. The whole validity of the archive rests on the assumption that
       the Lean side of the concept faithfully represents this description.
 
-Proof: 
+Proof
     - ``conclusion`` (required)
-    - ``assumptions`` (optional, see Proofs);
+    - ``assumptions`` (optional): a yaml list of fully qualified statement
+      names, see Proofs
     - ``description`` (optional): additional information, like attribution or
       the high-level idea.
 
-A concept is annotated by the module docstring ``/-! … -/`` at the top of its
-file.
+Every docstring in both packages is validated against this scheme, helpers
+included: frontmatter with an unrecognized key is rejected. This makes typos
+loud — a theorem whose frontmatter misspells ``conclusion`` fails the build
+instead of being silently ignored as a helper.
+
+A concept is annotated by its module docstring ``/-! … -/``, the first item
+after the ``import`` lines.
 
 An example concept module ``concepts/Lax261/Myconcept.lean``:
 
@@ -391,15 +475,15 @@ An example module within the proof package:
 # Archive Database
 
 The archive stores one folder per allocated id. ``LaxN/record.json`` holds the
-mutable lifecycle data: state, owner set, the current (repository, commit,
-folder) triple. ``LaxN/build-output.json`` holds
-the build output, frozen on registration. This folder tree is the canonical
+mutable lifecycle data: state, owner set, timestamps, the current (repository,
+commit, folder) triple. ``LaxN/build-output.json`` holds the build output:
+absent in the init state, overwritten on every draft submit (drafts are shown
+on the website), frozen on registration. This folder tree is the canonical
 state of the archive; everything else (website, indexes) is derived. The
 database is a single public git repository with a single writer, and every user
 holds a read-only clone of it at ``~/.lax/db``. The path is
 deliberately visible, so AI agents can use it to survey existing submissions
-and find prior work to build upon. Installing the CLI clones the repository. 
-We now describe the content of the two types of files.
+and find prior work to build upon. Installing the CLI clones the repository.
 
 Example ``record.json``
 
@@ -407,7 +491,12 @@ Example ``record.json``
       "specVersion": "1",
       "id": "Lax261",
       "state": "registered",
-      "owners": ["alice", "bob"],
+      "createdAt": "2026-07-01T12:00:00Z",
+      "registeredAt": "2026-07-19T09:30:00Z",
+      "owners": [
+        { "githubId": 583231, "handle": "alice" },
+        { "githubId": 913874, "handle": "bob" }
+      ],
       "source": {
         "repository": "https://github.com/alice/mysubmission",
         "commit": "0123456789abcdef0123456789abcdef01234567",
@@ -415,7 +504,11 @@ Example ``record.json``
       }
     }
 
-- ``owners``: GitHub handles, non-empty, immutable after registration.
+- ``owners``: GitHub accounts, non-empty, immutable after registration.
+  Stored as numeric account id (handles are renameable) plus the handle for
+  display.
+- ``createdAt``, ``registeredAt``: UTC timestamps of init and registration;
+  ``registeredAt`` is absent before registration.
 - ``source``: the (repository, commit, folder) triple; absent in the init
   state, frozen on registration.
 
@@ -427,21 +520,20 @@ Example of ``build-output.json``
       "specVersion": "1",
       "id": "Lax261",
       "manifest": { ... },
-      "dependenciesConcepts": ["Lax42"],
-      "dependenciesProofs": ["Lax42Proofs"],
+      "requiredByConcepts": ["Lax42"],
+      "requiredByProofs": ["Lax42", "Lax42Proofs"],
       "concepts": [ ... ],
       "proofs": [ ... ]
     }
 
 - ``manifest``: the parsed content of ``manifest.yaml``.
-- ``dependenciesConcepts`` resp. ``dependenciesProofs``: the package names
-  required by the concept resp. proof package. Mathlib and the proof
-  package's path-require of its own concept package are omitted.
+- ``requiredByConcepts`` lists all packages required by the concept package,
+  and ``requiredByProofs`` lists the packages required by the proofs package.
 
 Each entry of ``concepts``:
 
     {
-      "name": "Lax261.Myconcept",
+      "id": "Lax261.Myconcept",
       "path": "concepts/Lax261/Myconcept.lean",
       "title": "...",
       "description": "...",
@@ -462,7 +554,7 @@ Each entry of ``concepts``:
 absent when not given. ``imports`` lists imported concept modules only —
 mathlib imports are dropped. ``sourceText`` is the verbatim file content, so
 the website can display concept code without access to the repository.
-``kind`` is the declaring command; ``signature`` is the pretty-printed type.
+``kind`` is the atom command; ``signature`` is the pretty-printed type.
 
 Each entry of ``proofs``:
 
@@ -478,6 +570,10 @@ Each entry of ``proofs``:
 author supplied the redundant ``assumptions`` key. Proof entries carry no
 ``sourceText``: the website lists proofs, it does not display their code.
 
+The file is deterministic: concepts, atoms, and proofs appear in source
+order; ``imports``, ``assumptions``, and the dependency lists are sorted
+lexicographically.
+
 
 
 
@@ -487,7 +583,7 @@ author supplied the redundant ``assumptions`` key. Proof entries carry no
 
 An **owner** is a GitHub account listed in a submission's owner set, and is
 thereby allowed to act on the submission (e.g., submitting and editing).
-Owners take action on the submission layer.
+Owners act on the archival layer.
 
 The archive does not host submissions, it references them: a submission is a
 folder together with a commit hash in a public git repository. Work thus stays
@@ -497,7 +593,7 @@ https://archive.softwareheritage.org/save/.)
 
 ## Lifecycle
 
-Submissions can be in four possible states within our database.
+Submissions can be in three possible states within our database.
 
 **init:** an id and owner set have been allocated for this submission, but
 nothing has been uploaded yet.
@@ -517,8 +613,6 @@ The only state transitions are:
 
 ## Actions
 
-Opaque ids prevent the squatting of nice names like ``RamseyTheory``.
-
 Every archive action happens via our CLI tool. It has three write actions:
 ``init`` allocates an id, ``submit`` uploads or registers content, and
 ``set-owners`` edits the owner set.
@@ -526,8 +620,7 @@ Every archive action happens via our CLI tool. It has three write actions:
 **Init.** ``lax init`` takes an empty local folder. The archive reserves the
 next free id ``LaxN`` and creates a record in the init state whose
 owner set contains exactly the authenticated GitHub account. The CLI then
-scaffolds the complete submission layout for that id, including a
-``manifest.yaml`` carrying the id.
+scaffolds the complete submission layout for that id (see CLI).
 
 **Set-owners.** ``lax set-owners`` replaces the owner set of a submission in
 the init or draft state. The authenticated GitHub account must be in
@@ -535,9 +628,10 @@ the current owner set and may not remove itself; the new set must be non-empty.
 The owner set becomes immutable on registration.
 
 **Submit.** ``lax submit`` hands the archive a (repository, commit, folder)
-triple. The folder must contain a complete valid manifest with id. The
-corresponding submission must be in the init or draft state, and the
-authenticated GitHub account must occur in the record's stored owner set.
+triple. The folder must contain a complete valid manifest whose ``id`` equals
+the id of the record being submitted to. That record must be in the init or
+draft state, and the authenticated GitHub account must occur in its stored
+owner set.
 
 - Without ``--register``, a successful submit puts the submission in the
   draft state and replaces its previous (repository, commit, folder) triple
@@ -546,13 +640,30 @@ authenticated GitHub account must occur in the record's stored owner set.
   freezes its triple, manifest, concepts, and proofs.
 
 
+
+
+
 # Implementation
 
-## Build Pipeline
+- The **build pipeline** checks a submission against this spec and derives its
+  ``build-output.json``. It is the sole authority on what this spec means.
 
-The **build pipeline** checks a submission against this spec and derives
-``build-output.json``. The archive runs the identical pipeline on submit and never
-trusts local results.
+- The **site generator** turns the database into the public website, the
+  archive's face for readers and reviewers.
+
+- The **database repository** holds the archive's state, one folder per
+  allocated id (see Archive Database). It is public, and read-only for
+  everyone but the archive server.
+
+- The **CLI** ``lax`` is the only thing authors and agents ever touch. It runs
+  both components locally — ``lax build`` and ``lax serve`` — scaffolds
+  submissions, and is the only client of the archive server.
+
+- The **archive server** is the archive's single piece of infrastructure. It
+  serves a small HTTPS API to the CLI, runs build pipeline and site generator
+  centrally, and is the sole writer of the database repository.
+
+## Build Pipeline
 
 The pipeline operates directly on the submission folder. There are no shadow
 workspaces and no third lakefile: the two packages are the only workspaces.
@@ -563,108 +674,183 @@ subsequent phases.
 
 - **Static validation** (milliseconds, no network): folder layout, license,
   ``abstract.md``, manifest schema, ``lean-toolchain``, the lakefile whitelist
-  of the Packages section, root-module exactness, annotation frontmatter,
-  resolution of dependency triples against database, the import rules of the
-  concept DAG, and that no generated file is tracked by git. Imports are read
-  with ``parseImports`` on the source text; no build is needed.
+  of the Packages section, root-module exactness, the import rules of the
+  Packages and Concepts sections, and that no generated file is tracked by
+  git — when the folder is not inside a git repository, this check is skipped
+  with a warning. Imports are read with ``parseImports``, which needs no
+  environment and hence no build.
 
-- **Resolution** (miliseconds, no network): Check that every dependency triple
-  resolves to a registered submission in the local database. (For users, we
-  suggest to update the database if misses occur).
+- **Resolution** (milliseconds, no network): Check that every dependency triple
+  resolves to a registered submission in the local database checkout
+  (``~/.lax/db``; on the server, its working checkout). For users, we suggest
+  updating the database if misses occur.
 
-- **Compile:** ``lake build`` in ``proofs/``, which may build the concept
-  package as a path dependency under its own build options. Then ``lake
-  build`` in ``concepts/``, verifying that the concept workspace builds
-  standalone — this is the workspace downstream submissions require. Both
-  builds use Lake's machine-wide shared artifact cache, so mathlib is built
-  once per machine, not once per submission.
+- **Compile:** ``lake build`` in ``concepts/`` first — the standalone
+  workspace downstream submissions require — then in ``proofs/``. Fetching
+  the pinned git dependencies here is the pipeline's only network access.
+  Both builds use Lake's machine-wide shared artifact cache, so mathlib is
+  built once per machine, not once per submission. A failing build is a
+  violation of the Packages section's build rule; the build transcript is
+  reprinted verbatim so the user can act on it.
 
 - **Inspect:** run the ``Lax.Inspector`` meta-program on the built
   environment, see below.
 
-- **Emit:** write ``build-output.json`` into root of submission.
+- **Emit:** write ``build-output.json`` into the root of the submission.
 
 ### Inspection
 
 All meta-programming lives in ``Lax.Inspector``, a Lean library in its own
-package: pinned to the archive toolchain, built once per machine, importing
-only Lean core, never mathlib. The build process generates a driver file in a
-temporary directory — imports of ``Lax.Inspector`` and of every module of both
-packages, followed by the ``#lax_inspect`` command — and elaborates it in the
-workspace environment (``lake env lean <driver>``, with the inspector's oleans
-appended to ``LEAN_PATH``). Running inside the frontend guarantees that the
-inspected environment is exactly the one a normal build produces, with no
-import boilerplate to maintain across toolchain bumps.
+package: pinned to the archive toolchain, importing only Lean core, never
+mathlib. Its source ships with the CLI; the first ``lax build`` on a machine
+compiles it into ``~/.lax/inspector/`` and every later run reuses those
+oleans. The inspector runs twice, once per package. For each package, the
+pipeline generates a driver file in a temporary directory — imports of
+``Lax.Inspector`` and of the package's root module (which by the
+root-module rule pulls in every module), followed by the ``#lax_inspect``
+command — and elaborates it in that package's workspace environment (``lake
+env lean <driver>``, with the inspector's oleans appended to ``LEAN_PATH``).
+Running inside the frontend guarantees that the inspected environment is
+exactly the one a normal build produces. The pipeline merges the two reports
+into ``build-output.json``.
 
-``#lax_inspect`` inspects the jointly imported environment and prints one JSON
-report to stdout for the CLI to consume: per-declaration axiom sets (the
-``#print axioms`` machinery), conclusion resolution and the kernel defeq check
-of each proof, the redundant ``assumptions`` cross-check, the namespace rule
-(via each declaration's module of origin), pretty-printed signatures, and
-docstrings. We don't actually run ``#print axioms``, but rather take the more
-robust meta-programming route that also covers axiom type.
+``#lax_inspect`` inspects the imported environment and writes one JSON report
+to the file named by the ``LAX_INSPECT_OUT`` environment variable — not to
+stdout, which elaboration of untrusted code can pollute. The report covers:
+per-declaration axiom sets (the ``#print axioms`` machinery), conclusion
+resolution and the kernel defeq check of each proof, the redundant
+``assumptions`` cross-check, the namespace rule (via each declaration's
+module of origin), pretty-printed signatures, and the annotations. We don't
+actually run ``#print axioms``, but rather take the more robust
+meta-programming route that also covers axiom types.
+
+The driver also re-parses each module's source text — the full Lean parser
+this time, not just ``parseImports`` — to check the concept command whitelist
+and to locate the module docstring. Parsing needs an environment, which is
+why this cannot happen in static validation. It uses the driver's
+environment, which has the whole package imported rather than just the
+module's own imports; this is sound because Compile runs first, so every
+module reaching the inspector already elaborated under its real imports and
+nothing can parse here that would not have parsed there.
 
 Compile and inspect execute untrusted code (elaboration, import-time
-initializers). The archive therefore runs them sandboxed, with network access
-only during the resolve phase.
+initializers) — not only the submission's own, but that of every upstream
+submission it imports. The archive runs them sandboxed; ``lax build`` on an
+author's machine does not.
 
+## Site Generator
+
+The site generator is a static site builder: it reads the ``record.json`` and
+``build-output.json`` of the database and emits pages. One per submission
+(abstract, authors, bib entry, and its concepts with title, description, Lean
+source, and atom signatures), one per concept, and index pages listing
+submissions and browsing the concept DAG and the proof network, marking each
+statement proven or unproven.
+
+## Database Repository
+
+The database lives in git.
 
 ## CLI
 
-The CLI ``lax`` is the only interface to the archive. The acting GitHub account
-authenticates via GitHub OAuth (the CLI reuses an existing ``gh`` login).
-``lax`` has the following commands:
+The acting GitHub account authenticates via GitHub OAuth (the CLI reuses an
+existing ``gh`` login). ``lax`` has the following commands:
 
-**lax init [folder]** (default ``.``) starts a submission. The folder must be
-empty or not yet exist; otherwise init refuses. The archive reserves the next
-free id ``LaxN`` and creates the record in the init state with the
-authenticated account as sole owner. The CLI then scaffolds the complete
-layout for that id: ``manifest.yaml`` (with ``id: LaxN`` and the environment
-pins), package folders, lakefiles, ``lean-toolchain``, root modules,
-``abstract.md``, and ``LICENSE``. The result passes ``lax build`` as an empty
-submission. Also add a .gitignore that ignores the right stuff:
-``build-output.json``, ``lake-manifest.json``, oleans and the rest of
-``.lake/``. Also forbidden filetypes probably.
+**lax init [folder]** (default ``.``) starts a submission, see Actions. The
+folder must be empty or not yet exist; otherwise init refuses. The scaffold
+comprises ``manifest.yaml`` (with ``id: LaxN`` and the environment pins),
+package folders, lakefiles, ``lean-toolchain``, root modules, ``abstract.md``,
+``LICENSE``, and a ``.gitignore`` covering ``build-output.json``,
+``lake-manifest.json``, and ``.lake/``. Init warns when the folder is not
+inside a git repository. The result passes ``lax build`` as an empty
+submission.
 
-**lax set-owners <handle>...** replaces the owner set of the submission in
-the current folder with the given GitHub handles, see Actions.
+**lax set-owners [folder] --new-list <handle>...** (default ``.``) replaces
+the owner set with the given GitHub handles (resolved to numeric account ids,
+see Archive Database), see Actions. The submission is identified by the ``id``
+in the folder's ``manifest.yaml``.
 
 **lax build [folder]** runs the build pipeline: it checks the submission
 against this spec and on success writes ``build-output.json``. Any violation
 fails with a nonzero exit and a report listing every violated rule.
 
-**lax serve [folder]** runs the **site generator** — the same component that
-builds the archive website — on the submission's ``build-output.json`` and
-serves the result locally, running ``build`` first when ``build-output.json``
-is missing or stale. What it serves is exactly what the website will display.
+**lax serve [folder]** runs the **site generator** and serves the result
+locally. It is a long-running process that does not daemonize by default. It
+watches both the local database and the submission folder for changes: the
+submission's ``build-output.json``, and the ``record.json`` of registered
+submissions. Every change triggers a website rebuild. If
+``build-output.json`` is missing, the website shows a placeholder stating that
+the output has not been generated yet.
 
 **lax submit [folder]** derives the (repository, commit, folder) triple from
 the folder's git state — the remote URL, the HEAD commit, the folder's path
 within the repository — and hands it to the archive. It refuses if the
 worktree is dirty or HEAD is not present on the remote. Without
-``--register`` it requests the draft state, with it registration. The archive
-re-runs all checks of ``build`` itself and never trusts local results; on
-success it updates the record as described in Lifecycle.
+``--register`` it requests the draft state, with it registration; on success
+the archive updates the record as described in Lifecycle.
 
 **lax pull-db** refreshes the local database checkout at ``~/.lax/db``, see
-Local Checkout. Installing or updating the CLI does this too, so the command is
-only needed to pick up submissions registered since. It is read-only with
-respect to the archive and needs no authentication.
+Archive Database. It is read-only with respect to the archive and needs no authentication.
+
+**lax update** upgrades the CLI itself to the latest release and then refreshes
+the local database, see Distribution. Likewise needs no authentication.
 
 **lax spec** prints this specification. The text is embedded in the binary at
 build time, so the printed spec is exactly the one that binary enforces.
 Useful for agents authoring submissions.
 
-## Distribution
 
-We distribute via npm or similar, so that updates are one-liners.
+## Archive Server
+
+One server does everything the archive does centrally: it answers the CLI's
+write requests, owns the database repository, and puts the website online.
+
+- **Authentication.** The CLI sends the user's GitHub OAuth token (reused
+  from the ``gh`` login) with every write request. The server verifies the
+  token against GitHub and resolves it to the numeric account id that all
+  ownership checks run against.
+
+- **Endpoints.** One per write action: ``POST /init``, ``POST /set-owners``,
+  ``POST /submit`` (with a ``register`` flag). These three write commands are
+  the only ones that leave the user's machine. Reads need no server at all —
+  they go through the public database repository (``lax pull-db``).
+
+- **Processing.** The server is the single writer, so a global lock over
+  database writes suffices. Writes are short: validate the request
+  (ownership, state), commit the updated ``record.json`` (and
+  ``build-output.json``), push. The expensive part of a submit — cloning the
+  triple and running the full sandboxed build pipeline — happens *outside*
+  the lock, so one submit does not stall unrelated requests. The ownership
+  and state checks are therefore re-run after acquiring the lock: the record
+  may have moved while the build ran, and a build against a stale record must
+  not be committed.
+
+- **Async submit.** The pipeline takes minutes, so ``POST /submit`` returns
+  a job id which the CLI polls until it receives success or the violation
+  report.
+
+- **Website.** After each push, the server runs the site generator and serves
+  the result. Because the server is the writer, it never has to poll for
+  changes: it knows exactly when the database moved.
+
+## Distribution and Deployment
+
+The CLI is the one component users install. We distribute via npm or similar,
+making installs and updates one-liners, and expose the upgrade as ``lax
+update`` so no user has to know which package manager we chose.
+
+The CLI and the archive server are built from the same repository, which keeps
+the pipeline that authors run locally and the pipeline that gates registration
+the same build — and likewise the site generator that ``lax serve`` runs and
+the one behind the website.
 
 
+# The Social Layer (future work)
 
-# The Social Layer
+This section is reserved for future work and not part of this spec.
 
 A **reviewer** is a verified ORCID identity (via OAuth) with a real-world name,
-leading to trust by reputation. Reviewers act on the trust layer.
+leading to trust by reputation. Reviewers act on the social layer.
 
 ## Endorsements and Flags
 
@@ -690,3 +876,19 @@ on. Endorsements are revocable.
 A **flag** is the opposite verdict and requires a message outlining the
 problem. A flag is a staked claim, not a final verdict: it stands until the
 flagger retracts it.
+
+
+# TODO
+
+**Atom identification.** The Concepts section defines atoms by the *command*
+that introduced them, but a built environment no longer distinguishes
+``abbrev`` from ``def`` (reducibility attribute), ``instance`` from ``def``
+(attribute), or ``theorem`` from ``lemma`` — and ``example`` leaves no trace
+at all. Filtering auto-generated declarations (constructors, recursors,
+projections, equation lemmas, …) is doable from the environment but the "…"
+hides real work. Decide between: deriving ``kind`` and source order from the
+inspector's re-parse pass, which is where the information actually is, or
+narrowing the ``kind`` field of ``build-output.json`` to what the environment
+can honestly report.
+
+
