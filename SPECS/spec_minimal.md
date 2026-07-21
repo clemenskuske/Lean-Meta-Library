@@ -198,15 +198,25 @@ following rules:
   core (``Init``, ``Std``, ``Lean``), of mathlib, and of the packages its
   package requires. Modules of mathlib's own dependencies (``Batteries``,
   ``Aesop``, ``Qq``, …) are not importable; import the corresponding mathlib
-  module instead. Enforcement is a prefix check on the ``parseImports``
-  output: by the fixed-names rule, every archive module name begins with its
-  package name, so an import's first component identifies its package.
+  module instead. Enforcement is a prefix check on each module's imports as
+  recorded in the built environment: by the fixed-names rule, every archive
+  module name begins with its package name, so an import's first component
+  identifies its package. (An import of a module absent from the workspace
+  never reaches this check — it already fails Compile.)
 
-- **Root modules.** Each package has a root module (``concepts/Lax261.lean``
-  and ``proofs/Lax261Proofs.lean``) consisting of exactly one ``import``
-  line per module of the package and nothing else, so that the default target
-  builds everything. (This is the standard Lean layout — mathlib's
-  ``Mathlib.lean`` works the same way.)
+- **Root modules.** Each package has a root module: ``concepts/Lax261.lean``
+  in the concept package, ``proofs/Lax261Proofs.lean`` in the proof
+  package. Three rules govern it, each checked from the built environment:
+  it imports exactly the other modules of its package, it declares
+  nothing, and it carries no module docstring. The first makes the default
+  target build the whole package; the other two make the root a table of
+  contents rather than content — in particular, not a concept. Write it as
+  the scaffold does and as mathlib writes ``Mathlib.lean``: one ``import``
+  line per module, nothing else. Residue the environment cannot see (a
+  comment, a stray ``#check``) is tolerated, like the concept dialect:
+  unreadable, not unsound. One caveat on "exactly": a Lean module without
+  imports implicitly imports ``Init``, so the root module of an empty
+  package records that single import, which the check ignores.
 
 - **Empty submission.** A submission may contain no concepts and no proofs.
 
@@ -280,9 +290,10 @@ The concept ``Myconcept`` of submission ``Lax261`` is the module
 
 The **statements** of a concept are the axioms whose module of origin it is.
 
-TODO: is there a cleaner way to say "everything in the module must be in the namespace" than quantifying every declaration?
-Every declaration of the module must live in the namespace equal to the module
-name, e.g. ``Lax261.Myconcept``. Further subnamespaces are allowed.
+A concept owns its module name as a namespace: every name the module declares
+carries the module name as a prefix, e.g. ``Lax261.Myconcept.Ramsey``. This
+one prefix condition is the whole rule — deeper subnamespaces are
+automatically fine.
 
 A concept may import mathlib modules and other concept modules (of the same
 or of other submissions). These imports form the **concept DAG** (acyclic for
@@ -290,46 +301,48 @@ free, since Lean imports are).
 
 Additional Rules:
 
-TODO: we do not even allow statements to appear in the axiom set! Statement axioms can only be defined, never used in the concept package. thus the following needs to reworded.
-
-  - **Axiom-free.** The axiom set (``#print axioms``) of every declaration may
-  contain only the archive environment's background axioms and statements (of
-  this or any other submission). In particular ``sorryAx`` and
-  ``Lean.ofReduceBool`` are forbidden — no ``sorry``, no ``native_decide``.
+- **Axiom-free.** The axiom set (``#print axioms``) of every declaration of
+  the concept package may contain only the archive environment's background
+  axioms — plus, for a statement, the statement itself, which an axiom always
+  reports. No other statement may occur: concepts declare statements but
+  never use them, so no concept builds on an unproven claim.
 
 ## Proofs
 
-TODO: this section can be simplified. rewrwrite from first principles.
+A **proof** is a declaration of the proof package whose docstring carries
+yaml frontmatter (see Annotations); every other declaration is a helper,
+which the archive ignores. Frontmatter is the opt-in: helpers may carry
+ordinary docstrings, and any mistake in a frontmatter — an unrecognized key,
+a missing ``conclusion``, a declaration of the wrong kind beneath it — is a
+loud build error, never a silently ignored proof.
 
-TODO: a proof is any declaration whose docstring carries a frontmatter at all. this is much cleaner and makes the loud-errors rule actually work without firbidding docstrings for helpers.
-
-A **proof** is a declaration of theorem kind in the proof package whose
-docstring frontmatter carries the ``conclusion`` key. The kind is the
-kernel's, not the surface syntax, so mathlib's ``lemma`` qualifies as well.
-All other declarations are helpers and are ignored by the archive. Its
-**conclusion** is the statement named by that key; its **assumptions** are
-the statements occurring in the theorem's axiom set (as reported by
-``#print axioms``). The optional ``assumptions`` key, when present, must
-equal, as a set, the assumptions the inspector computes (a redundant sanity
-check for authors, not an input).
+The frontmatter's ``conclusion`` key names the proof's **conclusion**, the
+statement it discharges. Its **assumptions** are the statements in its axiom
+set (``#print axioms``).
 
 Rules:
 
-- The ``conclusion`` id resolves to an ``axiom`` in the concept package of
-  some submission, and that axiom is present in the proof package's built
-  environment — i.e. the proof's module (transitively) imports the concept
-  module declaring it.
+- **Theorem kind.** A proof must be of theorem kind — the kernel's notion,
+  not the surface syntax, so mathlib's ``lemma`` qualifies.
 
-- The theorem's type is definitionally equal to the conclusion's type (kernel
-  check).
+- **Conclusion.** The ``conclusion`` id resolves to a statement of a concept
+  package the proof package requires, present in the proof's environment —
+  i.e. the proof's module (transitively) imports the concept module
+  declaring it. The proof's type is definitionally equal to the statement's
+  type (kernel check).
 
-- Every axiom reported by ``#print axioms`` for any declaration of the
-  proof package is either a statement or a background
-  axiom.
+- **Assumptions cross-check.** The optional ``assumptions`` key, when
+  present, must equal the computed assumption set — a redundant sanity
+  check for authors, not an input.
 
-TODO: same todo as for namespaces in concept packages applies here.
-- Every declaration of the proof package lives in the namespace
-  ``Lax261Proofs``; further subnamespaces are allowed.
+- **Axiom hygiene.** Every axiom in the axiom set of any declaration of the
+  proof package — proof or helper — is a background axiom or a statement of
+  a required concept package. Statements of packages that are only
+  transitively reachable do not qualify: to assume a statement, require its
+  package.
+
+- **Namespace.** Every name declared in the proof package carries the
+  prefix ``Lax261Proofs``, as for concepts.
 
 Together, the proofs weave the statements of the archive into the **proof
 network**: the directed hypergraph over all statements with a hyperedge
@@ -349,7 +362,11 @@ the usual docstring ``/-- … -/``.
 Each annotation is a docstring that we parse as markdown with yaml frontmatter
 (a common pattern from static site generators). When later parsing this
 docstring into key-value pairs, the markdown after the frontmatter is placed
-into the ``description`` key. The recognized keys (the list may later be
+into the ``description`` key. The frontmatter grammar is a fixed minimal
+subset of yaml — scalar ``key: value`` lines, plus a plain list of names for
+``assumptions`` — because it is parsed by the inspector in core-only Lean
+(see Inspection Scaffolding); anything beyond the subset is a build error,
+never a guess. The recognized keys (the list may later be
 extended):
 
 Concept
@@ -415,14 +432,6 @@ commit, folder) triple. ``LaxN/build-output.json`` holds the build output:
 absent in the init state, overwritten on every draft submit (drafts are shown
 on the website), frozen on registration. 
 
-TODO: this paragraph should go to the (new) db subsection of the Implementation section
-This folder tree is the canonical
-state of the archive; everything else (website, indexes) is derived. The
-database is a single public git repository with a single writer, and every user
-holds a read-only clone of it at ``~/.lax/db``. The path is
-deliberately visible, so AI agents can use it to survey existing submissions
-and find prior work to build upon. Installing the CLI clones the repository.
-
 Example ``record.json``
 
     {
@@ -486,12 +495,11 @@ Each entry of ``concepts``:
     }
 
 ``title`` and ``description`` come from the concept annotation, where both are
-required. ``imports`` lists imported concept modules only —
-mathlib imports are dropped. ``sourceText`` is the verbatim file content, so
-the website can display concept code without access to the repository — it is
-how the archive shows a concept's declarations, which have no entries of their
-own. ``statements`` lists the concept's axioms with their pretty-printed
-types; the website marks each proven or unproven.
+required. ``imports`` lists imported concept modules only — mathlib imports are
+dropped. ``sourceText`` is the verbatim file content, so the website can
+display concept code without access to the repository. ``statements`` lists the
+concept's axioms with their pretty-printed types; the website marks each proven
+or unproven.
 
 Each entry of ``proofs``:
 
@@ -503,17 +511,12 @@ Each entry of ``proofs``:
       "description": "..."
     }
 
-``assumptions`` is always the inspector-computed set, regardless of whether the
+``assumptions`` is always the pipeline-computed set, regardless of whether the
 author supplied the redundant ``assumptions`` key. Proof entries carry no
 ``sourceText``: the website lists proofs, it does not display their code.
 
 The file is deterministic: every list is sorted lexicographically, concepts,
-statements and proofs by ``id`` and the rest by value. Source order is not
-preserved anywhere; ``sourceText`` carries the author's ordering for whatever
-wants to display it.
-
-
-
+statements and proofs by ``id`` and the rest by value.
 
 
 # The Archival Layer
@@ -560,9 +563,9 @@ owner set contains exactly the authenticated GitHub account. The CLI then
 scaffolds the complete submission layout for that id (see CLI).
 
 **Set-owners.** ``lax set-owners`` replaces the owner set of a submission in
-the init or draft state. The authenticated GitHub account must be in
-the current owner set and may not remove itself; the new set must be non-empty.
-The owner set becomes immutable on registration.
+the init or draft state. The authenticated GitHub account must be in the
+current owner set and may not remove itself. The owner set becomes immutable on
+registration.
 
 **Submit.** ``lax submit`` hands the archive a (repository, commit, folder)
 triple. The folder must contain a complete valid manifest whose ``id`` equals
@@ -595,6 +598,53 @@ owner set.
   serves a small HTTPS API to the CLI, runs build pipeline and site generator
   centrally, and is the sole writer of the database repository.
 
+## The Built Environment: A Primer
+
+The target audience for this spec are graph theory reserachers with no deep
+familiarity with Lean. This section therefore sets up necessary background:
+what the environment is, and why the inspector reads it instead of the source.
+
+**The environment.** Compiling a Lean module elaborates its source: notation
+is expanded, implicit arguments are filled in, tactics are run, and the
+result is a set of **declarations** — constants, each with a fully qualified
+name, a kind (definition, theorem, axiom, …), a type, and, except for
+axioms, a value — all checked by the kernel. The environment is the map from
+names to these declarations. Each module persists its declarations into its
+``.olean`` file, and importing a module loads them back; imports are
+transitive, so the environment the inspector sees contains every declaration of
+every module beneath it — the package's own, other submissions', mathlib's,
+core's. Two properties make it the right thing to inspect. First, every
+declaration records its **module of origin**, and each ``.olean`` lists
+exactly the constants its module contributed — so "the declarations of this
+package" is a lookup, not a search through mathlib's hundred thousand
+constants. Second, values are stored, so walking a declaration's type and
+value transitively reaches every constant it uses — that walk
+(``Lean.collectAxioms``) is how axiom sets are computed.
+
+**Elaboration is many-to-many.** One source command can produce many
+declarations, or none. A ``structure`` generates its constructor, recursor,
+projections, and helper lemmas (``mk.injEq``, ``mk.sizeOf_spec``); a pattern
+match compiles into auxiliary ``match_1`` functions; ``example`` produces
+nothing at all. Conversely, the surface syntax is gone: the environment no
+longer knows whether a definition was written as ``def``, ``abbrev``, or
+``instance``. This is why every unit the archive cares about is defined as
+an environment notion — a statement is an axiom, theorem-ness is the
+kernel's kind, docstrings are persisted data — and why rules that only the
+surface syntax could decide were dropped (see Decisions). The generated
+declarations are harmless throughout: they carry no docstrings (so they are
+never proofs), their axiom sets are empty or background, and their names
+extend the parent declaration's name.
+
+**User-level and internal names.** Lean itself distinguishes the names an
+author declared from its own bookkeeping, and exposes that boundary as data.
+``private`` declarations are stored under a mangled name
+(``_private.<module>.0.<real name>``), and ``privateToUserName?`` inverts the
+mangling exactly. Machine-generated auxiliaries carry names that
+``Name.isInternalDetail`` recognizes. This is the same boundary Lean's
+documentation tooling uses to list "the declarations of a module", and the
+inspector adopts it wholesale rather than inventing its own. Rules that
+quantify over "every name a module declares" mean user-level names in exactly
+this sense.
 
 ## Build Pipeline
 
@@ -607,88 +657,267 @@ subsequent phases.
 
 - **Static validation** (milliseconds, no network): folder layout, license,
   ``abstract.md``, manifest schema, ``lean-toolchain``, the lakefile whitelist
-  of the Packages section, root-module exactness, the import rule of the
-  Packages section, and that no generated file is tracked by
+  of the Packages section, and that no generated file is tracked by
   git — when the folder is not inside a git repository, this check is skipped
-  with a warning. Imports are read with ``parseImports``, which needs no
-  environment and hence no build.
+  with a warning. This phase also derives each package's **module
+  inventory**: the root module plus one module per ``.lean`` file under
+  the package's module folder, read off the file paths via Lake's
+  canonical mapping (``Lax261/Foo/Bar.lean`` is ``Lax261.Foo.Bar``). The
+  inventory is the pipeline's sole answer to "which modules does this
+  package contain": Replay's target list and Inspect's import list are
+  taken from it, never rediscovered from build artifacts — those are
+  written by Compile, i.e. by attacker code. The import-related checks
+  (the import rule, root-module exactness) are deliberately not here:
+  imports are taken from the built environment and judged at Inspect, so
+  the pipeline never parses source.
 
 - **Resolution** (milliseconds, no network): Check that every dependency triple
   resolves to a registered submission (via ``~/.lax/db`` locally, via local
   checkout on server). A local miss may just mean a stale database, so the
   CLI suggests ``lax pull-db`` and a retry before reporting the violation.
 
-- **Compile:** ``lake build`` in ``concepts/`` first — the standalone
-  workspace downstream submissions require — then in ``proofs/``. Fetching
-  the pinned git dependencies here is the pipeline's only network access.
-  Both builds use Lake's machine-wide shared artifact cache, so mathlib is
-  built once per machine, not once per submission. A failing build is a
-  violation of the Packages section's build rule; the build transcript is
-  reprinted to stdout so the user can act on it.
+- **Compile:** ``lake build`` in ``concepts/`` first, then in ``proofs/``. When
+  the concepts build fails, the proofs build is skipped. Compile is the
+  pipeline's only networked phase: it fetches the pinned git dependencies,
+  pulls prebuilt artifacts into Lake's machine-wide shared artifact cache — so
+  mathlib is downloaded, or at worst built, once per machine, not once per
+  submission — and on a fresh machine first downloads the pinned toolchain via
+  ``elan``. A failing build is a violation of the Packages section's build
+  rule; the build transcript is reprinted to stdout so the user can act on it.
+  (On the server, the cache is the trusted artifact store, read-only to the
+  build; see Archive Server.)
 
-- **Inspect:** run the ``Lax.Inspector`` meta-program on the built
-  environment, see below.
+- **Replay:** re-check every declaration of the submission's two packages
+  with ``leanchecker``, the kernel checker that ships inside the pinned
+  toolchain — shelled out to, not reimplemented. In each package folder
+  the checker runs once per module of the package's inventory, root
+  module included: ``lake env leanchecker <module>``. Its default mode
+  checks the named module against its imported environment; the imports
+  themselves are not replayed (that would be ``--fresh``, which we do not
+  use). Enumerating the inventory is load-bearing twice over. First,
+  because the checker trusts imports, naming only the root — which
+  declares nothing — would replay nothing at all while appearing to
+  succeed. Second, the target list comes from Static validation's
+  file-derived inventory, never from the root's recorded imports or
+  anything else Compile wrote — otherwise the attacker who wrote the
+  artifacts would choose what gets checked. A module of the inventory
+  with no artifact in the workspace is a violation (usually the trace of
+  a root module that fails to import it). Trusting the imports is sound
+  only by provenance: mathlib and core are the pinned, trusted background, and
+  the packages of other submissions were replayed at their own
+  registration — provided the oleans in the workspace are really those.
+  Locally the workspace is taken at its word; on the server, whose run
+  alone gates registration, Replay and Inspect never read a dependency
+  artifact Compile produced but only artifacts provisioned from the
+  trusted store (see Archive Server). Replay exists because Compile ran
+  arbitrary submission code, which can persist declarations the kernel
+  never checked (``set_option debug.skipKernelTC``, unchecked environment
+  APIs); replay closes exactly that hole. What no replay mode can do is
+  authenticate imports: an axiom is kernel-valid whatever its type, so
+  even ``--fresh`` cannot tell a forged upstream statement from the
+  registered one (see Decisions) — hence provisioning.
+
+- **Inspect:** extract environment facts with the ``Lax.Inspector``
+  executable, then judge every remaining rule in the CLI — including the
+  import rule and root-module exactness — see below.
 
 - **Emit:** write ``build-output.json`` into the root of the submission.
 
-### Inspection
+Compile, Replay, and Inspect form a trust chain. Compile is where untrusted
+code runs; nothing it outputs is trustworthy on its own, because the
+submission's own elaboration wrote it. Replay authenticates the oleans'
+kernel-level content relative to their imports — every declaration
+type-checks against the imported environment — and no more; Inspect
+reports what the oleans say; the CLI decides whether that is admissible.
+The imports themselves the chain cannot authenticate, only inherit: on the
+server they are provisioned from the trusted artifact store (see Archive
+Server), so the background Replay checks against is the one registration
+once checked.
 
-All meta-programming lives in ``Lax.Inspector``, a Lean library in its own
-package: pinned to the archive toolchain, importing only Lean core, never
-mathlib. Its source ships with the CLI; the first ``lax build`` on a machine
-compiles it into ``~/.lax/inspector/<cli-version>/`` and every later run of
-that CLI version reuses those oleans — the version in the path is what makes
-an upgraded CLI recompile instead of loading stale oleans. The inspector runs
-twice, once per package. For each package, the
-pipeline generates a driver file in a temporary directory — imports of
-``Lax.Inspector`` and of the package's root module (which by the
-root-module rule pulls in every module), followed by the ``#lax_inspect``
-command — and elaborates it in that package's workspace environment (``lake
-env lean <driver>``, with the inspector's oleans appended to ``LEAN_PATH``).
+The inspector's facts accordingly carry two grades of trust.
+**Kernel-grade:** kinds, types, values, and everything recomputed from them
+— axiom sets, defeq — which Replay makes impossible to forge within the
+submission's own packages; for imported packages the same facts are
+authentic by provisioning, not by replay.
+**Metadata-grade:** import lists, constant-list membership, docstrings —
+artifact data a malicious Compile could in principle fabricate. The rules
+lean on metadata only where forgery cannot make a false thing true:
+docstrings are authored content anyway, a forged import list can hide at
+worst an editorial violation, and every cross-package claim is checked
+against the database, never against the workspace (see Inspection
+Internals). Source-structural facts — layout, lakefiles, manifest — never
+pass through the oleans at all; the CLI reads the files directly. The chain
+bottoms out where the archive's trust always bottoms out: Lean's kernel,
+the pinned mathlib revision, and the server's custody of the artifacts
+beneath the submission.
 
-``#lax_inspect`` inspects the imported environment and writes one JSON report
-to the file named by the ``LAX_INSPECT_OUT`` environment variable — not to
-stdout, which elaboration of untrusted code can pollute. The report covers:
-per-declaration axiom sets, conclusion resolution and the kernel defeq check
-of each proof, the redundant ``assumptions`` cross-check, the namespace rule
-(via each declaration's module of origin), the pretty-printed signatures of
-the statements, and the annotations. That is the whole report; the inspector
-has no other job.
 
-The spec phrases several rules in terms of ``#print axioms`` because that is
-the familiar name for the notion. The inspector does not run the command but
-calls the API behind it (``Lean.collectAxioms``), which traverses a
-declaration's value and type transitively and returns the axioms among the
-constants it reaches. The same set, returned as data instead of printed: the
-inspector has to compare it against the background axioms and the statement
-set, not show it to anyone.
+### Inspection Scaffolding
 
-**Recognizing statements.** Sorry-freeness, conclusion resolution, and the
-computed ``assumptions`` set all rest on splitting the axioms of the built
-environment into background axioms and statements. The inspector decides this
-by module of origin: an axiom is a **statement** iff its declaring module
-belongs to a concept package. The pipeline passes the driver the set of
-concept-package names, which it already holds — Resolution has just checked
-every ``[[require]]`` against the database — rather than having the inspector
-recognize concept packages by their ``LaxN`` shape. Both work today, since the
-fixed-names rule makes every module name begin with its package name; passing
-the set ties the classification to what Resolution actually verified instead
-of to a naming convention, and survives a later change to the id format.
+All archive-side meta-programming lives in ``Lax.Inspector``, a Lean
+package providing one executable: pinned to the archive toolchain,
+importing only Lean core, never mathlib. (Replay needs no counterpart —
+``leanchecker`` ships inside the toolchain itself.) The inspector's source
+ships with the CLI; the first ``lax build`` on a machine compiles it into
+``~/.lax/tools/<cli-version>/`` and every later run of that CLI version
+reuses it — the version in the path is what makes an upgraded CLI recompile
+instead of running a stale binary.
 
-Any axiom that is neither a background axiom nor from a concept package is a
-violation. This is what catches a stray ``axiom`` in a proof package, or an
-unexpected axiom arriving through mathlib, instead of silently counting it as
-an assumption.
+An executable, never an elaborated command: the inspector loads the
+package's oleans directly and executes no code originating outside its own
+binary and Lean core. Importing a module must not run its ``initialize``
+blocks — arbitrary interpreted IO — and nothing imported may be evaluated,
+because once untrusted code runs in the inspecting process, nothing that
+process writes is authentic (see Decisions). What remains is enough:
+docstrings, module docs, and constant lists are persisted data readable
+through core's built-in machinery, axiom walks are pure traversals, and
+defeq is kernel reduction, not interpretation.
 
-**The inspector never parses.** Every unit it reports is environment-legible:
-a concept is a module, a statement is an axiom (``ConstantInfo.axiomInfo``)
-from a concept module, and theorem-ness is likewise a kernel notion. So are
-the annotations — module docstrings via ``getModuleDoc?``, declaration
-docstrings via ``findDocString?``, both persisted in the ``.olean``.
+The boundary between inspector and CLI is drawn by capability: the inspector computes
+exactly the facts the CLI cannot — everything whose evaluation needs the
+loaded environment or the kernel — and the CLI, which alone holds the
+archive context (the verified ``[[require]]`` set, the manifest, the
+database), judges every rule. The inspector decides nothing about validity:
+a failed defeq or a malformed frontmatter appears in the report as a fact
+and becomes a violation only in the CLI, the sole emitter of violations.
 
-Nothing in the pipeline reads concept source as Lean: ``parseImports`` reads
-import lines, Emit copies files verbatim into ``sourceText``, and neither is
-a parse.
+One placement follows from this and deserves its reason spelled out:
+frontmatter is parsed by the inspector, not the CLI. The kernel facts about
+a proof — does its ``conclusion`` resolve, does defeq hold — are indexed by
+a name that sits inside its docstring's frontmatter, so whoever parses the
+frontmatter determines the number of passes over the environment: parsing
+in the CLI would force a second inspector run to feed the names back in.
+Parsing in the
+inspector keeps inspection single-pass, and the report carries structured
+annotations rather than raw docstrings, so the frontmatter grammar (see
+Annotations) is implemented exactly once.
+
+Inspection runs once per package: the executable is invoked under ``lake
+env`` with the package's module inventory (see Static validation) and an
+output path as its arguments. ``lake env`` supplies the workspace's search
+path without executing user code — the lakefile.toml-only rule is
+load-bearing here. The executable imports the inventory's modules with
+initializer execution disabled, inspects the resulting environment, and
+writes one JSON report to the output path. Importing the inventory rather
+than the root module anchors coverage to the file tree: a module the root
+fails to import is still inspected — and convicts the root — instead of
+silently dropping out of the environment. Statement
+signatures are pretty-printed with core notation only: delaborators and
+unexpanders are imported code, and running mathlib's would mean running the
+submission's too (the recorded upgrade path is in Decisions). The report
+contains:
+
+- per module of the package: its direct imports as recorded in the
+  environment header — this is where all import data in the pipeline comes
+  from — and its module docstrings, frontmatter-parsed into annotations
+  (parse problems are reported as facts like everything else);
+
+- per declaration whose module of origin lies in the package: name, kind,
+  module of origin, axiom set, whether the name is user-level (internal
+  details flagged, private names un-mangled), and its docstring parsed the
+  same way;
+
+- per declaration whose frontmatter carries a ``conclusion``, the kernel
+  facts: whether the name resolves, whether it names an axiom and from
+  which module, whether that module lies among the transitive imports of
+  the declaration's own module, and whether the declaration's type is
+  definitionally equal to the statement's type;
+
+- the pretty-printed types of the package's axioms.
+
+The report is a pure function of the workspace's oleans, the module
+inventory, and the inspector version: the inventory comes from the file
+tree, and no archive context flows into the invocation, so the same built
+workspace always yields the same report.
+
+### Inspection Internals
+
+The primer supplies every notion the pipeline needs; this subsection spells
+out how each check reduces to a CLI-side judgment over the reported facts.
+
+**One enumeration.** The inspector considers exactly the declarations whose
+module of origin lies in the package under inspection, taken from the
+modules' own constant lists. This includes everything elaboration generated
+on the package's behalf — helper lemmas, matchers, even lemmas Lean realizes
+on demand for *imported* constants (equation lemmas of a mathlib definition,
+say), should Lean attribute those to the realizing package. Nothing is
+exempted: generated declarations satisfy every rule on their own, as the
+primer explains, so uniform treatment costs nothing.
+
+**Axiom checks are set comparisons.** The spec phrases its rules in terms of
+``#print axioms`` because that is the familiar name; the inspector calls the
+API behind the command (``Lean.collectAxioms``, the walk from the primer)
+and reports the resulting set per declaration. Every axiom rule is then, in
+the CLI, one comparison against an allowed set — the only question is what
+is allowed.
+
+- In the concept run, the allowed set is the background axioms plus the
+  declaration itself (an axiom always reports itself, see Axiom-free). No
+  knowledge of other submissions is needed: statements never occur in
+  concept axiom sets, so this run tells nothing apart.
+
+- In the proof run, the allowed set is the background axioms plus the
+  statements of required concept packages. An axiom counts as such a
+  statement iff its module of origin lies in a required concept package — a
+  prefix test of the module name against the package names whose
+  ``[[require]]`` entries Resolution has just verified. Leaning on the
+  fixed-names rule here is sound because every verified entry points at a
+  registered submission, and registration enforced that rule on it. One
+  cross-check guards the metadata: the axiom's name must also appear among
+  the ``statements`` in that submission's registered ``build-output.json``
+  — the database, not the workspace, is the authority on another
+  submission's statements, so a forged module masquerading under a required
+  package's name classifies as nothing. The name comparison alone would not
+  survive a forgery that keeps the registered names and changes the types
+  beneath them; it is sound because the upstream oleans themselves are
+  authentic where the verdict counts — provisioned from the trusted store
+  on the server (see Archive Server, Decisions).
+
+Anything outside the allowed set is a violation. In the proof run this is
+what catches a stray ``axiom`` in the proof package, an unexpected axiom
+arriving through mathlib, or a statement used without requiring its package,
+instead of silently counting any of them as an assumption.
+
+**The namespace check.** Restrict the enumeration to user-level names — drop
+the internal details, un-mangle the private names; the boundary from the
+primer — and the check is a single prefix test: the module name for
+concepts, the package name for proofs. Generated declarations pass because
+their names extend their parent's; realized lemmas for imported constants
+are internal details and drop out before the test; a declaration escaping
+via ``_root_.`` fails, which is the point of the rule.
+
+**The import rule and the root module.** The reported per-module imports
+replace any reading of import lines from source. The import rule is a
+prefix test in the CLI: an import's first component identifies its package
+(the fixed-names rule), and the allowed set follows from the verified
+``[[require]]`` entries. Root-module exactness is three facts from the same
+report: the root module imports exactly the other modules of the inventory
+(tolerating the implicit ``Init`` of an empty package), contributes no
+declarations, and carries no module docstring. No separate file-tree
+cross-check is needed: the inventory *is* the file tree, and Replay and
+Inspect enumerate exactly it — a source file the root fails to pull in is
+still replayed and inspected, and a root import naming a module outside
+the inventory fails exactness directly.
+
+**The proof checks.** A candidate proof arrives in the report with its
+parsed frontmatter and its kernel facts, and the CLI adds the context: the
+conclusion must name an axiom whose module lies in a required concept
+package (the same prefix test as above) and be reachable through the proof
+module's transitive imports, defeq must hold, the declaration must be of
+theorem kind; the ``assumptions`` cross-check compares the frontmatter's
+claim against the statements in the reported axiom set. Each fact that
+comes back false is one violation.
+
+**The pipeline never parses Lean.** Every unit the report contains is
+environment data: a concept is a module, a statement is an axiom
+(``ConstantInfo.axiomInfo``) from a concept module, theorem-ness is the
+kernel's kind, imports are the environment header's module data, and the
+annotations are persisted docstrings (``getModuleDoc?`` for modules,
+``findDocString?`` for declarations). So proof-hood is data too: the
+inspector spots frontmatter in a docstring by string inspection, not by
+parsing Lean. No component of the pipeline reads source as Lean at all;
+Emit copies files verbatim into ``sourceText``, which is a copy, not a
+parse.
 
 
 ## Site Generator
@@ -699,6 +928,16 @@ The site generator is a static site builder: it reads the ``record.json`` and
 source, and statement signatures), one per concept, and index pages listing
 submissions and browsing the concept DAG and the proof network, marking each
 statement proven or unproven.
+
+
+## Database Repository
+
+The folder tree of the Archive Database section is the canonical state of the
+archive; everything else (website, indexes) is derived. The database is a
+single public git repository with a single writer — the archive server — and
+every user holds a read-only clone of it at ``~/.lax/db``. The path is
+deliberately visible, so AI agents can use it to survey existing submissions
+and find prior work to build upon. Installing the CLI clones the repository.
 
 
 ## CLI
@@ -742,7 +981,7 @@ worktree is dirty or HEAD is not present on the remote. Without
 the archive updates the record as described in Lifecycle.
 
 **lax pull-db** refreshes the local database checkout at ``~/.lax/db``, see
-Archive Database. It is read-only with respect to the archive and needs no authentication.
+Database Repository. It is read-only with respect to the archive and needs no authentication.
 
 **lax update** upgrades the CLI itself to the latest release and then refreshes
 the local database, see Distribution. Likewise needs no authentication.
@@ -769,9 +1008,33 @@ write requests, owns the database repository, and puts the website online.
   at all — it goes through the public database repository (``lax pull-db``);
   the server answers no content queries.
 
-- **Build Pipeline.** Compile and inspect execute untrusted code (elaboration,
-  import-time initializers) — not only the submission's own, but that of every
-  upstream submission it imports. The server runs them sandboxed.
+- **Build Pipeline.** Compile executes untrusted code (elaboration,
+  import-time initializers) — not only the submission's own, but that of
+  every upstream submission it imports. Replay and Inspect execute no
+  untrusted code but consume attacker-shaped oleans, whose loading is
+  unsafe deserialization. The server runs all three sandboxed. The sandbox
+  protects the host, not the report: authenticity comes from the trust
+  chain of the Build Pipeline section together with the trusted artifact
+  store below, and a malformed olean is a crash and a failed build, not a
+  compromise.
+
+- **Trusted artifact store.** Everything Compile writes is suspect,
+  including the dependency artifacts it fetched or built: code running
+  inside the build can overwrite an upstream olean in place, and no replay
+  can detect that (see Decisions). The server therefore never lets Replay
+  or Inspect read a dependency artifact that Compile produced. It maintains
+  a store of trusted artifacts with exactly two write paths: mathlib and
+  core artifacts, fetched or built by the server itself against the archive
+  pins; and the two packages of every submission, captured when its
+  registration commits — right after its own Replay passed, which is
+  precisely the moment those oleans are authenticated. Compile sees the
+  store as a read-only artifact cache; whatever it writes lands in a
+  scratch overlay discarded when it exits. Replay and Inspect then run in a
+  workspace whose dependency artifacts are re-materialized from the store
+  and whose only Compile-produced artifacts are the submission's own two
+  packages — exactly the ones Replay checks. The store is complete by
+  construction: Resolution admits only dependencies on registered
+  submissions, and registration captured their artifacts.
 
 - **Processing.** The server is the single writer, so a global lock over
   database writes suffices. Writes are short: validate the request
@@ -797,11 +1060,12 @@ The CLI is the one component users install. We distribute via npm or similar,
 making installs and updates one-liners, and expose the upgrade as ``lax
 update`` so no user has to know which package manager we chose.
 
-The CLI is not self-contained: it shells out to ``elan``/``lake`` (Compile and
-the inspector), to ``git`` (the tracked-files check, ``lax submit``, and the
-database clone), and to ``gh`` (the reused OAuth login). It checks for all
+The CLI is not self-contained: it shells out to ``elan``/``lake`` (Compile;
+building the inspector; Replay and Inspect run under ``lake env``), to
+``git`` (the tracked-files check, ``lax submit``, and the database clone),
+and to ``gh`` (the reused OAuth login). It checks for all
 three on startup and names the missing one rather than failing inside a
-subprocess. Installation clones the database (see Archive Database), which is
+subprocess. Installation clones the database (see Database Repository), which is
 also the first ``lax pull-db``.
 
 The CLI and the archive server are built from the same repository, which keeps
@@ -905,9 +1169,9 @@ the archive's guarantees touches the dialect: statements are axioms, proofs
 are kernel-checked, sorry-freeness is environment-derived. A concept written
 in violation is unreadable, not unsound, and unreadable is precisely what the
 social layer already exists to catch — an endorser who cannot follow a
-concept declines to endorse it. The dialect now sits alongside the
-``set_option`` kernel-bypass pitfall in Future work: stated, cooperated with,
-enforced later.
+concept declines to endorse it. The dialect now sits in Future work: stated, cooperated with,
+enforced later. (The ``set_option`` kernel-bypass pitfall that once sat
+beside it is closed outright by the Replay phase.)
 
 The cost is real and worth naming: an unenforced rule in a document that AI
 agents read as authoring instructions will be violated more often than one
@@ -923,6 +1187,70 @@ architecturally cleaner than any re-parse and would deliver both the dialect
 check and a per-declaration layer. We avoided it because it means injecting
 arguments into the submission's own build and we are not certain how that
 interacts with Lake's artifact cache — a cache miss on mathlib costs an hour
-per build.
+per build. (Note that the in-process inspection decision below now weighs
+against this route for a second reason: a plugin runs inside the untrusted
+build, so nothing it reports would be authentic.)
+
+**In-process inspection.** *Resolved: the inspector is an executable, never
+an elaborated command.* Earlier designs ran inspection by elaborating a
+generated driver file — imports of the inspector and of the package's root
+module, followed by an inspection command — inside the untrusted workspace.
+That is unsalvageable, not merely fragile: importing a module runs its
+``initialize`` blocks, arbitrary interpreted IO, in the inspecting process
+before any command elaborates. A submission could legally shadow the
+command itself (demonstrated on Lean 4.31), and fixing that still leaves an
+initializer free to fork a process that rewrites the report file after the
+run. Once untrusted code has run in a process, nothing the process writes
+is authentic. The executable closes this by construction — and turned out
+simpler too: the driver file, the temporary directory, the ``LEAN_PATH``
+appending, and the report-path environment variable all disappeared. The
+same threat model, followed one step further, produced the Replay phase:
+the attacker also controls the process that *wrote* the oleans, so the
+inspector's honesty is worthless without an independent kernel re-check —
+for which we use ``leanchecker``, bundled with the toolchain since v4.28,
+rather than reimplement a security-critical tool.
+
+The one casualty is pretty-printing. Delaborators and unexpanders are
+imported *code*; running mathlib's (trusted, pinned) would mean running the
+submission's too, so statement signatures render with core notation only —
+``∀``, ``→``, ``=`` survive, mathlib notation does not. The recorded
+upgrade path, should the display cost bite: a second, explicitly untrusted
+display pass — the old driver mechanism — whose output the CLI merges into
+display-only fields, so a lying submission could deface its own signature
+strings but never a fact. ``build-output.json`` is derived data, so this is
+safe to defer.
+
+**Forged upstream statements.** *Resolved: dependency artifacts are
+provisioned, not authenticated.* The trust chain's weak point was the
+imported environment: default-mode replay trusts imports, and the database
+cross-check compared statement names only. Compile runs attacker code
+inside the very workspace Replay and Inspect later read, so that code can
+overwrite a required package's olean with a forgery — ``axiom
+Lax42.SomeClaim : True`` under the registered name. The forgery is
+kernel-valid (an axiom type-checks whatever it claims, so even ``--fresh``
+replay accepts it), its name occurs in the registered
+``build-output.json``, and a proof of ``True`` is defeq to it: the archive
+would mark the real, different statement proven. Kernel checking cannot
+close this hole even in principle — axioms are exactly what the kernel
+takes on faith — so the gap is one of authenticity, not validity.
+
+Routes we considered and rejected. Per-statement type digests in
+``build-output.json``, compared against the workspace: blocks the exploit
+above, but not its variant that keeps the axiom's type byte-identical and
+redefines a constant the type mentions in a forged neighboring module —
+meaning lives in the transitive dependency cone, so a sound digest is a
+Merkle hash over that cone, which is content-addressing the environment:
+machinery out of proportion to the problem. Rebuilding upstream from its
+pinned source and comparing: re-runs upstream's untrusted code on every
+submission and leans on bit-reproducibility.
+
+The resolution replaces the artifacts instead of authenticating them: the
+trusted artifact store (see Archive Server) is the only source of
+dependency artifacts Replay and Inspect ever see, populated only by the
+server itself (mathlib and core, against the pins) and by capture at
+registration (submissions, right after their own Replay passed). Local
+``lax build`` takes its workspace at its word — an author can always lie
+to themselves — which is acceptable because registration is gated
+exclusively by the server's run.
 
 
