@@ -204,19 +204,10 @@ following rules:
   identifies its package. (An import of a module absent from the workspace
   never reaches this check — it already fails Compile.)
 
-- **Root modules.** Each package has a root module: ``concepts/Lax261.lean``
-  in the concept package, ``proofs/Lax261Proofs.lean`` in the proof
-  package. Three rules govern it, each checked from the built environment:
-  it imports exactly the other modules of its package, it declares
-  nothing, and it carries no module docstring. The first makes the default
-  target build the whole package; the other two make the root a table of
-  contents rather than content — in particular, not a concept. Write it as
-  the scaffold does and as mathlib writes ``Mathlib.lean``: one ``import``
-  line per module, nothing else. Residue the environment cannot see (a
-  comment, a stray ``#check``) is tolerated, like the concept dialect:
-  unreadable, not unsound. One caveat on "exactly": a Lean module without
-  imports implicitly imports ``Init``, so the root module of an empty
-  package records that single import, which the check ignores.
+- **Root modules.** Each package has a root module: ``concepts/Lax261.lean`` in
+  the concept package, ``proofs/Lax261Proofs.lean`` in the proof package. The
+  build environment enforces that it contains all the modules of the package,
+  and one ``import`` line per module, nothing else.
 
 - **Empty submission.** A submission may contain no concepts and no proofs.
 
