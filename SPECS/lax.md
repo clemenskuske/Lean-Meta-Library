@@ -989,6 +989,53 @@ browse the concept DAG and the proof network, marking each statement proven
 or unproven. Drafts are shown and marked as such. The website is public
 from day one; only writing to the archive is ever restricted.
 
+The website looks production ready from day one, so that users can anticipate
+where we are heading. The only thing not implemented is the following social
+layer.
+
+### unordered ideas how we implement the website
+
+#### extending build-output.json
+
+first, we rewrite the annotation rules so that additional markdown-keys are given by top-level headings. this should make it more ergonomic
+
+    # yaml
+        title: ramseys theorem
+        type: Theorem
+    # description
+    the description here
+    # review notes
+    introduces an additional key "review notes" with this string as value
+
+
+next, we also introduce a "type" field where concept authors have to annotate if their concept is a "definition" "theorem" "lemma" or whatever. we accept arbitrary strings here.
+
+#### website
+
+start with the design of my earlier concept website
+https://main.autoformalize.pages.dev/
+sidebar and everything stays.
+
+changes/additions we make
+- we use markdown instead of latex for rendering. this means we need another mechanism than \Cref{id} to create references. pick your favorite
+- instead of Verification✓, we write a more descriptive text. make some suggestions. maybe different for those things with and without statements?
+- we dont include the "main results" thing
+- we show author, date, draft state, etc in some sleak way. not just an ugly table copying the manifest and record.json
+- but instead show the abstract first.
+- all submissions, even drafts, are citable (with copyable citation the end of page)
+- like concept page, show the type via a 3letter shortcut. for known things like theorem, we shorten to thm. 
+  other unkown things are just hte first three letters. no special colors needed.
+
+#### graphs
+- instead of cramming statement and proof deps into one graph, we have two different figures. they use the same d3 rendering as the concept website
+- show concept dependencies as a layered dag. those without dependencies at the bottom. make nodes wide enough to carry a usual-length id.
+- show proof network via spring layout? again, nodes wide enought to carry a usual-length id (rest capped with ...) and nodes dont overlap so ids stay readable.
+- gray out nodes outside the current submission?
+
+
+
+
+
 ## v0.3 The Social Layer: Reviewers, Endorsements and Flags
 
 The social layer arrives together with proof security: endorsements are
@@ -1021,11 +1068,6 @@ A **flag** is the opposite verdict and requires a message outlining the
 problem. A flag is a staked claim, not a final verdict: it stands until the
 flagger retracts it.
 
-## v0.4 prettier website
-
-A nicer front end and extra features: better navigation and search, nicer
-rendering of Lean code and the DAGs, and the atom view of v0.4 atoms. Pure
-presentation — ``build-output.json`` is extended and regenerated accordingly.
 
 
 # Distribution and Deployment
@@ -1099,7 +1141,6 @@ names the section that describes it.
 
 **v0.4 — open, trustable, social and pretty.**
 - Atoms (Submission Layout).
-- The prettier website (The Social Layer / Website).
 - General cleanup.
 
 **v0.? — locality.**
