@@ -16,6 +16,19 @@ This document describes an absolutely minimal version of this product.
 Everything non-essential is postponed to later. At the same time, we try to get
 those things right that cannot be easily changed later.
 
+## TODO positioning
+
+we are more sloppy than mathlib.
+doing real math instead of textbook math building definitions (unlike mathlib?)
+defense: mathlib = textbook, we are more like arxiv: less polished, move faster?
+
+similar projects: 
+- formalization of 5 papers from stoc. "formal archive?"
+- deep minds conjectures repo
+- autoform (formalizing textbooks group) also has an archive page
+
+distinguishing factor: we are open to foreign submissions
+
 
 ## Concepts and Proofs
 
@@ -37,6 +50,21 @@ A **submission** is a single citable unit of work containing concepts and
 proofs. The two are decoupled: a submission may leave its own proof
 obligations open, and may discharge obligations of other submissions.
 
+### TODO (major change!)
+
+typical examples:
+    - self contained submission: formalizes a paper and fully proves it
+    - closes proof obligations from another paper
+    - only formalizes things and doesnt prove it
+
+after long discussion:
+    - each concept contains up to one statement and the concept is proven iff
+      the statement is
+    - workaround if you want big concepts: you may create a new concept
+      consisting of one statement that conjuncts 5 smaller statements.
+    - todo: find ergonomic way for concepts to contain multiple small claims
+      and a single "main statement"? via single main axiom? via metadata labeling one "main statement"?
+
 
 ## Versioning
 
@@ -47,6 +75,7 @@ of scientific publications. We understand that this brings along its own
 problems, which we believe are worth it. In particular, we pin the version of
 Lean, Lake and mathlib.
 
+TODO: fold in the reasoning of mathlib=textbook, we=arxiv from opening section?
 
 
 # Submission Layout
@@ -72,10 +101,15 @@ We fix the following **archive environment**:
     - ``autoImplicit`` off
 - proof build options
     - ``autoImplicit`` on
-- allowed background axioms
+- allowed background axioms (from mathlib or base lean? check!)
     - ``propext``
     - ``Classical.choice``
     - ``Quot.sound``
+
+TODO: ideologically, it seems fine for proofs to depend on external sources.
+but it might be a hassle to implemnt. workaround for now: in the style guide
+recommend agents to copy deps into the repo. later we evaluate if things were
+copied and if we need the external-proof-dep feature. then we implement.
 
 
 ## File Structure
@@ -98,6 +132,10 @@ have the following layout.
         Lax261Proofs.lean          -- root module of the proof package
         Lax261Proofs/...           -- modules of the proof package
 
+TODO: known limitation: existing projects might be hrad to squeeze into this
+layout. offer some conversion script that translates existing projects into
+this layout? maybe this is just a prompt?
+
 Additional Rules:
 
 - **License.** The file ``LICENSE`` in the submission root folder must contain
@@ -114,6 +152,11 @@ Additional Rules:
   pictured layout (a README, etc) are allowed and ignored by the archive.
 
 ## manifest.yaml
+
+TODO: new manifest key ``abstract`` which takes either file name such as
+abstract.md or abstract.tex. renders based on file extension. cut the hardcoded
+name.
+
 
 The file ``manifest.yaml`` must contain the following keys and adhere to the following rules.
 
@@ -157,6 +200,19 @@ Example:
         github: bob
     bibEntries: []
 
+## TODO v0.2 allowing changes?
+
+allowing changes in the abstract. this might mean we put the abstract into
+lifecycle data? allow new commits if they dont overwrite key files? the goal is
+to have a clean interface that makes it easy and natural to change non-critical
+things.
+
+pro: if we fix typos and bugs in abstracts it would only improve the quality of
+the submission
+
+con: things are no longer fully immutable, and the submission "approved" by a
+reviewer might be slightly different (only in presentation) from the actual
+current submission.
 
 
 ## Packages
@@ -179,6 +235,9 @@ following rules:
   the proof package. The lib is the only default target. With Lake's default
   layout, module files therefore live under ``Lax261/`` and
   ``Lax261Proofs/`` respectively.
+
+  TODO: earlier we discussed that outside deps have to be copied into the proof
+  packages. here is the place to actually fold in this comment.
 
 - **Dependencies.** Besides mathlib, concept packages may require only
   concept packages; proof packages may require both concept and proof
@@ -292,13 +351,20 @@ free, since Lean imports are).
 
 Additional Rules:
 
+TODO: this sentence is weired ai slop. better explaination: sometimes we need little proofs in concept packages (argue graph rel is sym). these proofs are not allowed to use sorries or other axioms besides the whitelist. also not "statement" axioms from this or other concepts.
+
 - **Axiom-free.** The axiom set (``#print axioms``) of every declaration of
   the concept package may contain only the archive environment's background
   axioms — plus, for a statement, the statement itself, which an axiom always
   reports. No other statement may occur: concepts declare statements but
   never use them, so no concept builds on an unproven claim.
 
+
 ## Proofs
+
+TODO: each concept has at most one statement. therefore we can also see proofs
+as objects that assume a set of concepts and derive a single concept as
+conclusion.
 
 A **proof** is a declaration of the proof package whose docstring carries
 yaml frontmatter (see Annotations); every other declaration is a helper,
@@ -381,11 +447,19 @@ An example concept module ``concepts/Lax261/Myconcept.lean``:
     import Mathlib.Combinatorics.SimpleGraph.Basic
     import Lax42.Colorings
 
+
+    TODO: lets use this schema for allow for more free-form text. with
+    additional rule: if there is no #-headline, then everything is
+    "description"
+
     /-!
     ---
     title: Title of the concept
     ---
+    # description 
     description of the concept
+    # review notes
+    some other secondary information
     -/
 
     namespace Lax261.Myconcept
@@ -426,7 +500,6 @@ on the website), frozen on registration.
 Example ``record.json``
 
     {
-      "specVersion": "1",
       "id": "Lax261",
       "state": "registered",
       "createdAt": "2026-07-01T12:00:00Z",
@@ -485,6 +558,8 @@ Each entry of ``concepts``:
       ]
     }
 
+TODO: later version v2 or v3: allow annotation of statements
+
 ``title`` and ``description`` come from the concept annotation, where both are
 required. ``imports`` lists imported concept modules only — mathlib imports are
 dropped. ``sourceText`` is the verbatim file content, so the website can
@@ -523,6 +598,9 @@ rot, we may later keep backup copies, e.g. via
 https://archive.softwareheritage.org/save/.)
 
 ## Lifecycle
+
+v2:
+TODO: deleting draft submissions should be allowed?
 
 Submissions can be in three possible states within our database.
 
