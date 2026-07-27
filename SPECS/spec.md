@@ -1323,3 +1323,14 @@ to themselves — which is acceptable because registration is gated
 exclusively by the server's run.
 
 
+# SOME UNDERED NOTES FROM 27.7.26 MEETING
+
+- allow nonempty dirs for lax init
+- add inspector.json as inspector output and do python side checking to build-output.json
+- add links to proofs on the website. otherwise people think its just axioms
+- cli auth?
+
+- substring: created by, githuburl, date.
+- sources bibtex
+- display names vs lean nams?
+- graph edges are too little?
